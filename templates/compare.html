@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+
+{% block title %}Compare Price Books - PDF Price Book Parser{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-exchange-alt me-2"></i>Compare Price Books
+            </h1>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Comparison Form -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-balance-scale me-2"></i>Select Price Books to Compare
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="compareForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="oldPriceBook" class="form-label">
+                                <i class="fas fa-file-archive me-1"></i>Old Price Book (Baseline)
+                            </label>
+                            <select class="form-select" id="oldPriceBook" name="old_price_book_id" required>
+                                <option value="">Select old price book...</option>
+                                {% for book in price_books %}
+                                <option value="{{ book.id }}" 
+                                        data-manufacturer="{{ book.manufacturer }}"
+                                        data-edition="{{ book.edition }}"
+                                        data-date="{{ book.effective_date }}">
+                                    {{ book.manufacturer }} - {{ book.edition or 'Unknown Edition' }}
+                                    {% if book.effective_date %} ({{ book.effective_date }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="newPriceBook" class="form-label">
+                                <i class="fas fa-file-plus me-1"></i>New Price Book (Updated)
+                            </label>
+                            <select class="form-select" id="newPriceBook" name="new_price_book_id" required>
+                                <option value="">Select new price book...</option>
+                                {% for book in price_books %}
+                                <option value="{{ book.id }}" 
+                                        data-manufacturer="{{ book.manufacturer }}"
+                                        data-edition="{{ book.edition }}"
+                                        data-date="{{ book.effective_date }}">
+                                    {{ book.manufacturer }} - {{ book.edition or 'Unknown Edition' }}
+                                    {% if book.effective_date %} ({{ book.effective_date }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="includeFuzzyMatches" checked>
+                                <label class="form-check-label" for="includeFuzzyMatches">
+                                    Include fuzzy matches for similar products
+                                </label>
+                            </div>
+                            <div class="form-text">Find potential matches even when SKUs don't match exactly.</div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <button type="button" class="btn btn-outline-secondary me-md-2" onclick="clearSelection()">
+                            <i class="fas fa-times me-1"></i>Clear Selection
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="compareBtn">
+                            <i class="fas fa-search me-1"></i>Compare Price Books
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Comparison Info
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6>What gets compared:</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success me-2"></i>Price changes</li>
+                    <li><i class="fas fa-check text-success me-2"></i>New products added</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Retired products</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Description updates</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Status changes</li>
+                </ul>
+                
+                <h6 class="mt-3">Output formats:</h6>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-file-excel text-success me-2"></i>Excel report</li>
+                    <li><i class="fas fa-file-csv text-info me-2"></i>CSV export</li>
+                    <li><i class="fas fa-chart-bar text-warning me-2"></i>Summary statistics</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Comparison Results -->
+<div class="row mt-4" id="resultsSection" style="display: none;">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line me-2"></i>Comparison Results
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Summary Statistics -->
+                <div class="row mb-4" id="summaryStats">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                
+                <!-- Changes Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover" id="changesTable">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Product</th>
+                                <th>Old Value</th>
+                                <th>New Value</th>
+                                <th>Change %</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody id="changesTableBody">
+                            <!-- Will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Export Options -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-success" onclick="exportResults('excel')">
+                                <i class="fas fa-file-excel me-1"></i>Export Excel
+                            </button>
+                            <button class="btn btn-info" onclick="exportResults('csv')">
+                                <i class="fas fa-file-csv me-1"></i>Export CSV
+                            </button>
+                            <button class="btn btn-warning" onclick="printResults()">
+                                <i class="fas fa-print me-1"></i>Print Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5>Comparing Price Books...</h5>
+                <p class="text-muted">This may take a few moments depending on the size of the price books.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentComparison = null;
+
+document.getElementById('compareForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const oldBookId = document.getElementById('oldPriceBook').value;
+    const newBookId = document.getElementById('newPriceBook').value;
+    
+    if (!oldBookId || !newBookId) {
+        alert('Please select both price books to compare.');
+        return;
+    }
+    
+    if (oldBookId === newBookId) {
+        alert('Cannot compare a price book with itself.');
+        return;
+    }
+    
+    // Show loading modal
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    loadingModal.show();
+    
+    // Perform comparison
+    fetch('/api/compare', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            old_price_book_id: parseInt(oldBookId),
+            new_price_book_id: parseInt(newBookId)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        loadingModal.hide();
+        
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+        
+        currentComparison = data;
+        displayResults(data);
+    })
+    .catch(error => {
+        loadingModal.hide();
+        console.error('Error:', error);
+        alert('An error occurred while comparing the price books.');
+    });
+});
+
+function displayResults(data) {
+    // Show results section
+    document.getElementById('resultsSection').style.display = 'block';
+    
+    // Display summary statistics
+    displaySummaryStats(data.summary);
+    
+    // Display changes table
+    displayChangesTable(data.changes);
+    
+    // Scroll to results
+    document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+function displaySummaryStats(summary) {
+    const summaryContainer = document.getElementById('summaryStats');
+    
+    summaryContainer.innerHTML = `
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h4 class="card-title">${summary.total_changes}</h4>
+                    <p class="card-text">Total Changes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h4 class="card-title">${summary.new_products}</h4>
+                    <p class="card-text">New Products</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h4 class="card-title">${summary.retired_products}</h4>
+                    <p class="card-text">Retired Products</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h4 class="card-title">${summary.price_changes}</h4>
+                    <p class="card-text">Price Changes</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function displayChangesTable(changes) {
+    const tbody = document.getElementById('changesTableBody');
+    
+    if (changes.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No changes found between the selected price books.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = changes.map(change => {
+        const changeTypeBadge = getChangeTypeBadge(change.change_type);
+        const changePercentage = change.change_percentage ? 
+            `${change.change_percentage > 0 ? '+' : ''}${change.change_percentage.toFixed(1)}%` : 
+            'N/A';
+        
+        return `
+            <tr>
+                <td>${changeTypeBadge}</td>
+                <td><code>${change.product_id || 'N/A'}</code></td>
+                <td>${change.old_value || 'N/A'}</td>
+                <td>${change.new_value || 'N/A'}</td>
+                <td>${changePercentage}</td>
+                <td>${change.description}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function getChangeTypeBadge(changeType) {
+    const badges = {
+        'new_product': '<span class="badge bg-success">New Product</span>',
+        'retired_product': '<span class="badge bg-danger">Retired</span>',
+        'price_change': '<span class="badge bg-warning">Price Change</span>',
+        'description_change': '<span class="badge bg-info">Description</span>',
+        'status_change': '<span class="badge bg-secondary">Status</span>',
+        'fuzzy_match': '<span class="badge bg-primary">Fuzzy Match</span>'
+    };
+    
+    return badges[changeType] || `<span class="badge bg-light text-dark">${changeType}</span>`;
+}
+
+function clearSelection() {
+    document.getElementById('oldPriceBook').value = '';
+    document.getElementById('newPriceBook').value = '';
+    document.getElementById('resultsSection').style.display = 'none';
+    currentComparison = null;
+}
+
+function exportResults(format) {
+    if (!currentComparison) {
+        alert('No comparison data to export.');
+        return;
+    }
+    
+    // In a real implementation, this would make a request to the server
+    // to generate and download the export file
+    alert(`Export to ${format.toUpperCase()} would be implemented here.`);
+}
+
+function printResults() {
+    if (!currentComparison) {
+        alert('No comparison data to print.');
+        return;
+    }
+    
+    // In a real implementation, this would open a print-friendly view
+    alert('Print functionality would be implemented here.');
+}
+
+// Prevent selecting the same price book for both old and new
+document.getElementById('oldPriceBook').addEventListener('change', function() {
+    const newSelect = document.getElementById('newPriceBook');
+    const selectedValue = this.value;
+    
+    Array.from(newSelect.options).forEach(option => {
+        option.disabled = option.value === selectedValue;
+    });
+});
+
+document.getElementById('newPriceBook').addEventListener('change', function() {
+    const oldSelect = document.getElementById('oldPriceBook');
+    const selectedValue = this.value;
+    
+    Array.from(oldSelect.options).forEach(option => {
+        option.disabled = option.value === selectedValue;
+    });
+});
+</script>
+{% endblock %}

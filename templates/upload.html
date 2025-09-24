@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Upload PDF - PDF Price Book Parser{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-upload me-2"></i>Upload PDF Price Book
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" id="uploadForm">
+                    <div class="mb-4">
+                        <label for="manufacturer" class="form-label">
+                            <i class="fas fa-building me-1"></i>Manufacturer
+                        </label>
+                        <select class="form-select" id="manufacturer" name="manufacturer" required>
+                            <option value="">Select Manufacturer</option>
+                            <option value="hager">Hager</option>
+                            <option value="select_hinges">SELECT Hinges</option>
+                            <option value="auto">Auto-detect</option>
+                        </select>
+                        <div class="form-text">Select the manufacturer or choose auto-detect to automatically identify the format.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="file" class="form-label">
+                            <i class="fas fa-file-pdf me-1"></i>PDF File
+                        </label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".pdf" required>
+                        <div class="form-text">Maximum file size: 50MB. Supported formats: PDF only.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="enableOcr" checked>
+                            <label class="form-check-label" for="enableOcr">
+                                Enable OCR fallback for scanned PDFs
+                            </label>
+                        </div>
+                        <div class="form-text">Automatically use OCR when digital text extraction fails.</div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary me-md-2">
+                            <i class="fas fa-arrow-left me-1"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="uploadBtn">
+                            <i class="fas fa-upload me-1"></i>Upload & Parse
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Upload Progress -->
+        <div class="card mt-4" id="progressCard" style="display: none;">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-spinner fa-spin me-2"></i>Processing PDF
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%" id="progressBar"></div>
+                </div>
+                <div id="progressText">Starting upload...</div>
+            </div>
+        </div>
+
+        <!-- Supported Formats -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>Supported Formats
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle text-success me-1"></i>Hager Price Books</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-dot-circle me-1"></i>Finish codes (US3, US4, US10B, etc.)</li>
+                            <li><i class="fas fa-dot-circle me-1"></i>Adder rules and pricing</li>
+                            <li><i class="fas fa-dot-circle me-1"></i>Product SKUs and descriptions</li>
+                            <li><i class="fas fa-dot-circle me-1"></i>Effective dates</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle text-success me-1"></i>SELECT Hinges</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-dot-circle me-1"></i>Net-add options (CTW, EPT, EMS)</li>
+                            <li><i class="fas fa-dot-circle me-1"></i>TIPIT and Hospital Tip rules</li>
+                            <li><i class="fas fa-dot-circle me-1"></i>UL FR3 fire rating options</li>
+                            <li><i class="fas fa-dot-circle me-1"></i>Product specifications</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Tips for Best Results
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>For Digital PDFs:</h6>
+                        <ul>
+                            <li>Ensure text is selectable (not scanned images)</li>
+                            <li>Tables should be properly formatted</li>
+                            <li>Use original PDF files when possible</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>For Scanned PDFs:</h6>
+                        <ul>
+                            <li>Ensure good image quality (300+ DPI)</li>
+                            <li>Text should be clearly readable</li>
+                            <li>Enable OCR fallback option</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    const fileInput = document.getElementById('file');
+    const manufacturerSelect = document.getElementById('manufacturer');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const progressCard = document.getElementById('progressCard');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    
+    // Validate file
+    if (!fileInput.files[0]) {
+        e.preventDefault();
+        alert('Please select a PDF file to upload.');
+        return;
+    }
+    
+    // Validate manufacturer
+    if (!manufacturerSelect.value) {
+        e.preventDefault();
+        alert('Please select a manufacturer.');
+        return;
+    }
+    
+    // Show progress
+    progressCard.style.display = 'block';
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+    
+    // Simulate progress (in real implementation, this would be handled by server-sent events)
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 20;
+        if (progress > 90) progress = 90;
+        
+        progressBar.style.width = progress + '%';
+        
+        if (progress < 30) {
+            progressText.textContent = 'Uploading file...';
+        } else if (progress < 60) {
+            progressText.textContent = 'Extracting text and tables...';
+        } else if (progress < 90) {
+            progressText.textContent = 'Parsing data and storing in database...';
+        }
+    }, 500);
+    
+    // Clear interval after form submission
+    setTimeout(() => {
+        clearInterval(interval);
+    }, 10000);
+});
+
+// File size validation
+document.getElementById('file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    
+    if (file && file.size > maxSize) {
+        alert('File size exceeds 50MB limit. Please choose a smaller file.');
+        e.target.value = '';
+    }
+});
+
+// Drag and drop functionality
+const fileInput = document.getElementById('file');
+const form = document.getElementById('uploadForm');
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    form.addEventListener(eventName, preventDefaults, false);
+});
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+['dragenter', 'dragover'].forEach(eventName => {
+    form.addEventListener(eventName, highlight, false);
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    form.addEventListener(eventName, unhighlight, false);
+});
+
+function highlight(e) {
+    form.classList.add('drag-over');
+}
+
+function unhighlight(e) {
+    form.classList.remove('drag-over');
+}
+
+form.addEventListener('drop', handleDrop, false);
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    
+    if (files.length > 0) {
+        fileInput.files = files;
+    }
+}
+</script>
+
+<style>
+.drag-over {
+    border: 2px dashed #007bff !important;
+    background-color: #f8f9fa !important;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}Preview - {{ summary.manufacturer }} Price Book{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-eye me-2"></i>Preview: {{ summary.manufacturer }} Price Book
+                </h1>
+                <p class="text-muted mb-0">
+                    Edition: {{ summary.edition or 'N/A' }} | 
+                    Effective Date: {{ summary.effective_date or 'N/A' }} | 
+                    Uploaded: {{ summary.upload_date }}
+                </p>
+            </div>
+            <div class="btn-group">
+                <a href="{{ url_for('export', price_book_id=price_book_id, format='excel') }}" 
+                   class="btn btn-success">
+                    <i class="fas fa-file-excel me-1"></i>Export Excel
+                </a>
+                <a href="{{ url_for('export', price_book_id=price_book_id, format='csv') }}" 
+                   class="btn btn-info">
+                    <i class="fas fa-file-csv me-1"></i>Export CSV
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ summary.product_count }}</h4>
+                        <p class="card-text">Products</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-boxes fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ summary.option_count }}</h4>
+                        <p class="card-text">Options</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-cogs fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ summary.status|title }}</h4>
+                        <p class="card-text">Status</p>
+                    </div>
+                    <div class="align-self-center">
+                        {% if summary.status == 'completed' %}
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        {% elif summary.status == 'processing' %}
+                            <i class="fas fa-spinner fa-spin fa-2x"></i>
+                        {% else %}
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ products|length }}</h4>
+                        <p class="card-text">Showing</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-list fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters and Search -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <label for="searchInput" class="form-label">Search Products</label>
+                        <input type="text" class="form-control" id="searchInput" placeholder="Search by SKU, model, or description...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="statusFilter" class="form-label">Status</label>
+                        <select class="form-select" id="statusFilter">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="priceFilter" class="form-label">Price Range</label>
+                        <select class="form-select" id="priceFilter">
+                            <option value="">All Prices</option>
+                            <option value="0-50">$0 - $50</option>
+                            <option value="50-100">$50 - $100</option>
+                            <option value="100-200">$100 - $200</option>
+                            <option value="200+">$200+</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">&nbsp;</label>
+                        <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                            <i class="fas fa-times me-1"></i>Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Products Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>Products
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="productsTable">
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th>Model</th>
+                                <th>Description</th>
+                                <th>Base Price</th>
+                                <th>Effective Date</th>
+                                <th>Status</th>
+                                <th>Family</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in products %}
+                            <tr data-sku="{{ product.sku|lower }}" 
+                                data-model="{{ product.model|lower }}" 
+                                data-description="{{ product.description|lower }}"
+                                data-price="{{ product.base_price or 0 }}"
+                                data-status="{{ 'active' if product.is_active else 'inactive' }}">
+                                <td>
+                                    <code>{{ product.sku }}</code>
+                                </td>
+                                <td>{{ product.model or 'N/A' }}</td>
+                                <td>{{ product.description or 'N/A' }}</td>
+                                <td>
+                                    {% if product.base_price %}
+                                        <span class="badge bg-success">${{ "%.2f"|format(product.base_price) }}</span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if product.effective_date %}
+                                        <small class="text-muted">{{ product.effective_date }}</small>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if product.is_active %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>Active
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-times me-1"></i>Inactive
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if product.family %}
+                                        <span class="badge bg-info">{{ product.family }}</span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if not products %}
+                <div class="text-center py-5">
+                    <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No products found</h5>
+                    <p class="text-muted">This price book doesn't contain any products yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if products|length >= 50 %}
+<div class="row mt-4">
+    <div class="col-12">
+        <nav aria-label="Products pagination">
+            <ul class="pagination justify-content-center">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">Previous</a>
+                </li>
+                <li class="page-item active">
+                    <a class="page-link" href="#">1</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">2</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">3</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">Next</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Search functionality
+document.getElementById('searchInput').addEventListener('input', filterTable);
+document.getElementById('statusFilter').addEventListener('change', filterTable);
+document.getElementById('priceFilter').addEventListener('change', filterTable);
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const priceFilter = document.getElementById('priceFilter').value;
+    const rows = document.querySelectorAll('#productsTable tbody tr');
+    
+    rows.forEach(row => {
+        const sku = row.dataset.sku;
+        const model = row.dataset.model;
+        const description = row.dataset.description;
+        const price = parseFloat(row.dataset.price);
+        const status = row.dataset.status;
+        
+        let showRow = true;
+        
+        // Search filter
+        if (searchTerm) {
+            showRow = sku.includes(searchTerm) || 
+                     model.includes(searchTerm) || 
+                     description.includes(searchTerm);
+        }
+        
+        // Status filter
+        if (statusFilter && showRow) {
+            showRow = status === statusFilter;
+        }
+        
+        // Price filter
+        if (priceFilter && showRow) {
+            switch (priceFilter) {
+                case '0-50':
+                    showRow = price >= 0 && price <= 50;
+                    break;
+                case '50-100':
+                    showRow = price > 50 && price <= 100;
+                    break;
+                case '100-200':
+                    showRow = price > 100 && price <= 200;
+                    break;
+                case '200+':
+                    showRow = price > 200;
+                    break;
+            }
+        }
+        
+        row.style.display = showRow ? '' : 'none';
+    });
+    
+    // Update showing count
+    const visibleRows = document.querySelectorAll('#productsTable tbody tr[style=""]').length;
+    const totalRows = rows.length;
+    // You could update a counter element here if needed
+}
+
+function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('priceFilter').value = '';
+    filterTable();
+}
+
+// Auto-refresh if status is processing
+{% if summary.status == 'processing' %}
+setTimeout(function() {
+    location.reload();
+}, 5000);
+{% endif %}
+</script>
+{% endblock %}

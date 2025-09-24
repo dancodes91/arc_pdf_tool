@@ -1,0 +1,31 @@
+# Core PDF Processing
+pdfplumber==0.10.3
+camelot-py==0.11.0
+pytesseract==0.3.10
+Pillow==10.1.0
+opencv-python==4.8.1.78
+
+# Data Processing
+pandas==2.1.4
+numpy==1.24.4
+openpyxl==3.1.2
+
+# Database
+sqlalchemy==2.0.43
+
+# Web Framework
+flask==3.0.0
+flask-cors==4.0.0
+werkzeug==3.0.1
+
+# Utilities
+python-dateutil==2.8.2
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.23.0
+click==8.1.7
+
+# Development
+pytest==7.4.3
+pytest-cov==4.1.0
+black==23.11.0
+flake8==6.1.0
