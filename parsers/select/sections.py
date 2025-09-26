@@ -15,6 +15,16 @@ from ..shared.provenance import ProvenanceTracker, ParsedItem
 logger = logging.getLogger(__name__)
 
 
+def safe_confidence_score(confidence_obj, default=0.7):
+    """Safely extract confidence score from various types."""
+    if hasattr(confidence_obj, 'score'):
+        return confidence_obj.score
+    elif isinstance(confidence_obj, (int, float)):
+        return float(confidence_obj)
+    else:
+        return default
+
+
 class SelectSectionExtractor:
     """Extract specific sections from SELECT Hinges PDFs."""
 
@@ -92,7 +102,7 @@ class SelectSectionExtractor:
                         value=normalized['value'],
                         data_type="effective_date",
                         raw_text=date_str,
-                        confidence=normalized['confidence'].score if normalized['confidence'] else 0.8
+                        confidence=safe_confidence_score(normalized['confidence'], 0.8)
                     )
 
         self.logger.warning("No effective date found in SELECT PDF")
@@ -135,7 +145,7 @@ class SelectSectionExtractor:
                                 value=option_data,
                                 data_type="net_add_option",
                                 raw_text=match.group(0),
-                                confidence=price_normalized['confidence'].score
+                                confidence=safe_confidence_score(price_normalized['confidence'])
                             )
                             options.append(item)
 
@@ -228,8 +238,8 @@ class SelectSectionExtractor:
 
                     # Calculate combined confidence
                     confidence = min(
-                        sku_normalized['confidence'].score,
-                        price_normalized['confidence'].score
+                        safe_confidence_score(sku_normalized['confidence']),
+                        safe_confidence_score(price_normalized['confidence'])
                     )
 
                     item = self.tracker.create_parsed_item(

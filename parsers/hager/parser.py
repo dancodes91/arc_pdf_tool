@@ -119,9 +119,24 @@ class HagerParser:
             self.logger.warning("No effective date found")
 
     def _parse_finish_symbols(self, text: str) -> None:
-        """Parse finish symbols and BHMA codes."""
+        """Parse finish symbols and BHMA codes page by page."""
         self.logger.info("Parsing finish symbols...")
-        self.finish_symbols = self.section_extractor.extract_finish_symbols(text)
+        self.finish_symbols = []
+
+        for page in self.document.pages:
+            page_text = (page.text or '').upper()
+            if 'ARCHITECTURAL FINISH SYMBOLS' not in page_text:
+                continue
+
+            # Extract tables for this page using Camelot
+            tables = self.section_extractor.extract_tables_with_camelot(
+                self.pdf_path, page.page_number
+            )
+
+            page_symbols = self.section_extractor.extract_finish_symbols(
+                page_text, tables, page.page_number
+            )
+            self.finish_symbols.extend(page_symbols)
 
         self.logger.info(f"Found {len(self.finish_symbols)} finish symbols")
         for finish in self.finish_symbols[:3]:  # Log first 3
@@ -144,9 +159,27 @@ class HagerParser:
                 self.logger.debug(f"  {source} → {target}")
 
     def _parse_hinge_additions(self, text: str) -> None:
-        """Parse hinge additions and modifications."""
+        """Parse hinge additions and modifications page by page."""
         self.logger.info("Parsing hinge additions...")
-        self.hinge_additions = self.section_extractor.extract_hinge_additions(text)
+        self.hinge_additions = []
+
+        for page in self.document.pages:
+            page_text = page.text or ''
+            page_upper = page_text.upper()
+
+            # Look for addition-related keywords
+            if not any(keyword in page_upper for keyword in ['ADDITION', 'OPTION', 'EPT', 'ETW', 'EMS']):
+                continue
+
+            # Extract tables for this page using Camelot
+            tables = self.section_extractor.extract_tables_with_camelot(
+                self.pdf_path, page.page_number
+            )
+
+            page_additions = self.section_extractor.extract_hinge_additions(
+                page_text, tables, page.page_number
+            )
+            self.hinge_additions.extend(page_additions)
 
         self.logger.info(f"Found {len(self.hinge_additions)} hinge additions")
         for addition in self.hinge_additions:
@@ -156,9 +189,22 @@ class HagerParser:
                 self.logger.debug(f"  {code}: ${price}")
 
     def _parse_item_tables(self, text: str, tables: List[Any]) -> None:
-        """Parse product item tables."""
+        """Parse product item tables page by page."""
         self.logger.info("Parsing item tables...")
-        self.products = self.section_extractor.extract_item_tables(text, tables)
+        self.products = []
+
+        for page in self.document.pages:
+            page_text = page.text or ''
+
+            # Extract tables for this page using Camelot
+            tables = self.section_extractor.extract_tables_with_camelot(
+                self.pdf_path, page.page_number
+            )
+
+            page_products = self.section_extractor.extract_item_tables(
+                page_text, tables, page.page_number
+            )
+            self.products.extend(page_products)
 
         self.logger.info(f"Found {len(self.products)} products")
 

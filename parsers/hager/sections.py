@@ -32,6 +32,18 @@ class HagerSectionExtractor:
         self.tracker = provenance_tracker
         self.logger = logging.getLogger(f"{__class__.__name__}")
 
+    @staticmethod
+    def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice"):
+        """Extract tables from specific page using Camelot."""
+        import camelot
+        page_str = str(page_number)
+        try:
+            tables = camelot.read_pdf(pdf_path, pages=page_str, flavor=flavor)
+            return [t.df for t in tables] if tables.n else []
+        except Exception as e:
+            logger.warning(f"Camelot extraction failed for page {page_number}: {e}")
+            return []
+
         # Hager finish symbols patterns
         self.finish_symbol_patterns = [
             r'(US\d+[A-Z]?)\s+([^\n\r]+?)\s+(\$?[\d.]+)',  # US10B Description $price
@@ -89,51 +101,74 @@ class HagerSectionExtractor:
             'US32D': {'bhma': 'US32D', 'name': 'Antique Brass', 'standard': True},
         }
 
-    def extract_finish_symbols(self, text: str) -> List[ParsedItem]:
-        """Extract finish symbols table with BHMA codes and pricing."""
-        self.tracker.set_context(section="Finish Symbols", method="pattern_matching")
-        finishes = []
+    def extract_finish_symbols(self, page_text: str, tables: list, page_number: int) -> List[ParsedItem]:
+        """Extract finish symbols table with BHMA codes and pricing using Camelot DataFrame."""
+        self.tracker.set_context(section="Finish Symbols", page_number=page_number)
 
-        # Look for finish symbols section
-        finish_section = self._extract_finish_section(text)
+        results: List[ParsedItem] = []
+        for table_idx, table in enumerate(tables):
+            # Clean up the Camelot df
+            df = table.replace("", pd.NA).dropna(how="all")
+            if df.empty:
+                continue
 
-        for pattern in self.finish_symbol_patterns:
-            matches = re.finditer(pattern, finish_section, re.IGNORECASE)
+            # Check if this table contains finish symbols data
+            header_text = " ".join(str(cell) for cell in df.iloc[0]).upper()
+            if "ARCHITECTURAL FINISH SYMBOLS" not in header_text and "BHMA SYMBOL" not in header_text:
+                continue
 
-            for match in matches:
-                try:
-                    finish_code = match.group(1).strip().upper()
-                    description = match.group(2).strip()
-                    price_str = match.group(3).strip()
+            # Set up column mapping based on actual table structure
+            if len(df.columns) >= 6:
+                df.columns = ["code", "description", "pricing", "bhma_brass", "bhma_bronze", "bhma_steel"]
+            elif len(df.columns) >= 3:
+                df.columns = ["code", "description", "pricing"] + [f"col_{i}" for i in range(3, len(df.columns))]
+            else:
+                continue
 
-                    # Normalize price
-                    price_normalized = data_normalizer.normalize_price(price_str)
-                    finish_normalized = data_normalizer.normalize_finish_code(finish_code)
+            # Skip header row and process data rows
+            df = df.iloc[1:].dropna(subset=["code"])
 
-                    if price_normalized['value'] and finish_normalized['code']:
-                        finish_data = {
-                            'code': finish_normalized['code'],
-                            'bhma_code': finish_normalized['bhma_code'],
-                            'name': finish_normalized['name'] or description,
-                            'description': description,
-                            'base_price': float(price_normalized['value']),
-                            'is_standard': finish_code in self.hager_finishes,
-                            'manufacturer': 'hager'
-                        }
+            for _, row in df.iterrows():
+                code = str(row["code"]).strip()
+                desc = str(row["description"]).strip()
 
-                        item = self.tracker.create_parsed_item(
-                            value=finish_data,
-                            data_type="finish",
-                            raw_text=match.group(0),
-                            confidence=min(safe_confidence_score(price_normalized['confidence']), 0.9)
-                        )
-                        finishes.append(item)
+                if not code or code.lower() in ['nan', 'none']:
+                    continue
 
-                except (ValueError, IndexError) as e:
-                    self.logger.warning(f"Could not parse finish symbol: {e}")
+                # Extract pricing information
+                pricing_text = str(row.get("pricing", "")).strip()
+                base_price = self._extract_price_from_text(pricing_text)
 
-        self.logger.info(f"Extracted {len(finishes)} finish symbols")
-        return finishes
+                # Create finish symbol entry
+                finish_item = ParsedItem(
+                    item_type="finish_symbol",
+                    confidence=safe_confidence_score(0.85),  # High confidence for table-extracted data
+                    data={
+                        'finish_code': code,
+                        'description': desc,
+                        'base_price': base_price,
+                        'pricing_text': pricing_text,
+                        'bhma_brass': str(row.get("bhma_brass", "")).strip(),
+                        'bhma_bronze': str(row.get("bhma_bronze", "")).strip(),
+                        'bhma_steel': str(row.get("bhma_steel", "")).strip(),
+                    },
+                    metadata={
+                        'extraction_method': 'camelot_table',
+                        'page_number': page_number,
+                        'table_index': table_idx,
+                        'source_section': 'finish_symbols'
+                    }
+                )
+
+                results.append(finish_item)
+                self.tracker.record_extraction(
+                    item_type="finish_symbol",
+                    success=True,
+                    confidence=0.85,
+                    data={'finish_code': code, 'description': desc}
+                )
+
+        return results
 
     def extract_price_rules(self, text: str) -> List[ParsedItem]:
         """Extract pricing rules (e.g., US10B uses US10A price)."""
@@ -170,17 +205,76 @@ class HagerSectionExtractor:
         self.logger.info(f"Extracted {len(rules)} price rules")
         return rules
 
-    def extract_hinge_additions(self, text: str) -> List[ParsedItem]:
-        """Extract hinge addition options (EPT, ETW, EMS, etc.)."""
-        self.tracker.set_context(section="Hinge Additions", method="pattern_matching")
+    def extract_hinge_additions(self, page_text: str, tables: list, page_number: int) -> List[ParsedItem]:
+        """Extract hinge addition options (EPT, ETW, EMS, etc.) using Camelot DataFrame."""
+        self.tracker.set_context(section="Hinge Additions", page_number=page_number)
         additions = []
 
-        # Look for additions section
-        additions_section = self._extract_additions_section(text)
+        # Process Camelot tables first for structured data
+        for table_idx, table in enumerate(tables):
+            df = table.replace("", pd.NA).dropna(how="all")
+            if df.empty:
+                continue
 
+            # Check if this table contains addition options
+            header_text = " ".join(str(cell) for cell in df.iloc[0]).upper()
+            if not any(keyword in header_text for keyword in ["ADDITION", "OPTION", "EPT", "ETW", "EMS"]):
+                continue
+
+            # Set up column mapping based on table structure
+            if len(df.columns) >= 3:
+                df.columns = ["code", "description", "price"] + [f"col_{i}" for i in range(3, len(df.columns))]
+            else:
+                continue
+
+            # Skip header row and process data rows
+            df = df.iloc[1:].dropna(subset=["code"])
+
+            for _, row in df.iterrows():
+                code = str(row["code"]).strip().upper()
+                desc = str(row.get("description", "")).strip()
+                price_text = str(row.get("price", "")).strip()
+
+                if not code or code.lower() in ['nan', 'none']:
+                    continue
+
+                # Extract price value
+                base_price = self._extract_price_from_text(price_text)
+
+                # Create addition entry
+                addition_item = ParsedItem(
+                    item_type="hinge_addition",
+                    confidence=safe_confidence_score(0.85),  # High confidence for table-extracted data
+                    data={
+                        'option_code': code,
+                        'option_name': desc or self._get_addition_name(code),
+                        'adder_type': 'net_add',
+                        'adder_value': base_price,
+                        'description': desc,
+                        'manufacturer': 'hager',
+                        'constraints': self._get_addition_constraints(code),
+                        'pricing_text': price_text
+                    },
+                    metadata={
+                        'extraction_method': 'camelot_table',
+                        'page_number': page_number,
+                        'table_index': table_idx,
+                        'source_section': 'hinge_additions'
+                    }
+                )
+
+                additions.append(addition_item)
+                self.tracker.record_extraction(
+                    item_type="hinge_addition",
+                    success=True,
+                    confidence=0.85,
+                    data={'option_code': code, 'description': desc}
+                )
+
+        # Fallback to pattern matching for text-based additions
         for addition_code, patterns in self.addition_patterns.items():
             for pattern in patterns:
-                matches = re.finditer(pattern, additions_section, re.IGNORECASE)
+                matches = re.finditer(pattern, page_text, re.IGNORECASE)
 
                 for match in matches:
                     try:
@@ -195,16 +289,27 @@ class HagerSectionExtractor:
                                 'adder_value': float(price_normalized['value']),
                                 'description': self._get_addition_description(addition_code),
                                 'manufacturer': 'hager',
-                                'constraints': self._get_addition_constraints(addition_code)
+                                'constraints': self._get_addition_constraints(addition_code),
+                                'pricing_text': price_str
                             }
 
-                            item = self.tracker.create_parsed_item(
-                                value=addition_data,
-                                data_type="hinge_addition",
-                                raw_text=match.group(0),
-                                confidence=safe_confidence_score(price_normalized['confidence'])
+                            item = ParsedItem(
+                                item_type="hinge_addition",
+                                confidence=safe_confidence_score(price_normalized['confidence']),
+                                data=addition_data,
+                                metadata={
+                                    'extraction_method': 'regex_pattern',
+                                    'page_number': page_number,
+                                    'source_section': 'hinge_additions'
+                                }
                             )
                             additions.append(item)
+                            self.tracker.record_extraction(
+                                item_type="hinge_addition",
+                                success=True,
+                                confidence=price_normalized['confidence'],
+                                data={'option_code': addition_code}
+                            )
 
                     except (ValueError, IndexError) as e:
                         self.logger.warning(f"Could not parse addition {addition_code}: {e}")
@@ -212,29 +317,31 @@ class HagerSectionExtractor:
         self.logger.info(f"Extracted {len(additions)} hinge additions")
         return additions
 
-    def extract_item_tables(self, text: str, tables: List[pd.DataFrame]) -> List[ParsedItem]:
-        """Extract product items from tables and text."""
-        self.tracker.set_context(section="Item Tables", method="table_extraction")
+    def extract_item_tables(self, page_text: str, tables: list, page_number: int) -> List[ParsedItem]:
+        """Extract product items from tables using Camelot DataFrame parsing."""
+        self.tracker.set_context(section="Item Tables", page_number=page_number)
         products = []
 
-        # Extract from structured tables
+        # Process Camelot tables for structured data
         for table_idx, table in enumerate(tables):
-            self.tracker.set_context(table_index=table_idx)
+            df = table.replace("", pd.NA).dropna(how="all")
+            if df.empty:
+                continue
 
-            if self._is_hager_product_table(table):
-                table_products = self._extract_products_from_table(table, table_idx)
+            # Check if this is a product table
+            if self._is_hager_product_table(df):
+                table_products = self._extract_products_from_table(df, table_idx, page_number)
                 products.extend(table_products)
 
-        # Extract from text patterns for specific series
+        # Fallback to text patterns for specific series
         for series_code, pattern in self.product_patterns.items():
-            series_match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            series_match = re.search(pattern, page_text, re.IGNORECASE | re.DOTALL)
             if series_match:
                 series_products = self._extract_products_from_series_text(
-                    series_match.group(0), series_code
+                    series_match.group(0), series_code, page_number
                 )
                 products.extend(series_products)
 
-        self.logger.info(f"Extracted {len(products)} Hager products")
         return products
 
     def _extract_finish_section(self, text: str) -> str:
@@ -285,7 +392,7 @@ class HagerSectionExtractor:
 
         return sum(1 for indicator in indicators if indicator in table_text) >= 2
 
-    def _extract_products_from_table(self, table: pd.DataFrame, table_idx: int) -> List[ParsedItem]:
+    def _extract_products_from_table(self, table: pd.DataFrame, table_idx: int, page_number: int) -> List[ParsedItem]:
         """Extract products from Hager table."""
         products = []
 
@@ -340,7 +447,7 @@ class HagerSectionExtractor:
 
         return products
 
-    def _extract_products_from_series_text(self, text_section: str, series_code: str) -> List[ParsedItem]:
+    def _extract_products_from_series_text(self, text_section: str, series_code: str, page_number: int) -> List[ParsedItem]:
         """Extract products from text section for specific series."""
         products = []
 

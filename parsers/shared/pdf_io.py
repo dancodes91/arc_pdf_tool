@@ -25,6 +25,15 @@ from .confidence import confidence_scorer, ConfidenceScore
 logger = logging.getLogger(__name__)
 
 
+def _confidence_value(conf) -> float:
+    if hasattr(conf, 'score'):
+        return float(conf.score)
+    if isinstance(conf, (int, float)):
+        return float(conf)
+    return 0.0
+
+
+
 @dataclass
 class PDFPage:
     """Container for PDF page data."""
@@ -105,7 +114,7 @@ class EnhancedPDFExtractor:
 
         # Calculate overall document confidence
         if pages:
-            avg_confidence = sum(p.confidence.score for p in pages) / len(pages)
+            avg_confidence = sum(_confidence_value(p.confidence) for p in pages) / len(pages)
             total_confidence = confidence_scorer.score_extraction_method(
                 "document_average",
                 avg_confidence

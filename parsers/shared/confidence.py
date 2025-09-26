@@ -268,7 +268,10 @@ class ConfidenceScorer:
         # Score key components if present
         if 'effective_date' in extraction_results:
             date_score = self.score_effective_date(extraction_results['effective_date'])
-            component_scores.append(date_score.score * 0.2)
+            if hasattr(date_score, 'score'):
+                component_scores.append(date_score.score * 0.2)
+            else:
+                component_scores.append(float(date_score) * 0.2)
             reasons.extend([f"Date: {date_score.level.value}" for r in date_score.reasons[:2]])
 
         if 'products' in extraction_results:
@@ -282,11 +285,17 @@ class ConfidenceScorer:
                     if isinstance(product, dict):
                         if 'base_price' in product:
                             price_score = self.score_price_value(str(product['base_price']))
-                            product_scores.append(price_score.score)
+                            if hasattr(price_score, 'score'):
+                                product_scores.append(price_score.score)
+                            else:
+                                product_scores.append(float(price_score))
 
                         if 'sku' in product:
                             sku_score = self.score_sku_value(str(product['sku']))
-                            product_scores.append(sku_score.score)
+                            if hasattr(sku_score, 'score'):
+                                product_scores.append(sku_score.score)
+                            else:
+                                product_scores.append(float(sku_score))
 
                 if product_scores:
                     avg_product_score = sum(product_scores) / len(product_scores)
