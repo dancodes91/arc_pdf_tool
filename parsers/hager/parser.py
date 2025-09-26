@@ -147,9 +147,27 @@ class HagerParser:
                 self.logger.debug(f"  {code} ({name}): ${price}")
 
     def _parse_price_rules(self, text: str) -> None:
-        """Parse pricing rules."""
+        """Parse pricing rules page by page."""
         self.logger.info("Parsing price rules...")
-        self.price_rules = self.section_extractor.extract_price_rules(text)
+        self.price_rules = []
+
+        for page in self.document.pages:
+            page_text = page.text or ''
+            page_upper = page_text.upper()
+
+            # Look for rule-related keywords
+            if not any(keyword in page_upper for keyword in ['USE', 'PRICE', 'MAPPING', 'RULE']):
+                continue
+
+            # Extract tables for this page using Camelot
+            tables = self.section_extractor.extract_tables_with_camelot(
+                self.pdf_path, page.page_number
+            )
+
+            page_rules = self.section_extractor.extract_price_rules(
+                page_text, tables, page.page_number
+            )
+            self.price_rules.extend(page_rules)
 
         self.logger.info(f"Found {len(self.price_rules)} price rules")
         for rule in self.price_rules[:3]:  # Log first 3

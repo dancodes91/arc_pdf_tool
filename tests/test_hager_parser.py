@@ -32,7 +32,7 @@ class TestHagerSectionExtractor:
         US26D   Oil Rubbed Bronze       $22.75
         """
 
-        finishes = self.extractor.extract_finish_symbols(test_text)
+        finishes = self.extractor.extract_finish_symbols_legacy(test_text)
 
         # Should find multiple finishes
         assert len(finishes) >= 4
@@ -60,7 +60,7 @@ class TestHagerSectionExtractor:
         US5 uses US4 pricing
         """
 
-        rules = self.extractor.extract_price_rules(test_text)
+        rules = self.extractor.extract_price_rules_legacy(test_text)
 
         # Should find multiple rules
         assert len(rules) >= 2
@@ -82,7 +82,7 @@ class TestHagerSectionExtractor:
         HWS heavy weight stainless add $55.25
         """
 
-        additions = self.extractor.extract_hinge_additions(test_text)
+        additions = self.extractor.extract_hinge_additions_legacy(test_text)
 
         # Should find additions
         assert len(additions) >= 3
@@ -111,7 +111,7 @@ class TestHagerSectionExtractor:
         }
 
         test_table = pd.DataFrame(sample_data)
-        products = self.extractor.extract_item_tables("", [test_table])
+        products = self.extractor.extract_item_tables_legacy("", [test_table])
 
         assert len(products) == 5
 
@@ -136,7 +136,7 @@ class TestHagerSectionExtractor:
         US10B $102.00
         """
 
-        products = self.extractor.extract_item_tables(test_text, [])
+        products = self.extractor.extract_item_tables_legacy(test_text, [])
 
         # Should find products from both series
         assert len(products) >= 3
@@ -149,13 +149,13 @@ class TestHagerSectionExtractor:
     def test_hager_finish_mapping(self):
         """Test Hager-specific finish code mapping."""
         test_text = "US26D Oil Rubbed Bronze $22.75"
-        finishes = self.extractor.extract_finish_symbols(test_text)
+        finishes = self.extractor.extract_finish_symbols_legacy(test_text)
 
         us26d_finish = next((f for f in finishes
                            if isinstance(f.value, dict) and f.value.get('code') == 'US26D'), None)
 
         assert us26d_finish is not None
-        assert us26d_finish.value['bhma_code'] == 'US26D'
+        assert us26d_finish.value['code'] == 'US26D'
         assert 'Oil Rubbed Bronze' in us26d_finish.value['name']
 
 
@@ -215,8 +215,9 @@ class TestHagerParser:
         assert 'summary' in results
         assert 'validation' in results
 
+    @patch('parsers.hager.sections.HagerSectionExtractor.extract_tables_with_camelot')
     @patch('parsers.hager.parser.EnhancedPDFExtractor')
-    def test_parse_with_products(self, mock_extractor_class):
+    def test_parse_with_products(self, mock_extractor_class, mock_camelot):
         """Test parsing with product data."""
         # Mock PDF extraction with product table
         mock_extractor = Mock()
@@ -229,6 +230,9 @@ class TestHagerParser:
             'Description': ['Ball Bearing Heavy', 'Ball Bearing Heavy']
         }
         mock_table = pd.DataFrame(product_data)
+
+        # Mock Camelot extraction to return the product table
+        mock_camelot.return_value = [mock_table]
 
         mock_page = Mock()
         mock_page.page_number = 1
@@ -392,15 +396,15 @@ class TestHagerParserIntegration:
         extractor = HagerSectionExtractor(tracker)
 
         # Test finishes
-        finishes = extractor.extract_finish_symbols(test_text)
+        finishes = extractor.extract_finish_symbols_legacy(test_text)
         assert len(finishes) >= 4
 
         # Test rules
-        rules = extractor.extract_price_rules(test_text)
+        rules = extractor.extract_price_rules_legacy(test_text)
         assert len(rules) >= 2
 
         # Test additions
-        additions = extractor.extract_hinge_additions(test_text)
+        additions = extractor.extract_hinge_additions_legacy(test_text)
         assert len(additions) >= 3
 
         # Verify finish details

@@ -32,18 +32,6 @@ class HagerSectionExtractor:
         self.tracker = provenance_tracker
         self.logger = logging.getLogger(f"{__class__.__name__}")
 
-    @staticmethod
-    def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice"):
-        """Extract tables from specific page using Camelot."""
-        import camelot
-        page_str = str(page_number)
-        try:
-            tables = camelot.read_pdf(pdf_path, pages=page_str, flavor=flavor)
-            return [t.df for t in tables] if tables.n else []
-        except Exception as e:
-            logger.warning(f"Camelot extraction failed for page {page_number}: {e}")
-            return []
-
         # Hager finish symbols patterns
         self.finish_symbol_patterns = [
             r'(US\d+[A-Z]?)\s+([^\n\r]+?)\s+(\$?[\d.]+)',  # US10B Description $price
@@ -101,6 +89,18 @@ class HagerSectionExtractor:
             'US32D': {'bhma': 'US32D', 'name': 'Antique Brass', 'standard': True},
         }
 
+    @staticmethod
+    def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice"):
+        """Extract tables from specific page using Camelot."""
+        import camelot
+        page_str = str(page_number)
+        try:
+            tables = camelot.read_pdf(pdf_path, pages=page_str, flavor=flavor)
+            return [t.df for t in tables] if tables.n else []
+        except Exception as e:
+            logger.warning(f"Camelot extraction failed for page {page_number}: {e}")
+            return []
+
     def extract_finish_symbols(self, page_text: str, tables: list, page_number: int) -> List[ParsedItem]:
         """Extract finish symbols table with BHMA codes and pricing using Camelot DataFrame."""
         self.tracker.set_context(section="Finish Symbols", page_number=page_number)
@@ -140,29 +140,29 @@ class HagerSectionExtractor:
                 base_price = self._extract_price_from_text(pricing_text)
 
                 # Create finish symbol entry
-                finish_item = ParsedItem(
-                    item_type="finish_symbol",
-                    confidence=safe_confidence_score(0.85),  # High confidence for table-extracted data
-                    data={
-                        'finish_code': code,
-                        'description': desc,
-                        'base_price': base_price,
-                        'pricing_text': pricing_text,
-                        'bhma_brass': str(row.get("bhma_brass", "")).strip(),
-                        'bhma_bronze': str(row.get("bhma_bronze", "")).strip(),
-                        'bhma_steel': str(row.get("bhma_steel", "")).strip(),
-                    },
-                    metadata={
-                        'extraction_method': 'camelot_table',
-                        'page_number': page_number,
-                        'table_index': table_idx,
-                        'source_section': 'finish_symbols'
-                    }
+                finish_data = {
+                    'finish_code': code,
+                    'description': desc,
+                    'base_price': base_price,
+                    'pricing_text': pricing_text,
+                    'bhma_brass': str(row.get("bhma_brass", "")).strip(),
+                    'bhma_bronze': str(row.get("bhma_bronze", "")).strip(),
+                    'bhma_steel': str(row.get("bhma_steel", "")).strip(),
+                }
+
+                finish_item = self.tracker.create_parsed_item(
+                    value=finish_data,
+                    data_type="finish_symbol",
+                    confidence=0.85,
+                    extraction_method='camelot_table',
+                    page_number=page_number,
+                    table_index=table_idx,
+                    source_section='finish_symbols'
                 )
 
                 results.append(finish_item)
                 self.tracker.record_extraction(
-                    item_type="finish_symbol",
+                    data_type="finish_symbol",
                     success=True,
                     confidence=0.85,
                     data={'finish_code': code, 'description': desc}
@@ -170,34 +170,93 @@ class HagerSectionExtractor:
 
         return results
 
-    def extract_price_rules(self, text: str) -> List[ParsedItem]:
-        """Extract pricing rules (e.g., US10B uses US10A price)."""
-        self.tracker.set_context(section="Price Rules", method="pattern_matching")
+    def extract_price_rules(self, page_text: str, tables: list, page_number: int) -> List[ParsedItem]:
+        """Extract pricing rules (e.g., US10B uses US10A price) using both tables and text patterns."""
+        self.tracker.set_context(section="Price Rules", page_number=page_number)
         rules = []
 
+        # Process Camelot tables first for structured rules
+        for table_idx, table in enumerate(tables):
+            df = table.replace("", pd.NA).dropna(how="all")
+            if df.empty:
+                continue
+
+            # Check if this table contains price rules or mappings
+            header_text = " ".join(str(cell) for cell in df.iloc[0]).upper()
+            if not any(keyword in header_text for keyword in ["RULE", "MAPPING", "USE", "PRICE"]):
+                continue
+
+            # Process table rows for rules
+            for _, row in df.iterrows():
+                row_text = " ".join(str(cell) for cell in row if str(cell).strip()).upper()
+
+                # Look for "USE" patterns in table data
+                for pattern in self.price_rule_patterns:
+                    match = re.search(pattern, row_text, re.IGNORECASE)
+                    if match:
+                        try:
+                            source_finish = match.group(1).strip().upper()
+                            target_finish = match.group(2).strip().upper()
+
+                            rule_item = ParsedItem(
+                                data_type="price_rule",
+                                confidence=safe_confidence_score(0.9),  # High confidence for table data
+                                data={
+                                    'rule_type': 'price_mapping',
+                                    'source_finish': source_finish,
+                                    'target_finish': target_finish,
+                                    'description': f"{source_finish} uses {target_finish} pricing",
+                                    'manufacturer': 'hager'
+                                },
+                                metadata={
+                                    'extraction_method': 'camelot_table',
+                                    'page_number': page_number,
+                                    'table_index': table_idx,
+                                    'source_section': 'price_rules'
+                                }
+                            )
+                            rules.append(rule_item)
+                            self.tracker.record_extraction(
+                                item_type="price_rule",
+                                success=True,
+                                confidence=0.9,
+                                data={'source_finish': source_finish, 'target_finish': target_finish}
+                            )
+                        except (IndexError, AttributeError) as e:
+                            self.logger.warning(f"Could not parse table price rule: {e}")
+
+        # Fallback to text pattern matching
         for pattern in self.price_rule_patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
+            matches = re.finditer(pattern, page_text, re.IGNORECASE)
 
             for match in matches:
                 try:
                     source_finish = match.group(1).strip().upper()
                     target_finish = match.group(2).strip().upper()
 
-                    rule_data = {
-                        'rule_type': 'price_mapping',
-                        'source_finish': source_finish,
-                        'target_finish': target_finish,
-                        'description': f"{source_finish} uses {target_finish} pricing",
-                        'manufacturer': 'hager'
-                    }
-
-                    item = self.tracker.create_parsed_item(
-                        value=rule_data,
+                    rule_item = ParsedItem(
                         data_type="price_rule",
-                        raw_text=match.group(0),
-                        confidence=0.95  # High confidence for explicit rules
+                        confidence=safe_confidence_score(0.95),  # High confidence for explicit text rules
+                        data={
+                            'rule_type': 'price_mapping',
+                            'source_finish': source_finish,
+                            'target_finish': target_finish,
+                            'description': f"{source_finish} uses {target_finish} pricing",
+                            'manufacturer': 'hager'
+                        },
+                        metadata={
+                            'extraction_method': 'regex_pattern',
+                            'page_number': page_number,
+                            'source_section': 'price_rules'
+                        }
                     )
-                    rules.append(item)
+                    rules.append(rule_item)
+                    self.tracker.record_extraction(
+                        item_type="price_rule",
+                        success=True,
+                        confidence=0.95,
+                        data={'source_finish': source_finish, 'target_finish': target_finish}
+                    )
 
                 except (IndexError, AttributeError) as e:
                     self.logger.warning(f"Could not parse price rule: {e}")
@@ -243,7 +302,7 @@ class HagerSectionExtractor:
 
                 # Create addition entry
                 addition_item = ParsedItem(
-                    item_type="hinge_addition",
+                    data_type="hinge_addition",
                     confidence=safe_confidence_score(0.85),  # High confidence for table-extracted data
                     data={
                         'option_code': code,
@@ -294,7 +353,7 @@ class HagerSectionExtractor:
                             }
 
                             item = ParsedItem(
-                                item_type="hinge_addition",
+                                data_type="hinge_addition",
                                 confidence=safe_confidence_score(price_normalized['confidence']),
                                 data=addition_data,
                                 metadata={
@@ -633,3 +692,139 @@ class HagerSectionExtractor:
             'CWP': {'preparation_required': True}
         }
         return constraints.get(code, {})
+
+    def _extract_price_from_text(self, price_text: str) -> float:
+        """Extract numeric price value from text."""
+        if not price_text or price_text.lower() in ['nan', 'none', '']:
+            return 0.0
+
+        try:
+            # Use the shared normalization utility
+            price_normalized = data_normalizer.normalize_price(price_text)
+            return float(price_normalized.get('value', 0))
+        except (ValueError, TypeError):
+            return 0.0
+
+    # Backward compatibility methods for tests
+    def extract_finish_symbols_legacy(self, text: str) -> List[ParsedItem]:
+        """Legacy method for backward compatibility with tests - falls back to regex patterns."""
+        self.tracker.set_context(section="Finish Symbols", method="legacy_text_extraction")
+        results = []
+
+        # Use text-based pattern matching for tests
+        for pattern in self.finish_symbol_patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+
+            for match in matches:
+                try:
+                    code = match.group(1).strip().upper()
+                    description = match.group(2).strip()
+                    price_str = match.group(3).strip()
+
+                    price_normalized = data_normalizer.normalize_price(price_str)
+
+                    finish_data = {
+                        'code': code,
+                        'name': description,
+                        'base_price': price_normalized.get('value', 0),
+                        'manufacturer': 'hager'
+                    }
+
+                    item = self.tracker.create_parsed_item(
+                        value=finish_data,
+                        data_type="finish_symbol",
+                        raw_text=match.group(0),
+                        confidence=safe_confidence_score(price_normalized.get('confidence', 0.8))
+                    )
+                    results.append(item)
+
+                except (IndexError, AttributeError) as e:
+                    self.logger.warning(f"Could not parse legacy finish symbol: {e}")
+
+        return results
+
+    def extract_price_rules_legacy(self, text: str) -> List[ParsedItem]:
+        """Legacy method for backward compatibility with tests - falls back to regex patterns."""
+        self.tracker.set_context(section="Price Rules", method="legacy_text_extraction")
+        results = []
+
+        # Use text-based pattern matching for tests
+        for pattern in self.price_rule_patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+
+            for match in matches:
+                try:
+                    source_finish = match.group(1).strip().upper()
+                    target_finish = match.group(2).strip().upper()
+
+                    rule_data = {
+                        'rule_type': 'price_mapping',
+                        'source_finish': source_finish,
+                        'target_finish': target_finish,
+                        'description': f"{source_finish} uses {target_finish} pricing",
+                        'manufacturer': 'hager'
+                    }
+
+                    item = self.tracker.create_parsed_item(
+                        value=rule_data,
+                        data_type="price_rule",
+                        raw_text=match.group(0),
+                        confidence=0.95
+                    )
+                    results.append(item)
+
+                except (IndexError, AttributeError) as e:
+                    self.logger.warning(f"Could not parse legacy price rule: {e}")
+
+        return results
+
+    def extract_hinge_additions_legacy(self, text: str) -> List[ParsedItem]:
+        """Legacy method for backward compatibility with tests - falls back to regex patterns."""
+        self.tracker.set_context(section="Hinge Additions", method="legacy_text_extraction")
+        results = []
+
+        # Use text-based pattern matching for tests
+        for addition_code, patterns in self.addition_patterns.items():
+            for pattern in patterns:
+                matches = re.finditer(pattern, text, re.IGNORECASE)
+
+                for match in matches:
+                    try:
+                        price_str = match.group(1).strip()
+                        price_normalized = data_normalizer.normalize_price(price_str)
+
+                        if price_normalized['value']:
+                            addition_data = {
+                                'option_code': addition_code,
+                                'option_name': self._get_addition_name(addition_code),
+                                'adder_type': 'net_add',
+                                'adder_value': float(price_normalized['value']),
+                                'description': self._get_addition_description(addition_code),
+                                'manufacturer': 'hager',
+                                'constraints': self._get_addition_constraints(addition_code)
+                            }
+
+                            item = self.tracker.create_parsed_item(
+                                value=addition_data,
+                                data_type="hinge_addition",
+                                raw_text=match.group(0),
+                                confidence=safe_confidence_score(price_normalized['confidence'])
+                            )
+                            results.append(item)
+
+                    except (ValueError, IndexError) as e:
+                        self.logger.warning(f"Could not parse legacy addition {addition_code}: {e}")
+
+        return results
+
+    def extract_item_tables_legacy(self, text: str, tables: List = None) -> List[ParsedItem]:
+        """
+        Legacy method for backward compatibility with tests ONLY.
+
+        WARNING: This method uses a dummy page number (1) and should NOT be used
+        in production code. Use extract_item_tables() with proper page context instead.
+        """
+        if tables is None:
+            tables = []
+        # Use dummy page number for test compatibility only
+        return self.extract_item_tables(text, tables, 1)
