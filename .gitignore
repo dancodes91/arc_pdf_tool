@@ -316,3 +316,13 @@ cython_debug/
 # Support for Project snippet scope
 
 # End of https://www.toptal.com/developers/gitignore/api/python,pythonvanilla,visualstudiocode,pydev,pycharm
+
+# Project specific additions
+uploads/
+exports/
+logs/
+*.db
+*.sqlite
+*.sqlite3
+.ruff_cache/
+.claude/

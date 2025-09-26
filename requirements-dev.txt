@@ -1,0 +1,57 @@
+# Development and Enhanced Dependencies
+# Core parsing stack (existing + enhancements)
+pdfplumber==0.10.3
+camelot-py==0.11.0
+pytesseract==0.3.10
+Pillow==10.1.0
+opencv-python==4.8.1.78
+PyMuPDF==1.23.18  # Enhanced PDF processing
+pdf2image==1.16.3
+
+# Data processing (enhanced)
+pandas==2.1.4
+numpy==1.24.4
+openpyxl==3.1.2
+polars==0.20.3  # Fast dataframes for parser pipeline
+pandera==0.17.2  # Schema validation
+
+# Database (PostgreSQL ready)
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9  # PostgreSQL driver
+alembic==1.13.1  # Database migrations
+
+# FastAPI migration stack
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+httpx==0.25.2
+jinja2==3.1.2
+python-multipart==0.0.6
+
+# Enhanced diff engine
+rapidfuzz==3.5.2  # Better fuzzy matching
+deepdiff==6.7.1   # Complex object comparison
+
+# Background processing
+celery==5.3.4
+redis==5.0.1
+
+# Development tools
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+testcontainers==3.7.1  # PostgreSQL test containers
+ruff==0.1.7  # Fast linter/formatter
+mypy==1.7.1  # Type checking
+pre-commit==3.6.0
+
+# Existing Flask dependencies (keep for gradual migration)
+flask==3.0.0
+flask-cors==4.0.0
+werkzeug==3.0.1
+
+# Utilities
+python-dateutil==2.8.2
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.23.0
+click==8.1.7
+structlog==23.2.0  # Better logging
