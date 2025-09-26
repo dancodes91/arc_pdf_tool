@@ -15,6 +15,16 @@ from ..shared.provenance import ProvenanceTracker, ParsedItem
 logger = logging.getLogger(__name__)
 
 
+def safe_confidence_score(confidence_obj, default=0.7):
+    """Safely extract confidence score from various types."""
+    if hasattr(confidence_obj, 'score'):
+        return confidence_obj.score
+    elif isinstance(confidence_obj, (int, float)):
+        return float(confidence_obj)
+    else:
+        return default
+
+
 class HagerSectionExtractor:
     """Extract specific sections from Hager PDFs."""
 
@@ -115,7 +125,7 @@ class HagerSectionExtractor:
                             value=finish_data,
                             data_type="finish",
                             raw_text=match.group(0),
-                            confidence=min(price_normalized['confidence'].score, 0.9)
+                            confidence=min(safe_confidence_score(price_normalized['confidence']), 0.9)
                         )
                         finishes.append(item)
 
@@ -192,7 +202,7 @@ class HagerSectionExtractor:
                                 value=addition_data,
                                 data_type="hinge_addition",
                                 raw_text=match.group(0),
-                                confidence=price_normalized['confidence'].score
+                                confidence=safe_confidence_score(price_normalized['confidence'])
                             )
                             additions.append(item)
 
@@ -312,8 +322,8 @@ class HagerSectionExtractor:
                     }
 
                     confidence = min(
-                        sku_normalized['confidence'].score,
-                        price_normalized['confidence'].score
+                        safe_confidence_score(sku_normalized['confidence']),
+                        safe_confidence_score(price_normalized['confidence'])
                     )
 
                     item = self.tracker.create_parsed_item(
@@ -364,8 +374,8 @@ class HagerSectionExtractor:
                     }
 
                     confidence = min(
-                        sku_normalized['confidence'].score,
-                        price_normalized['confidence'].score
+                        safe_confidence_score(sku_normalized['confidence']),
+                        safe_confidence_score(price_normalized['confidence'])
                     ) * 0.8  # Lower confidence for text extraction
 
                     item = self.tracker.create_parsed_item(
