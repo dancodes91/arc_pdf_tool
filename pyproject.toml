@@ -27,43 +27,36 @@ dependencies = [
     "opencv-python>=4.8.1.78",
     "PyMuPDF>=1.23.18",
     "pdf2image>=1.16.3",
-
     # Data Processing
     "pandas>=2.1.4",
     "numpy>=1.24.4",
     "openpyxl>=3.1.2",
     "polars>=0.20.3",
     "pandera>=0.17.2",
-
     # Database
     "sqlalchemy>=2.0.23",
     "psycopg2-binary>=2.9.9",
     "alembic>=1.13.1",
-
     # FastAPI Stack
     "fastapi>=0.104.1",
     "uvicorn[standard]>=0.24.0",
     "httpx>=0.25.2",
     "jinja2>=3.1.2",
     "python-multipart>=0.0.6",
-
     # Enhanced Diff Engine
     "rapidfuzz>=3.5.2",
     "deepdiff>=6.7.1",
-
     # Background Processing
     "celery>=5.3.4",
     "redis>=5.0.1",
-
     # Flask (gradual migration)
     "flask>=3.0.0",
     "flask-cors>=4.0.0",
     "werkzeug>=3.0.1",
-
     # Utilities
     "python-dateutil>=2.8.2",
     "fuzzywuzzy>=0.18.0",
-    "python-Levenshtein>=0.23.0",
+    "python-levenshtein>=0.23.0",
     "click>=8.1.7",
     "structlog>=23.2.0",
 ]
