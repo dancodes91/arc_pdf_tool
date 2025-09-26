@@ -317,3 +317,37 @@ class SelectHingesParser:
         files_created['provenance'] = str(provenance_file)
 
         return files_created
+
+    def identify_manufacturer(self) -> str:
+        """Identify manufacturer from PDF content for compatibility with app.py."""
+        # Extract text if not already done
+        if not hasattr(self, 'document') or not self.document:
+            try:
+                self.document = self.pdf_extractor.extract_document()
+            except Exception:
+                pass
+
+        # Get text content
+        text = self._extract_text_content()
+        if not text:
+            return 'select_hinges'  # Default for SELECT parser
+
+        # Look for SELECT indicators
+        text_lower = text.lower()
+        select_indicators = [
+            'select hinges', 'select hardware', 'selecthinges',
+            'manufactured by select', 'select hinge'
+        ]
+
+        for indicator in select_indicators:
+            if indicator in text_lower:
+                return 'select_hinges'
+
+        # Check for Hager indicators (in case wrong parser was used)
+        hager_indicators = ['hager', 'hager companies', 'architectural hardware group']
+        for indicator in hager_indicators:
+            if indicator in text_lower:
+                return 'hager'
+
+        # Default to select_hinges for this parser
+        return 'select_hinges'

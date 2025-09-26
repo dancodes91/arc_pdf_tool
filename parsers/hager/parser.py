@@ -99,11 +99,20 @@ class HagerParser:
         # Use generic date extraction from shared utilities
         date_result = data_normalizer.normalize_date(text)
         if date_result['value']:
+            # Handle both ConfidenceScore objects and float values
+            confidence_val = date_result['confidence']
+            if hasattr(confidence_val, 'score'):
+                confidence = confidence_val.score
+            elif isinstance(confidence_val, (int, float)):
+                confidence = float(confidence_val)
+            else:
+                confidence = 0.7
+
             self.effective_date = self.provenance_tracker.create_parsed_item(
                 value=date_result['value'],
                 data_type="effective_date",
                 raw_text=date_result['raw_input'],
-                confidence=date_result['confidence'].score if date_result['confidence'] else 0.7
+                confidence=confidence
             )
             self.logger.info(f"Found effective date: {self.effective_date.value}")
         else:
@@ -380,3 +389,37 @@ class HagerParser:
         files_created['provenance'] = str(provenance_file)
 
         return files_created
+
+    def identify_manufacturer(self) -> str:
+        """Identify manufacturer from PDF content for compatibility with app.py."""
+        # Extract text if not already done
+        if not hasattr(self, 'document') or not self.document:
+            try:
+                self.document = self.pdf_extractor.extract_document()
+            except Exception:
+                pass
+
+        # Get text content
+        text = self._extract_text_content()
+        if not text:
+            return 'hager'  # Default for Hager parser
+
+        # Look for Hager indicators
+        text_lower = text.lower()
+        hager_indicators = [
+            'hager', 'hager companies', 'architectural hardware group',
+            'hager door hardware', 'architectural hardware'
+        ]
+
+        for indicator in hager_indicators:
+            if indicator in text_lower:
+                return 'hager'
+
+        # Check for SELECT indicators (in case wrong parser was used)
+        select_indicators = ['select hinges', 'select hardware']
+        for indicator in select_indicators:
+            if indicator in text_lower:
+                return 'select_hinges'
+
+        # Default to hager for this parser
+        return 'hager'

@@ -232,10 +232,17 @@ class SelectHingesParser(BasePDFParser):
     
     def _extract_model_from_sku(self, sku: str) -> str:
         """Extract model number from SKU"""
-        # Remove common suffixes and prefixes
-        sku = re.sub(r'^[A-Z]{2,4}', '', sku)  # Remove prefix letters
-        sku = re.sub(r'[A-Z]+$', '', sku)  # Remove suffix letters
-        return sku
+        if not sku:
+            return ""
+
+        # Extract the core model: digits + trailing letters
+        # Remove leading letters, keep digits and any trailing letters
+        match = re.search(r'\d+[A-Z]*', sku)
+        if match:
+            return match.group()
+
+        # Fallback: remove only leading letters
+        return re.sub(r'^[A-Z]+', '', sku)
     
     def _parse_net_add_options(self) -> List[Dict[str, Any]]:
         """Parse net-add options from text content"""
@@ -273,19 +280,33 @@ class SelectHingesParser(BasePDFParser):
     
     def _extract_option_section(self) -> str:
         """Extract the section containing option adders"""
+        if not self.text_content:
+            return ""
+
         section_patterns = [
-            r'option.*?adder.*?(?=option|finish|preparation|$)',
-            r'net.*?add.*?(?=option|finish|preparation|$)',
+            r'net\s+add(?:\s+options?)?:?.*?(?=\n\s*\n|$)',
+            r'option\s+adders?:?.*?(?=\n\s*\n|$)',
             r'ctw.*?ept.*?ems.*?(?=option|finish|preparation|$)',
             r'tipit.*?hospital.*?ul.*?(?=option|finish|preparation|$)',
         ]
-        
+
+        keywords = ['CTW', 'EPT', 'EMS', 'TIPIT', 'HOSPITAL', 'FR3', 'UL FR3']
+
         for pattern in section_patterns:
             match = re.search(pattern, self.text_content, re.IGNORECASE | re.DOTALL)
-            if match:
-                return match.group(0)
-        
-        # If no specific section found, search the entire text
+            if not match:
+                continue
+
+            section = match.group(0)
+
+            # Skip headings without actual option rows
+            if section.count('\n') < 1:
+                continue
+
+            if any(keyword in section.upper() for keyword in keywords):
+                return section
+
+        # Fallback: return entire document text so option detection can still run
         return self.text_content
     
     def _parse_finish_information(self) -> List[Dict[str, Any]]:

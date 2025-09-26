@@ -2,6 +2,8 @@
 Enhanced PDF I/O utilities with multiple extraction methods.
 """
 import os
+import re
+import io
 import logging
 from typing import List, Dict, Any, Optional, Tuple, Union
 from dataclasses import dataclass

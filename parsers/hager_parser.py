@@ -2,6 +2,7 @@ import re
 import logging
 from typing import List, Dict, Any, Optional
 import pandas as pd
+import pdfplumber
 from .base_parser import BasePDFParser
 
 class HagerParser(BasePDFParser):
@@ -187,40 +188,43 @@ class HagerParser(BasePDFParser):
         """Check if text looks like a SKU"""
         if not text or len(text) < 3:
             return False
-        
-        # Hager SKU patterns
+
+        # Hager SKU patterns - allow mixed letters and digits
         sku_patterns = [
             r'^BB\d+',  # BB followed by numbers
             r'^BBH\d+',  # BBH followed by numbers
             r'^[A-Z]{2,3}\d+',  # 2-3 letters followed by numbers
+            r'^[A-Z]+\d+[A-Z]*',  # Letters, numbers, optional letters (H3A)
         ]
-        
+
         return any(re.match(pattern, text.upper()) for pattern in sku_patterns)
     
     def _looks_like_price(self, text: str) -> bool:
         """Check if text looks like a price"""
         if not text:
             return False
-        
-        # Price patterns
+
+        # Price patterns - support dollars and commas
         price_patterns = [
             r'^\$?\d+\.?\d*$',  # $123.45 or 123.45
+            r'^\$?\d{1,3}(,\d{3})*(\.\d{1,2})?$',  # $1,234.56 or 1,234.56
             r'^\d+\.\d{2}$',  # 123.45
         ]
-        
-        cleaned = re.sub(r'[^\d.,$]', '', text)
-        return any(re.match(pattern, cleaned) for pattern in price_patterns)
+
+        return any(re.match(pattern, text) for pattern in price_patterns)
     
     def _extract_model_from_sku(self, sku: str) -> str:
         """Extract model number from SKU"""
-        # Remove finish codes to get base model
-        for finish_code in self.finish_adder_patterns.keys():
-            sku = sku.replace(finish_code, '')
-        
-        # Remove common suffixes
-        sku = re.sub(r'-[A-Z]+$', '', sku)
-        
-        return sku
+        if not sku:
+            return ""
+
+        # Remove finish codes (like -US3, -US10B) to get base model
+        model = re.sub(r'-US\d+[A-Z]*$', '', sku)
+
+        # Remove any trailing dash
+        model = model.rstrip('-')
+
+        return model
     
     def _extract_finish_from_sku(self, sku: str) -> Optional[str]:
         """Extract finish code from SKU"""

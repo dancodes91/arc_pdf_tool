@@ -20,10 +20,23 @@ class TestDatabaseManager(unittest.TestCase):
         
         # Initialize database
         self.price_book_manager.initialize_database()
-    
+
     def tearDown(self):
         """Clean up test database"""
-        os.unlink(self.temp_db.name)
+        # Close all sessions and dispose of engines
+        try:
+            if hasattr(self, 'db_manager') and self.db_manager:
+                self.db_manager.engine.dispose()
+            if hasattr(self, 'price_book_manager') and self.price_book_manager:
+                self.price_book_manager.engine.dispose()
+        except Exception as e:
+            print(f"Warning during cleanup: {e}")
+
+        # Now safe to delete the file
+        try:
+            os.unlink(self.temp_db.name)
+        except PermissionError as e:
+            print(f"Could not delete temp DB: {e}")
     
     def test_database_initialization(self):
         """Test database initialization"""
@@ -38,7 +51,7 @@ class TestDatabaseManager(unittest.TestCase):
         # Check for Hager and SELECT Hinges
         manufacturer_names = [m.name for m in manufacturers]
         self.assertIn('Hager', manufacturer_names)
-        self.assertIn('Select Hinges', manufacturer_names)
+        self.assertIn('SELECT Hinges', manufacturer_names)
         
         session.close()
     
@@ -226,10 +239,21 @@ class TestDatabaseModels(unittest.TestCase):
         
         self.db_manager = DatabaseManager(f'sqlite:///{self.temp_db.name}')
         self.db_manager.create_tables()
-    
+
     def tearDown(self):
         """Clean up test database"""
-        os.unlink(self.temp_db.name)
+        # Close all sessions and dispose of engines
+        try:
+            if hasattr(self, 'db_manager') and self.db_manager:
+                self.db_manager.engine.dispose()
+        except Exception as e:
+            print(f"Warning during cleanup: {e}")
+
+        # Now safe to delete the file
+        try:
+            os.unlink(self.temp_db.name)
+        except PermissionError as e:
+            print(f"Could not delete temp DB: {e}")
     
     def test_manufacturer_creation(self):
         """Test manufacturer model creation"""

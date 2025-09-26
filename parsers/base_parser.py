@@ -205,9 +205,15 @@ class BasePDFParser(ABC):
         if ',' in cleaned and '.' in cleaned:
             # Assume comma is thousands separator
             cleaned = cleaned.replace(',', '')
-        elif ',' in cleaned and len(cleaned.split(',')[-1]) <= 2:
-            # Assume comma is decimal separator
-            cleaned = cleaned.replace(',', '.')
+        elif ',' in cleaned:
+            # Check if comma is decimal separator (last part has 1-2 digits)
+            parts = cleaned.split(',')
+            if len(parts) == 2 and len(parts[-1]) <= 2:
+                # Assume comma is decimal separator
+                cleaned = cleaned.replace(',', '.')
+            else:
+                # Assume comma is thousands separator
+                cleaned = cleaned.replace(',', '')
         
         try:
             return float(cleaned)
