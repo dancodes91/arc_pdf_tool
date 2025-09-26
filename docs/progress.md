@@ -25,6 +25,13 @@
   - ✅ Data normalization for prices, SKUs, dates, finish codes, UOM
   - ✅ Provenance tracking for complete data lineage
   - ✅ Comprehensive test suite with 16 passing tests
+- **SELECT Hinges Parser**:
+  - ✅ Effective date extraction (EFFECTIVE APRIL 7, 2025 pattern)
+  - ✅ Net add options parsing (CTW, EPT, EMS, ATW, TIPIT, HT, FR3)
+  - ✅ Model table extraction (SL11, SL14, SL24, SL41 series)
+  - ✅ Finish code mapping (CL, BR, BK)
+  - ✅ Comprehensive test suite with 13 passing tests
+  - ✅ Golden data export functionality
 
 ### 🎯 Current Status
 - **Phase 1 Foundation**: 98% complete (existing MVP + enhanced tooling)
@@ -36,7 +43,8 @@
 1. ✅ Branch setup and dev environment
 2. ✅ Review and enhance database schema with Alembic migrations
 3. ✅ Implement shared parser utilities with confidence scoring
-4. 🔄 **IN PROGRESS**: Build SELECT Hinges parser with effective date + options extraction
+4. ✅ Build SELECT Hinges parser with effective date + options extraction
+5. 🔄 **IN PROGRESS**: Build Hager parser with finish symbols + rules + items
 
 ### 🚀 Architecture Decisions Made
 - **Database**: Keep PostgreSQL-ready SQLAlchemy models, add Alembic migrations
