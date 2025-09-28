@@ -161,12 +161,6 @@ class HagerSectionExtractor:
                 )
 
                 results.append(finish_item)
-                self.tracker.record_extraction(
-                    data_type="finish_symbol",
-                    success=True,
-                    confidence=0.85,
-                    data={'finish_code': code, 'description': desc}
-                )
 
         return results
 
@@ -198,30 +192,24 @@ class HagerSectionExtractor:
                             source_finish = match.group(1).strip().upper()
                             target_finish = match.group(2).strip().upper()
 
-                            rule_item = ParsedItem(
+                            rule_data = {
+                                'rule_type': 'price_mapping',
+                                'source_finish': source_finish,
+                                'target_finish': target_finish,
+                                'description': f"{source_finish} uses {target_finish} pricing",
+                                'manufacturer': 'hager'
+                            }
+
+                            rule_item = self.tracker.create_parsed_item(
+                                value=rule_data,
                                 data_type="price_rule",
-                                confidence=safe_confidence_score(0.9),  # High confidence for table data
-                                data={
-                                    'rule_type': 'price_mapping',
-                                    'source_finish': source_finish,
-                                    'target_finish': target_finish,
-                                    'description': f"{source_finish} uses {target_finish} pricing",
-                                    'manufacturer': 'hager'
-                                },
-                                metadata={
-                                    'extraction_method': 'camelot_table',
-                                    'page_number': page_number,
-                                    'table_index': table_idx,
-                                    'source_section': 'price_rules'
-                                }
+                                confidence=0.9,
+                                extraction_method='camelot_table',
+                                page_number=page_number,
+                                table_index=table_idx,
+                                source_section='price_rules'
                             )
                             rules.append(rule_item)
-                            self.tracker.record_extraction(
-                                item_type="price_rule",
-                                success=True,
-                                confidence=0.9,
-                                data={'source_finish': source_finish, 'target_finish': target_finish}
-                            )
                         except (IndexError, AttributeError) as e:
                             self.logger.warning(f"Could not parse table price rule: {e}")
 
@@ -234,29 +222,23 @@ class HagerSectionExtractor:
                     source_finish = match.group(1).strip().upper()
                     target_finish = match.group(2).strip().upper()
 
-                    rule_item = ParsedItem(
+                    rule_data = {
+                        'rule_type': 'price_mapping',
+                        'source_finish': source_finish,
+                        'target_finish': target_finish,
+                        'description': f"{source_finish} uses {target_finish} pricing",
+                        'manufacturer': 'hager'
+                    }
+
+                    rule_item = self.tracker.create_parsed_item(
+                        value=rule_data,
                         data_type="price_rule",
-                        confidence=safe_confidence_score(0.95),  # High confidence for explicit text rules
-                        data={
-                            'rule_type': 'price_mapping',
-                            'source_finish': source_finish,
-                            'target_finish': target_finish,
-                            'description': f"{source_finish} uses {target_finish} pricing",
-                            'manufacturer': 'hager'
-                        },
-                        metadata={
-                            'extraction_method': 'regex_pattern',
-                            'page_number': page_number,
-                            'source_section': 'price_rules'
-                        }
+                        confidence=0.95,
+                        extraction_method='regex_pattern',
+                        page_number=page_number,
+                        source_section='price_rules'
                     )
                     rules.append(rule_item)
-                    self.tracker.record_extraction(
-                        item_type="price_rule",
-                        success=True,
-                        confidence=0.95,
-                        data={'source_finish': source_finish, 'target_finish': target_finish}
-                    )
 
                 except (IndexError, AttributeError) as e:
                     self.logger.warning(f"Could not parse price rule: {e}")
@@ -301,34 +283,28 @@ class HagerSectionExtractor:
                 base_price = self._extract_price_from_text(price_text)
 
                 # Create addition entry
-                addition_item = ParsedItem(
+                addition_data = {
+                    'option_code': code,
+                    'option_name': desc or self._get_addition_name(code),
+                    'adder_type': 'net_add',
+                    'adder_value': base_price,
+                    'description': desc,
+                    'manufacturer': 'hager',
+                    'constraints': self._get_addition_constraints(code),
+                    'pricing_text': price_text
+                }
+
+                addition_item = self.tracker.create_parsed_item(
+                    value=addition_data,
                     data_type="hinge_addition",
-                    confidence=safe_confidence_score(0.85),  # High confidence for table-extracted data
-                    data={
-                        'option_code': code,
-                        'option_name': desc or self._get_addition_name(code),
-                        'adder_type': 'net_add',
-                        'adder_value': base_price,
-                        'description': desc,
-                        'manufacturer': 'hager',
-                        'constraints': self._get_addition_constraints(code),
-                        'pricing_text': price_text
-                    },
-                    metadata={
-                        'extraction_method': 'camelot_table',
-                        'page_number': page_number,
-                        'table_index': table_idx,
-                        'source_section': 'hinge_additions'
-                    }
+                    confidence=0.85,
+                    extraction_method='camelot_table',
+                    page_number=page_number,
+                    table_index=table_idx,
+                    source_section='hinge_additions'
                 )
 
                 additions.append(addition_item)
-                self.tracker.record_extraction(
-                    item_type="hinge_addition",
-                    success=True,
-                    confidence=0.85,
-                    data={'option_code': code, 'description': desc}
-                )
 
         # Fallback to pattern matching for text-based additions
         for addition_code, patterns in self.addition_patterns.items():
@@ -352,23 +328,15 @@ class HagerSectionExtractor:
                                 'pricing_text': price_str
                             }
 
-                            item = ParsedItem(
+                            item = self.tracker.create_parsed_item(
+                                value=addition_data,
                                 data_type="hinge_addition",
-                                confidence=safe_confidence_score(price_normalized['confidence']),
-                                data=addition_data,
-                                metadata={
-                                    'extraction_method': 'regex_pattern',
-                                    'page_number': page_number,
-                                    'source_section': 'hinge_additions'
-                                }
+                                confidence=price_normalized['confidence'],
+                                extraction_method='regex_pattern',
+                                page_number=page_number,
+                                source_section='hinge_additions'
                             )
                             additions.append(item)
-                            self.tracker.record_extraction(
-                                item_type="hinge_addition",
-                                success=True,
-                                confidence=price_normalized['confidence'],
-                                data={'option_code': addition_code}
-                            )
 
                     except (ValueError, IndexError) as e:
                         self.logger.warning(f"Could not parse addition {addition_code}: {e}")
