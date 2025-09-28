@@ -39,11 +39,15 @@ class HagerSectionExtractor:
             r'(US\d+[A-Z]?)\s*-\s*([^$\n\r]+?)\s*(\$?[\d.]+)',
         ]
 
-        # Price mapping rules (e.g., "US10B use US10A price")
+        # Price mapping rules (e.g., "US10B use US10A price", "20% above US10A or US10B price")
         self.price_rule_patterns = [
             r'(US\d+[A-Z]?)\s+(?:use|uses?)\s+(US\d+[A-Z]?)\s+price',
             r'(US\d+[A-Z]?)\s*=\s*(US\d+[A-Z]?)\s+pricing',
             r'For\s+(US\d+[A-Z]?)\s+use\s+(US\d+[A-Z]?)',
+            # Percentage-based rules
+            r'(\d+)%\s+above\s+(US\d+[A-Z]?)\s+(?:or\s+(US\d+[A-Z]?)\s+)?price',
+            r'(\d+)%\s+(?:additional|extra|add)\s+(?:to\s+)?(US\d+[A-Z]?)',
+            r'(US\d+[A-Z]?)\s+(?:plus|add)\s+(\d+)%',
         ]
 
         # Hinge addition patterns (EPT, ETW, EMS, etc.)
@@ -114,53 +118,73 @@ class HagerSectionExtractor:
 
             # Check if this table contains finish symbols data
             header_text = " ".join(str(cell) for cell in df.iloc[0]).upper()
-            if "ARCHITECTURAL FINISH SYMBOLS" not in header_text and "BHMA SYMBOL" not in header_text:
+            table_text = str(df).upper()
+
+            # Check for finish-related keywords in table or header
+            has_finish_keywords = any(keyword in header_text or keyword in table_text
+                                    for keyword in ["FINISH", "BHMA", "US3", "US4", "US10", "US26", "US", "2C", "3A"])
+
+            if not has_finish_keywords:
+                self.logger.debug(f"Table {table_idx} skipped - no finish keywords found")
                 continue
 
-            # Set up column mapping based on actual table structure
-            if len(df.columns) >= 6:
-                df.columns = ["code", "description", "pricing", "bhma_brass", "bhma_bronze", "bhma_steel"]
-            elif len(df.columns) >= 3:
-                df.columns = ["code", "description", "pricing"] + [f"col_{i}" for i in range(3, len(df.columns))]
-            else:
-                continue
+            self.logger.debug(f"Processing table {table_idx} - found finish keywords")
 
-            # Skip header row and process data rows
-            df = df.iloc[1:].dropna(subset=["code"])
+            # Process all rows looking for finish codes
+            for row_idx, row in df.iterrows():
+                for col_idx, cell in enumerate(row):
+                    cell_str = str(cell).strip()
 
-            for _, row in df.iterrows():
-                code = str(row["code"]).strip()
-                desc = str(row["description"]).strip()
+                    # Look for finish codes - patterns like US3, US4, US10A, US26D, 2C, 3A, etc.
+                    if cell_str and len(cell_str) <= 10:  # Reasonable length for finish codes
+                        # Check if it looks like a finish code
+                        is_finish_code = (
+                            cell_str.startswith('US') or
+                            (cell_str.isalnum() and any(c.isdigit() for c in cell_str)) or
+                            cell_str in ['2C', '3', '3A', '4', '5', '10', '10A', '10B', '15', '26', '26D', '32D']
+                        )
 
-                if not code or code.lower() in ['nan', 'none']:
-                    continue
+                        if is_finish_code:
+                            self.logger.debug(f"Found finish code: {cell_str} at [{row_idx},{col_idx}]")
 
-                # Extract pricing information
-                pricing_text = str(row.get("pricing", "")).strip()
-                base_price = self._extract_price_from_text(pricing_text)
+                            # Try to find description and pricing in adjacent cells
+                            desc = ""
+                            pricing_text = ""
 
-                # Create finish symbol entry
-                finish_data = {
-                    'finish_code': code,
-                    'description': desc,
-                    'base_price': base_price,
-                    'pricing_text': pricing_text,
-                    'bhma_brass': str(row.get("bhma_brass", "")).strip(),
-                    'bhma_bronze': str(row.get("bhma_bronze", "")).strip(),
-                    'bhma_steel': str(row.get("bhma_steel", "")).strip(),
-                }
+                            # Look in adjacent columns for description and pricing
+                            for offset in [1, 2, 3]:
+                                if col_idx + offset < len(row):
+                                    next_cell = str(row.iloc[col_idx + offset]).strip()
+                                    if next_cell and next_cell.lower() not in ['nan', 'none']:
+                                        if any(c in next_cell for c in ['$', '%', 'price', 'above']):
+                                            pricing_text = next_cell
+                                        elif not desc and len(next_cell) > 3:  # Likely description
+                                            desc = next_cell
 
-                finish_item = self.tracker.create_parsed_item(
-                    value=finish_data,
-                    data_type="finish_symbol",
-                    confidence=0.85,
-                    extraction_method='camelot_table',
-                    page_number=page_number,
-                    table_index=table_idx,
-                    source_section='finish_symbols'
-                )
+                            # Extract price if possible
+                            base_price = self._extract_price_from_text(pricing_text) if pricing_text else 0.0
 
-                results.append(finish_item)
+                            # Create finish symbol entry
+                            finish_data = {
+                                'finish_code': cell_str,
+                                'description': desc or f"{cell_str} finish",
+                                'base_price': base_price,
+                                'pricing_text': pricing_text,
+                                'manufacturer': 'hager',
+                            }
+
+                            finish_item = self.tracker.create_parsed_item(
+                                value=finish_data,
+                                data_type="finish_symbol",
+                                confidence=0.7,  # Lower confidence for extracted codes
+                                extraction_method='camelot_table_scan',
+                                page_number=page_number,
+                                table_index=table_idx,
+                                source_section='finish_symbols'
+                            )
+
+                            results.append(finish_item)
+                            self.logger.debug(f"Added finish symbol: {cell_str}")
 
         return results
 
@@ -219,16 +243,33 @@ class HagerSectionExtractor:
 
             for match in matches:
                 try:
-                    source_finish = match.group(1).strip().upper()
-                    target_finish = match.group(2).strip().upper()
+                    groups = match.groups()
+                    rule_data = {'rule_type': 'price_mapping', 'manufacturer': 'hager'}
 
-                    rule_data = {
-                        'rule_type': 'price_mapping',
-                        'source_finish': source_finish,
-                        'target_finish': target_finish,
-                        'description': f"{source_finish} uses {target_finish} pricing",
-                        'manufacturer': 'hager'
-                    }
+                    # Handle different pattern types
+                    if '% above' in match.group(0):
+                        # Percentage rule like "20% above US10A or US10B price"
+                        percentage = groups[0]
+                        base_finish = groups[1]
+                        alt_finish = groups[2] if len(groups) > 2 and groups[2] else None
+
+                        rule_data.update({
+                            'rule_type': 'percentage_markup',
+                            'percentage': int(percentage),
+                            'base_finish': base_finish,
+                            'alternative_finish': alt_finish,
+                            'description': f"{percentage}% above {base_finish}" + (f" or {alt_finish}" if alt_finish else "") + " price"
+                        })
+                    elif len(groups) >= 2:
+                        # Standard mapping rule like "US10B use US10A price"
+                        source_finish = groups[0].strip().upper()
+                        target_finish = groups[1].strip().upper()
+
+                        rule_data.update({
+                            'source_finish': source_finish,
+                            'target_finish': target_finish,
+                            'description': f"{source_finish} uses {target_finish} pricing"
+                        })
 
                     rule_item = self.tracker.create_parsed_item(
                         value=rule_data,
@@ -240,7 +281,7 @@ class HagerSectionExtractor:
                     )
                     rules.append(rule_item)
 
-                except (IndexError, AttributeError) as e:
+                except (IndexError, AttributeError, ValueError) as e:
                     self.logger.warning(f"Could not parse price rule: {e}")
 
         self.logger.info(f"Extracted {len(rules)} price rules")
