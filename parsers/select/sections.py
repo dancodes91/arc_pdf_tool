@@ -219,7 +219,7 @@ class SelectSectionExtractor:
         return products
 
     def _extract_products_structured(self, df: pd.DataFrame, table_idx: int, page_number: int = None) -> List[ParsedItem]:
-        """Extract products using table melting for finish columns - works with proper table headers."""
+        """Extract products using comprehensive table melting - extracts ALL row×finish combinations."""
         products = []
 
         try:
@@ -228,46 +228,69 @@ class SelectSectionExtractor:
             df.columns = header
             df = df.iloc[1:]  # Remove header row
 
-            # Check if this is a structured product table
+            # Drop completely empty rows
+            df = df.dropna(how='all')
+
+            if df.empty:
+                return []
+
+            # Identify all columns
             header_upper = [h.upper() for h in header]
 
-            # Need Model/SKU column
+            # Find model column (first column with model codes)
             model_col = None
-            for col in header:
-                if any(kw in col.upper() for kw in ['MODEL', 'SKU', 'PART', 'ITEM']):
+            for idx, col in enumerate(df.columns):
+                # Check if column contains SL## patterns
+                sample = df[col].dropna().head(10)
+                if any(re.match(r'SL\s*\d{2}', str(val), re.IGNORECASE) for val in sample):
                     model_col = col
                     break
 
             if not model_col:
                 return []
 
-            # Look for finish columns (CL, BR, BK)
-            finish_cols = [col for col in header if col.upper() in ['CL', 'BR', 'BK']]
+            # Look for finish columns (CL, BR, BK) - these contain prices
+            finish_cols = []
+            for col in header:
+                col_upper = col.upper().strip()
+                if col_upper in ['CL', 'BR', 'BK']:
+                    finish_cols.append(col)
 
             if not finish_cols:
                 return []
 
-            # Identify other useful columns
-            desc_col = next((col for col in header if 'DESC' in col.upper()), None)
-            length_col = next((col for col in header if 'LENGTH' in col.upper() or 'SIZE' in col.upper()), None)
-            duty_col = next((col for col in header if 'DUTY' in col.upper() or 'WEIGHT' in col.upper()), None)
-
-            # Build id_vars for melting
+            # Identify descriptor columns (keep these as id_vars)
             id_vars = [model_col]
-            if desc_col:
-                id_vars.append(desc_col)
-            if length_col:
-                id_vars.append(length_col)
-            if duty_col:
-                id_vars.append(duty_col)
+            desc_col = None
+            length_col = None
+            duty_col = None
 
-            # Melt finish columns into rows
+            for col in header:
+                col_upper = col.upper()
+                if col in finish_cols or col == model_col:
+                    continue
+                if 'DESC' in col_upper or 'NAME' in col_upper:
+                    desc_col = col
+                    id_vars.append(col)
+                elif 'LENGTH' in col_upper or 'SIZE' in col_upper or '"' in col_upper:
+                    length_col = col
+                    id_vars.append(col)
+                elif 'DUTY' in col_upper or 'WEIGHT' in col_upper or 'TYPE' in col_upper:
+                    duty_col = col
+                    id_vars.append(col)
+
+            # Melt finish columns to create one row per (model × finish) combination
             long_df = df.melt(
                 id_vars=id_vars,
                 value_vars=finish_cols,
                 var_name="Finish",
                 value_name="Price"
-            ).dropna(subset=["Price"])
+            )
+
+            # Keep only rows with prices
+            long_df = long_df.dropna(subset=["Price"])
+            long_df = long_df[long_df["Price"].astype(str).str.strip() != '']
+            long_df = long_df[long_df["Price"].astype(str).str.upper() != 'NAN']
 
             # Extract products from melted table
             for _, row in long_df.iterrows():
@@ -275,12 +298,39 @@ class SelectSectionExtractor:
                 finish = str(row["Finish"]).strip().upper()
                 price_str = str(row["Price"]).strip()
 
-                # Skip invalid rows
-                if not model or model.lower() in ['nan', 'none', 'model']:
+                # Skip invalid models
+                if not model or model.lower() in ['nan', 'none', 'model', '']:
                     continue
 
-                # Build SKU
-                sku = f"{model}{finish}".replace(' ', '')
+                # Extract clean model code (remove any suffixes)
+                model_match = re.match(r'(SL\s*\d{2})', model, re.IGNORECASE)
+                if not model_match:
+                    continue
+
+                base_model = model_match.group(1).replace(' ', '')
+
+                # Build comprehensive SKU with all attributes
+                sku_parts = [base_model, finish]
+                specs = {}
+
+                if length_col and pd.notna(row.get(length_col)):
+                    length_val = str(row[length_col]).strip()
+                    if length_val and length_val.upper() not in ['NAN', 'NONE', '']:
+                        # Clean length value
+                        length_clean = re.sub(r'[^\d\-/]', '', length_val)
+                        if length_clean:
+                            sku_parts.append(length_clean)
+                            specs['length'] = length_val
+
+                if duty_col and pd.notna(row.get(duty_col)):
+                    duty_val = str(row[duty_col]).strip()
+                    if duty_val and duty_val.upper() not in ['NAN', 'NONE', '']:
+                        duty_clean = re.sub(r'[^\w\d]', '', duty_val)
+                        if duty_clean:
+                            sku_parts.append(duty_clean)
+                            specs['duty'] = duty_val
+
+                sku = '-'.join(sku_parts).replace(' ', '')
 
                 # Normalize price
                 price_normalized = data_normalizer.normalize_price(price_str)
@@ -289,29 +339,36 @@ class SelectSectionExtractor:
 
                 price_val = float(price_normalized['value'])
 
-                # Build product data
+                # Sanity check price
+                if price_val < 1 or price_val > 10000:
+                    continue
+
+                # Build description
+                desc_parts = [base_model, finish]
+                if desc_col and pd.notna(row.get(desc_col)):
+                    desc_parts.append(str(row[desc_col]).strip())
+                elif specs:
+                    if 'length' in specs:
+                        desc_parts.append(specs['length'])
+                    if 'duty' in specs:
+                        desc_parts.append(specs['duty'])
+
                 product_data = {
                     'sku': sku,
-                    'model': model,
-                    'series': model[:2] if len(model) >= 2 else model,
-                    'description': str(row.get(desc_col, f"{model} {finish}")).strip() if desc_col else f"{model} {finish}",
+                    'model': base_model,
+                    'series': base_model[:2] if len(base_model) >= 2 else base_model,
+                    'description': ' '.join(desc_parts),
                     'base_price': price_val,
                     'finish_code': finish if finish in ['CL', 'BR', 'BK'] else None,
-                    'specifications': {},
+                    'specifications': specs,
                     'is_active': True,
                     'manufacturer': 'SELECT'
                 }
 
-                # Add specifications
-                if length_col and pd.notna(row.get(length_col)):
-                    product_data['specifications']['length'] = str(row[length_col]).strip()
-                if duty_col and pd.notna(row.get(duty_col)):
-                    product_data['specifications']['duty'] = str(row[duty_col]).strip()
-
                 item = self.tracker.create_parsed_item(
                     value=product_data,
                     data_type="product",
-                    raw_text=str(row.to_dict())[:200],
+                    raw_text=f"{model} {finish} ${price_str}",
                     row_index=None,
                     confidence=safe_confidence_score(price_normalized['confidence'], 0.9),
                     page_number=page_number,
