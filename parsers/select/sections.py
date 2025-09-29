@@ -188,16 +188,14 @@ class SelectSectionExtractor:
         return options
 
     def extract_model_tables(self, text: str, tables: List[pd.DataFrame], page_number: int = None) -> List[ParsedItem]:
-        """Extract product model tables (SL11, SL14, SL24, SL41, etc.)."""
+        """Extract product model tables using table normalization and melting for finish columns."""
         self.tracker.set_context(section="Model Tables", method="table_extraction", page_number=page_number)
         products = []
 
-        # Process each table with simpler logic
         for table_idx, table in enumerate(tables):
             if isinstance(table, pd.DataFrame):
                 df = table
             else:
-                # Convert to DataFrame if needed
                 df = pd.DataFrame(table)
 
             # Clean up the table
@@ -207,16 +205,124 @@ class SelectSectionExtractor:
 
             self.tracker.set_context(table_index=table_idx, page_number=page_number)
 
-            # Check if this looks like a product table
-            table_text = ' '.join(df.astype(str).values.flatten()).lower()
-            has_model_indicators = any(ind in table_text for ind in ['sl11', 'sl14', 'sl24', 'sl41', 'sl51'])
-            has_price_indicators = '$' in table_text or any(ind in table_text for ind in ['price', 'list', 'each'])
+            # Try structured extraction first (for proper tables with headers)
+            structured_products = self._extract_products_structured(df, table_idx, page_number)
+            if structured_products:
+                products.extend(structured_products)
+                continue
 
-            if has_model_indicators or has_price_indicators:
-                table_products = self._extract_products_from_table_simple(df, table_idx, page_number)
-                products.extend(table_products)
+            # Fallback to pattern-based extraction for complex layouts
+            pattern_products = self._extract_products_from_table_simple(df, table_idx, page_number)
+            products.extend(pattern_products)
 
         self.logger.info(f"Extracted {len(products)} products from model tables")
+        return products
+
+    def _extract_products_structured(self, df: pd.DataFrame, table_idx: int, page_number: int = None) -> List[ParsedItem]:
+        """Extract products using table melting for finish columns - works with proper table headers."""
+        products = []
+
+        try:
+            # Clean header row
+            header = [str(cell).strip() for cell in df.iloc[0]]
+            df.columns = header
+            df = df.iloc[1:]  # Remove header row
+
+            # Check if this is a structured product table
+            header_upper = [h.upper() for h in header]
+
+            # Need Model/SKU column
+            model_col = None
+            for col in header:
+                if any(kw in col.upper() for kw in ['MODEL', 'SKU', 'PART', 'ITEM']):
+                    model_col = col
+                    break
+
+            if not model_col:
+                return []
+
+            # Look for finish columns (CL, BR, BK)
+            finish_cols = [col for col in header if col.upper() in ['CL', 'BR', 'BK']]
+
+            if not finish_cols:
+                return []
+
+            # Identify other useful columns
+            desc_col = next((col for col in header if 'DESC' in col.upper()), None)
+            length_col = next((col for col in header if 'LENGTH' in col.upper() or 'SIZE' in col.upper()), None)
+            duty_col = next((col for col in header if 'DUTY' in col.upper() or 'WEIGHT' in col.upper()), None)
+
+            # Build id_vars for melting
+            id_vars = [model_col]
+            if desc_col:
+                id_vars.append(desc_col)
+            if length_col:
+                id_vars.append(length_col)
+            if duty_col:
+                id_vars.append(duty_col)
+
+            # Melt finish columns into rows
+            long_df = df.melt(
+                id_vars=id_vars,
+                value_vars=finish_cols,
+                var_name="Finish",
+                value_name="Price"
+            ).dropna(subset=["Price"])
+
+            # Extract products from melted table
+            for _, row in long_df.iterrows():
+                model = str(row[model_col]).strip()
+                finish = str(row["Finish"]).strip().upper()
+                price_str = str(row["Price"]).strip()
+
+                # Skip invalid rows
+                if not model or model.lower() in ['nan', 'none', 'model']:
+                    continue
+
+                # Build SKU
+                sku = f"{model}{finish}".replace(' ', '')
+
+                # Normalize price
+                price_normalized = data_normalizer.normalize_price(price_str)
+                if not price_normalized['value']:
+                    continue
+
+                price_val = float(price_normalized['value'])
+
+                # Build product data
+                product_data = {
+                    'sku': sku,
+                    'model': model,
+                    'series': model[:2] if len(model) >= 2 else model,
+                    'description': str(row.get(desc_col, f"{model} {finish}")).strip() if desc_col else f"{model} {finish}",
+                    'base_price': price_val,
+                    'finish_code': finish if finish in ['CL', 'BR', 'BK'] else None,
+                    'specifications': {},
+                    'is_active': True,
+                    'manufacturer': 'SELECT'
+                }
+
+                # Add specifications
+                if length_col and pd.notna(row.get(length_col)):
+                    product_data['specifications']['length'] = str(row[length_col]).strip()
+                if duty_col and pd.notna(row.get(duty_col)):
+                    product_data['specifications']['duty'] = str(row[duty_col]).strip()
+
+                item = self.tracker.create_parsed_item(
+                    value=product_data,
+                    data_type="product",
+                    raw_text=str(row.to_dict())[:200],
+                    row_index=None,
+                    confidence=safe_confidence_score(price_normalized['confidence'], 0.9),
+                    page_number=page_number,
+                    table_index=table_idx
+                )
+                products.append(item)
+
+        except Exception as e:
+            self.logger.debug(f"Structured extraction failed on table {table_idx}: {e}")
+            return []
+
         return products
 
     def _is_model_table(self, table: pd.DataFrame) -> bool:

@@ -123,25 +123,33 @@ class SelectHingesParser:
         self.logger.info("Parsing model tables...")
         self.products = []
 
-        # Process each page individually with Camelot
+        # Process each page - use Camelot for pages with product indicators
         for page in self.document.pages:
             page_text = page.text or ''
 
-            # Extract tables for this page using Camelot
-            page_tables = self.section_extractor.extract_tables_with_camelot(
-                self.pdf_path, page.page_number
-            )
+            # Quick check if page likely has products (skip front matter/options pages)
+            page_upper = page_text.upper() if page_text else ''
+            has_product_indicators = any(ind in page_upper for ind in ['SL11', 'SL14', 'SL18', 'SL21', 'SL24', 'SL41', 'SL51'])
 
-            # If Camelot didn't find tables, fallback to pdfplumber tables
-            if not page_tables and page.tables:
+            # Get tables - use Camelot for product pages, pdfplumber for others
+            if has_product_indicators:
+                page_tables = self.section_extractor.extract_tables_with_camelot(
+                    self.pdf_path, page.page_number, flavor="lattice"
+                )
+                if not page_tables and page.tables:
+                    page_tables = page.tables
+            elif page.tables:
                 page_tables = page.tables
+            else:
+                continue
 
             # Extract products from this page
             if page_tables:
                 page_products = self.section_extractor.extract_model_tables(
                     page_text, page_tables, page_number=page.page_number
                 )
-                self.products.extend(page_products)
+                if page_products:
+                    self.products.extend(page_products)
 
         self.logger.info(f"Found {len(self.products)} products")
 
