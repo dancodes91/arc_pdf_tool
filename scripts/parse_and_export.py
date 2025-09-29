@@ -210,7 +210,7 @@ Examples:
         print(f"  Total Rules: {summary.get('total_rules', 0)}")
         print(f"  Total Options: {summary.get('total_additions', 0) + summary.get('total_options', 0)}")
         print(f"  Has Effective Date: {summary.get('has_effective_date', False)}")
-        print(f"  Validation: {'✓ Valid' if validation.get('is_valid', False) else '✗ Invalid'}")
+        print(f"  Validation: {'[VALID]' if validation.get('is_valid', False) else '[INVALID]'}")
 
         if validation.get('errors'):
             print(f"  Validation Errors:")

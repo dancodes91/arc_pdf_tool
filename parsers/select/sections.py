@@ -71,13 +71,6 @@ class SelectSectionExtractor:
             'SL41': r'SL\s*41.*?(?=SL\s*\d{2}|$)',
         }
 
-        # Finish code mappings for SELECT
-        self.finish_codes = {
-            'CL': 'Clear Anodized',
-            'BR': 'Bronze Anodized',
-            'BK': 'Black Anodized'
-        }
-
     @staticmethod
     def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice"):
         """Extract tables from specific page using Camelot."""
@@ -89,6 +82,39 @@ class SelectSectionExtractor:
         except Exception as e:
             logger.warning(f"Camelot extraction failed for page {page_number}: {e}")
             return []
+
+    def extract_finish_symbols(self, text: str) -> List[ParsedItem]:
+        """Extract finish symbols/abbreviations from SELECT PDF."""
+        self.tracker.set_context(section="Finishes", method="text_extraction")
+        finishes = []
+
+        # Look for finish abbreviations in text
+        # Pattern: "Clear [CL], Dark Bronze [BR] or Black [BK]"
+        finish_pattern = r'(Clear|Dark\s+Bronze|Black)\s*\[([A-Z]{2})\]'
+        matches = re.finditer(finish_pattern, text, re.IGNORECASE)
+
+        for match in matches:
+            finish_name = match.group(1).strip()
+            finish_code = match.group(2).upper()
+
+            if finish_code in self.finish_codes:
+                finish_data = {
+                    'code': finish_code,
+                    'label': self.finish_codes[finish_code]['label'],
+                    'bhma': self.finish_codes[finish_code]['bhma'],
+                    'manufacturer': 'SELECT'
+                }
+
+                item = self.tracker.create_parsed_item(
+                    value=finish_data,
+                    data_type="finish_symbol",
+                    raw_text=match.group(0),
+                    confidence=0.9
+                )
+                finishes.append(item)
+
+        self.logger.info(f"Extracted {len(finishes)} finish symbols")
+        return finishes
 
     def extract_effective_date(self, text: str) -> Optional[ParsedItem]:
         """Extract effective date from SELECT PDF text."""
@@ -166,22 +192,29 @@ class SelectSectionExtractor:
         self.tracker.set_context(section="Model Tables", method="table_extraction", page_number=page_number)
         products = []
 
-        # First try to extract from structured tables
+        # Process each table with simpler logic
         for table_idx, table in enumerate(tables):
+            if isinstance(table, pd.DataFrame):
+                df = table
+            else:
+                # Convert to DataFrame if needed
+                df = pd.DataFrame(table)
+
+            # Clean up the table
+            df = df.replace("", pd.NA).dropna(how="all")
+            if df.empty or len(df) < 2:
+                continue
+
             self.tracker.set_context(table_index=table_idx, page_number=page_number)
 
-            if self._is_model_table(table):
-                table_products = self._extract_products_from_model_table(table, table_idx)
-                products.extend(table_products)
+            # Check if this looks like a product table
+            table_text = ' '.join(df.astype(str).values.flatten()).lower()
+            has_model_indicators = any(ind in table_text for ind in ['sl11', 'sl14', 'sl24', 'sl41', 'sl51'])
+            has_price_indicators = '$' in table_text or any(ind in table_text for ind in ['price', 'list', 'each'])
 
-        # Also try text-based extraction for specific models
-        for model_code, pattern in self.model_patterns.items():
-            model_section = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-            if model_section:
-                text_products = self._extract_products_from_text_section(
-                    model_section.group(0), model_code
-                )
-                products.extend(text_products)
+            if has_model_indicators or has_price_indicators:
+                table_products = self._extract_products_from_table_simple(df, table_idx, page_number)
+                products.extend(table_products)
 
         self.logger.info(f"Extracted {len(products)} products from model tables")
         return products
@@ -259,6 +292,106 @@ class SelectSectionExtractor:
             except Exception as e:
                 self.logger.warning(f"Error processing row {row_idx}: {e}")
                 continue
+
+        return products
+
+    def _extract_products_from_table_simple(self, df: pd.DataFrame, table_idx: int, page_number: int = None) -> List[ParsedItem]:
+        """Simple robust extraction from SELECT tables - handles complex table formats with embedded SKUs."""
+        products = []
+        seen_skus = set()
+
+        # Iterate through all rows and columns
+        for row_idx, row in df.iterrows():
+            # Skip first row (usually header)
+            if row_idx == 0:
+                continue
+
+            # Scan all cells in this row for SKU patterns
+            for col_idx in range(len(row)):
+                cell_value = str(row.iloc[col_idx]).strip()
+
+                if cell_value.lower() in ['nan', 'none', '', '-']:
+                    continue
+
+                # Look for SELECT SKU pattern: SL## followed by finish code and variant
+                # Examples: "SL21 CL HD300", "SL11 BR HD600", "SL14CL"
+                sku_match = re.search(r'(SL\s*\d{2})\s*([A-Z]{2})\s*(HD\d+|LD\d+|[A-Z]*\d*)', cell_value, re.IGNORECASE)
+
+                if not sku_match:
+                    continue
+
+                base_model = sku_match.group(1).replace(' ', '')  # SL21
+                finish_code = sku_match.group(2).upper()  # CL, BR, BK
+                variant = sku_match.group(3).upper() if sku_match.group(3) else ""  # HD300, etc
+
+                # Build full SKU
+                sku = f"{base_model}{finish_code}{variant}".replace(' ', '')
+
+                # Avoid duplicates
+                if sku in seen_skus:
+                    continue
+
+                # Now find price in the same cell or adjacent cells
+                price_val = None
+
+                # First try same cell
+                price_matches = re.findall(r'(\d+\.?\d{0,2})', cell_value)
+                for price_str in price_matches:
+                    try:
+                        pval = float(price_str)
+                        if 50 <= pval <= 5000:  # Reasonable range for hinges
+                            price_val = pval
+                            break
+                    except:
+                        continue
+
+                # If no price in same cell, check adjacent cells
+                if price_val is None:
+                    for offset in [1, -1, 2]:
+                        adj_col = col_idx + offset
+                        if 0 <= adj_col < len(row):
+                            adj_cell = str(row.iloc[adj_col]).strip()
+                            price_matches = re.findall(r'(\d+\.?\d{0,2})', adj_cell.replace(',', ''))
+                            for price_str in price_matches:
+                                try:
+                                    pval = float(price_str)
+                                    if 50 <= pval <= 5000:
+                                        price_val = pval
+                                        break
+                                except:
+                                    continue
+                            if price_val:
+                                break
+
+                if price_val is None:
+                    # SKU found but no price - still add with price 0
+                    price_val = 0.0
+
+                seen_skus.add(sku)
+
+                # Create product
+                product_data = {
+                    'sku': sku,
+                    'model': base_model,
+                    'series': base_model[:2] if len(base_model) >= 2 else base_model,
+                    'description': f"{base_model} {finish_code} {variant}".strip(),
+                    'base_price': price_val,
+                    'finish_code': finish_code if finish_code in ['CL', 'BR', 'BK'] else None,
+                    'specifications': {'duty': variant} if variant else {},
+                    'is_active': True,
+                    'manufacturer': 'SELECT'
+                }
+
+                item = self.tracker.create_parsed_item(
+                    value=product_data,
+                    data_type="product",
+                    raw_text=cell_value[:100],
+                    row_index=row_idx,
+                    confidence=0.85 if price_val > 0 else 0.5,
+                    page_number=page_number,
+                    table_index=table_idx
+                )
+                products.append(item)
 
         return products
 

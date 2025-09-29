@@ -52,6 +52,7 @@ class SelectHingesParser:
 
             # Parse sections
             self._parse_effective_date(full_text)
+            self._parse_finishes(full_text)
             self._parse_net_add_options(full_text)
             self._parse_model_tables(full_text, all_tables)
 
@@ -98,6 +99,12 @@ class SelectHingesParser:
             self.logger.info(f"Found effective date: {self.effective_date.value}")
         else:
             self.logger.warning("No effective date found")
+
+    def _parse_finishes(self, text: str) -> None:
+        """Parse finish symbols from document."""
+        self.logger.info("Parsing finish symbols...")
+        self.finishes = self.section_extractor.extract_finish_symbols(text)
+        self.logger.info(f"Found {len(self.finishes)} finish symbols")
 
     def _parse_net_add_options(self, text: str) -> None:
         """Parse net add options from document."""
