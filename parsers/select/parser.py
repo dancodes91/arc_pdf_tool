@@ -187,8 +187,10 @@ class SelectHingesParser:
             'effective_date': self._serialize_item(self.effective_date),
             'net_add_options': [self._serialize_item(item) for item in self.net_add_options],
             'products': [self._serialize_item(item) for item in self.products],
+            'finish_symbols': [self._serialize_item(item) for item in self.finishes],
             'summary': {
                 'total_products': len(self.products),
+                'total_finishes': len(self.finishes),
                 'total_options': len(self.net_add_options),
                 'has_effective_date': self.effective_date is not None,
                 'confidence_distribution': quality_analysis.get('confidence_distribution', {}),

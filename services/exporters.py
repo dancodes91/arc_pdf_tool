@@ -473,10 +473,10 @@ class QuickExporter:
                     if isinstance(finish_data, dict):
                         csv_row = {
                             'code': finish_data.get('code', ''),
-                            'name': finish_data.get('name', ''),
-                            'bhma_code': finish_data.get('bhma_code', ''),
-                            'description': finish_data.get('description', ''),
-                            'base_price': finish_data.get('base_price')
+                            'label': finish_data.get('label', finish_data.get('name', '')),
+                            'bhma': finish_data.get('bhma', finish_data.get('bhma_code', '')),
+                            'manufacturer': finish_data.get('manufacturer', manufacturer),
+                            'page_ref': finish_item.get('provenance', {}).get('page_number', '')
                         }
                         finishes_data.append(csv_row)
 
@@ -484,5 +484,29 @@ class QuickExporter:
                 finishes_file = output_path / f"{manufacturer}_finishes_{timestamp}.csv"
                 QuickExporter.export_products_to_csv(finishes_data, str(finishes_file))
                 files_created['finishes_csv'] = str(finishes_file)
+
+        # Export net-add options as CSV if available
+        if results.get('net_add_options'):
+            options_data = []
+            for option_item in results['net_add_options']:
+                if isinstance(option_item, dict) and 'value' in option_item:
+                    option_data = option_item['value']
+                    if isinstance(option_data, dict):
+                        csv_row = {
+                            'manufacturer': option_data.get('manufacturer', manufacturer),
+                            'code': option_data.get('option_code', ''),
+                            'label': option_data.get('option_name', ''),
+                            'add_type': option_data.get('adder_type', 'net_add'),
+                            'amount': option_data.get('adder_value', 0),
+                            'notes': option_data.get('description', ''),
+                            'constraints_json': json.dumps(option_data.get('constraints', {})),
+                            'page_ref': option_item.get('provenance', {}).get('page_number', '')
+                        }
+                        options_data.append(csv_row)
+
+            if options_data:
+                options_file = output_path / f"{manufacturer}_options_{timestamp}.csv"
+                QuickExporter.export_products_to_csv(options_data, str(options_file))
+                files_created['options_csv'] = str(options_file)
 
         return files_created
