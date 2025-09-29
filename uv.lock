@@ -87,11 +87,13 @@ dependencies = [
     { name = "psycopg2-binary" },
     { name = "pymupdf" },
     { name = "pytesseract" },
+    { name = "pytest-asyncio" },
     { name = "python-dateutil" },
     { name = "python-levenshtein" },
     { name = "python-multipart" },
     { name = "rapidfuzz" },
     { name = "redis" },
+    { name = "sentry-sdk" },
     { name = "sqlalchemy" },
     { name = "structlog" },
     { name = "uvicorn", extra = ["standard"] },
@@ -148,6 +150,7 @@ requires-dist = [
     { name = "pymupdf", specifier = ">=1.23.18" },
     { name = "pytesseract", specifier = ">=0.3.10" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.3" },
+    { name = "pytest-asyncio", specifier = ">=1.2.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.1" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "python-dateutil", specifier = ">=2.8.2" },
@@ -156,6 +159,7 @@ requires-dist = [
     { name = "rapidfuzz", specifier = ">=3.5.2" },
     { name = "redis", specifier = ">=5.0.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.7" },
+    { name = "sentry-sdk", specifier = ">=2.39.0" },
     { name = "sqlalchemy", specifier = ">=2.0.23" },
     { name = "structlog", specifier = ">=23.2.0" },
     { name = "testcontainers", marker = "extra == 'dev'", specifier = ">=3.7.1" },
@@ -1972,6 +1976,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/f7/00/e7f1501e81e8ec290e79527827af1d88f541d8d26151751b46108978dade/ruff-0.13.2-py3-none-win32.whl", hash = "sha256:7c2a0b7c1e87795fec3404a485096bcd790216c7c146a922d121d8b9c8f1aaac", size = 12245990, upload-time = "2025-09-25T14:54:03.647Z" },
     { url = "https://files.pythonhosted.org/packages/ee/bd/d9f33a73de84fafd0146c6fba4f497c4565fe8fa8b46874b8e438869abc2/ruff-0.13.2-py3-none-win_amd64.whl", hash = "sha256:17d95fb32218357c89355f6f6f9a804133e404fc1f65694372e02a557edf8585", size = 13324004, upload-time = "2025-09-25T14:54:06.05Z" },
     { url = "https://files.pythonhosted.org/packages/c3/12/28fa2f597a605884deb0f65c1b1ae05111051b2a7030f5d8a4ff7f4599ba/ruff-0.13.2-py3-none-win_arm64.whl", hash = "sha256:da711b14c530412c827219312b7d7fbb4877fb31150083add7e8c5336549cea7", size = 12484437, upload-time = "2025-09-25T14:54:08.022Z" },
+]
+
+[[package]]
+name = "sentry-sdk"
+version = "2.39.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4c/72/43294fa4bdd75c51610b5104a3ff834459ba653abb415150aa7826a249dd/sentry_sdk-2.39.0.tar.gz", hash = "sha256:8c185854d111f47f329ab6bc35993f28f7a6b7114db64aa426b326998cfa14e9", size = 348556, upload-time = "2025-09-25T09:15:39.064Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/44/4356cc64246ba7b2b920f7c97a85c3c52748e213e250b512ee8152eb559d/sentry_sdk-2.39.0-py2.py3-none-any.whl", hash = "sha256:ba655ca5e57b41569b18e2a5552cb3375209760a5d332cdd87c6c3f28f729602", size = 370851, upload-time = "2025-09-25T09:15:36.35Z" },
 ]
 
 [[package]]

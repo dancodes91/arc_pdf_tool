@@ -1,0 +1,54 @@
+# Base Dockerfile with common dependencies for ARC PDF Tool
+FROM python:3.11-slim as base
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# Install common system dependencies
+RUN apt-get update && apt-get install -y \
+    # Build essentials
+    gcc \
+    g++ \
+    make \
+    # Database drivers
+    libpq-dev \
+    # XML processing
+    libxml2-dev \
+    libxslt-dev \
+    # Network utilities
+    curl \
+    wget \
+    # Process management
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install UV for fast dependency management
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash arc
+
+# Set working directory
+WORKDIR /app
+RUN chown arc:arc /app
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install Python dependencies
+RUN uv sync --frozen --no-cache
+
+# Create common directories
+RUN mkdir -p /app/data/uploads /app/data/processed /app/data/exports /app/logs && \
+    chown -R arc:arc /app
+
+# Switch to non-root user
+USER arc
+
+# Default healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "print('Base container healthy')" || exit 1

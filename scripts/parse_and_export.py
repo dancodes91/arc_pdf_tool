@@ -236,7 +236,7 @@ Examples:
                 # Export parsing results directly
                 export_results(results, args.output, args.formats)
 
-        print(f"\n✓ Complete! Results processed successfully.")
+        print(f"\n[OK] Complete! Results processed successfully.")
 
     except Exception as e:
         print(f"Error: {e}")

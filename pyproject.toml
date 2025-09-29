@@ -59,6 +59,8 @@ dependencies = [
     "python-levenshtein>=0.23.0",
     "click>=8.1.7",
     "structlog>=23.2.0",
+    "sentry-sdk>=2.39.0",
+    "pytest-asyncio>=1.2.0",
 ]
 
 [project.optional-dependencies]
@@ -141,6 +143,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+    "asyncio: marks tests as asyncio tests",
 ]
 
 [tool.coverage.run]

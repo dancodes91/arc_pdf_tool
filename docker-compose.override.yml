@@ -1,0 +1,68 @@
+# Development overrides for docker-compose.yml
+version: '3.8'
+
+services:
+  # API service with development settings
+  api:
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=debug
+      - FLASK_ENV=development
+      - FLASK_DEBUG=true
+    volumes:
+      # Mount source code for hot reloading
+      - .:/app
+      - /app/.venv  # Exclude virtual environment
+    command: >
+      sh -c "
+        sleep 5 &&
+        uv run python app.py
+      "
+    ports:
+      - "5000:5000"
+
+  # Worker with development settings
+  worker:
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=debug
+    volumes:
+      # Mount source code for hot reloading
+      - .:/app
+      - /app/.venv  # Exclude virtual environment
+    command: >
+      sh -c "
+        sleep 10 &&
+        uv run celery -A core.tasks worker --loglevel=debug --reload
+      "
+
+  # Development database with exposed port
+  db:
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=arc_pdf_tool_dev
+
+  # Redis with exposed port for debugging
+  redis:
+    ports:
+      - "6379:6379"
+
+  # Add pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: arc_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@arc.local
+      PGADMIN_DEFAULT_PASSWORD: arc_admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+
+volumes:
+  pgadmin_data:
+    driver: local

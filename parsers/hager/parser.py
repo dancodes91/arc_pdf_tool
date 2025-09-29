@@ -151,12 +151,16 @@ class HagerParser:
         self.logger.info("Parsing price rules...")
         self.price_rules = []
 
-        for page in self.document.pages:
+        # Optimization: Limit price rule extraction to likely pages (first 100 pages typically contain rules)
+        max_pages_to_check = min(100, len(self.document.pages))
+        self.logger.info(f"Checking first {max_pages_to_check} pages for price rules")
+
+        for page in self.document.pages[:max_pages_to_check]:
             page_text = page.text or ''
             page_upper = page_text.upper()
 
-            # Look for rule-related keywords
-            if not any(keyword in page_upper for keyword in ['USE', 'PRICE', 'MAPPING', 'RULE']):
+            # More specific keyword filtering to reduce false positives
+            if not any(keyword in page_upper for keyword in ['FINISH PRICE', 'USE PRICE OF', 'PRICE MAPPING']):
                 continue
 
             # Extract tables for this page using Camelot
@@ -181,7 +185,11 @@ class HagerParser:
         self.logger.info("Parsing hinge additions...")
         self.hinge_additions = []
 
-        for page in self.document.pages:
+        # Optimization: Limit to first 100 pages (additions typically in front matter)
+        max_pages_to_check = min(100, len(self.document.pages))
+        self.logger.info(f"Checking first {max_pages_to_check} pages for hinge additions")
+
+        for page in self.document.pages[:max_pages_to_check]:
             page_text = page.text or ''
             page_upper = page_text.upper()
 
@@ -210,6 +218,10 @@ class HagerParser:
         """Parse product item tables page by page."""
         self.logger.info("Parsing item tables...")
         self.products = []
+
+        # TODO: Performance optimization opportunity - This processes ALL pages which can be slow (2+ minutes for 479 pages).
+        # Consider adding page range limits or better filtering if this becomes a bottleneck in production.
+        # For now, processing all pages to ensure we don't miss products in any PDF format.
 
         for page in self.document.pages:
             page_text = page.text or ''

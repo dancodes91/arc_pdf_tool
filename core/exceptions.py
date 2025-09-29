@@ -81,10 +81,10 @@ class BaseArcException(Exception):
 class ValidationError(BaseArcException):
     """Base class for input validation errors."""
 
-    def __init__(self, message: str, field: str = None, **kwargs):
+    def __init__(self, message: str, field: str = None, http_status: int = 400, **kwargs):
         super().__init__(
             message=message,
-            http_status=400,
+            http_status=http_status,
             category=ErrorCategory.VALIDATION,
             **kwargs
         )
@@ -101,7 +101,7 @@ class FileNotFoundError(ValidationError):
             error_code="FILE_NOT_FOUND",
             http_status=404,
             context={'file_path': file_path},
-            user_message=f"The file '{file_path}' could not be found",
+            user_message=f"The file '{file_path}' was not found",
             **kwargs
         )
 
@@ -300,13 +300,17 @@ class ConfidenceThresholdError(ProcessingError):
 class ExternalServiceError(BaseArcException):
     """Base class for external service errors."""
 
-    def __init__(self, service: str, message: str, **kwargs):
+    def __init__(self, service: str, message: str, http_status: int = 502,
+                 context: Dict[str, Any] = None, retry_after: Optional[int] = 60, **kwargs):
+        merged_context = {'service': service}
+        if context:
+            merged_context.update(context)
         super().__init__(
             message=f"{service} error: {message}",
-            http_status=502,
+            http_status=http_status,
             category=ErrorCategory.EXTERNAL,
-            context={'service': service},
-            retry_after=60,  # Most external errors can be retried
+            context=merged_context,
+            retry_after=retry_after,
             **kwargs
         )
 
@@ -316,15 +320,16 @@ class BaserowError(ExternalServiceError):
 
     def __init__(self, operation: str, status_code: int = None,
                  response: str = None, **kwargs):
+        context = {
+            'operation': operation,
+            'status_code': status_code,
+            'response': response
+        }
         super().__init__(
             service="Baserow",
             message=f"Baserow {operation} failed",
             error_code="BASEROW_ERROR",
-            context={
-                'operation': operation,
-                'status_code': status_code,
-                'response': response
-            },
+            context=context,
             user_message="External database service is temporarily unavailable",
             **kwargs
         )
@@ -352,15 +357,16 @@ class RateLimitError(ExternalServiceError):
     """Rate limit exceeded."""
 
     def __init__(self, service: str, limit: int = None, reset_time: int = None, **kwargs):
+        context = {
+            'limit': limit,
+            'reset_time': reset_time
+        }
         super().__init__(
             service=service,
             message=f"Rate limit exceeded for {service}",
             error_code="RATE_LIMIT_EXCEEDED",
             http_status=429,
-            context={
-                'limit': limit,
-                'reset_time': reset_time
-            },
+            context=context,
             user_message="Request rate limit exceeded. Please wait before retrying",
             retry_after=reset_time or 60,
             **kwargs
