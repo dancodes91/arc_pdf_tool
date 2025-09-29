@@ -124,7 +124,7 @@ class SelectHingesParser:
         self.products = []
         pages_processed = []
 
-        # Process EVERY page with Camelot to maximize extraction
+        # Process EVERY page - try multiple extraction methods
         for page in self.document.pages:
             page_text = page.text or ''
             page_num = page.page_number
@@ -136,6 +136,14 @@ class SelectHingesParser:
 
             # Use Camelot if available, otherwise fallback to pdfplumber
             page_tables = camelot_tables if camelot_tables else page.tables
+
+            # If NO tables found but page has SL## text, try with stream flavor
+            if not page_tables and 'SL' in page_text.upper():
+                stream_tables = self.section_extractor.extract_tables_with_camelot(
+                    self.pdf_path, page_num, flavor="stream"
+                )
+                if stream_tables:
+                    page_tables = stream_tables
 
             # Extract products from this page
             if page_tables:

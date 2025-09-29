@@ -461,7 +461,7 @@ class SelectSectionExtractor:
     def _extract_products_from_table_simple(self, df: pd.DataFrame, table_idx: int, page_number: int = None) -> List[ParsedItem]:
         """Simple robust extraction from SELECT tables - handles complex table formats with embedded SKUs."""
         products = []
-        seen_skus = set()
+        seen_entries = set()  # Track (sku, price) tuples to allow same SKU with different prices
 
         # Iterate through all rows and columns
         for row_idx, row in df.iterrows():
@@ -496,16 +496,17 @@ class SelectSectionExtractor:
                             if adj_text in ['CL', 'BR', 'BK']:
                                 finish_code = adj_text
                                 break
-                    # If still no finish, use a default to not lose the entry
+                    # If still no finish, try to infer from column header
+                    if not finish_code and col_idx < len(df.columns):
+                        header_text = str(df.iloc[0, col_idx]).strip().upper()
+                        if any(f in header_text for f in ['CL', 'BR', 'BK']):
+                            finish_code = next((f for f in ['CL', 'BR', 'BK'] if f in header_text), None)
+                    # Last resort: use position-based code
                     if not finish_code:
-                        finish_code = "XX"  # Unknown finish placeholder
+                        finish_code = f"V{col_idx}"  # Variant by column position
 
-                # Build full SKU
-                sku = f"{base_model}{finish_code}{variant}".replace(' ', '')
-
-                # Avoid duplicates
-                if sku in seen_skus:
-                    continue
+                # Build full SKU with position to make unique
+                sku = f"{base_model}-{finish_code}-{variant}".replace(' ', '') if variant else f"{base_model}-{finish_code}"
 
                 # Now find price in the same cell or adjacent cells
                 price_val = None
@@ -541,11 +542,18 @@ class SelectSectionExtractor:
                             if price_val:
                                 break
 
-                if price_val is None:
-                    # SKU found but no price - still add with price 0
-                    price_val = 0.0
+                # If still no price, skip this entry (was creating too many 0-price entries)
+                if price_val is None or price_val == 0:
+                    continue
 
-                seen_skus.add(sku)
+                # Check for duplicates using (sku, price) tuple - allows same SKU with different prices
+                entry_key = (sku, price_val)
+                if entry_key in seen_entries:
+                    continue
+                seen_entries.add(entry_key)
+
+                # Clean up finish code for display
+                display_finish = finish_code if finish_code in ['CL', 'BR', 'BK'] else None
 
                 # Create product
                 product_data = {
@@ -554,8 +562,8 @@ class SelectSectionExtractor:
                     'series': base_model[:2] if len(base_model) >= 2 else base_model,
                     'description': f"{base_model} {finish_code} {variant}".strip(),
                     'base_price': price_val,
-                    'finish_code': finish_code if finish_code in ['CL', 'BR', 'BK'] else None,
-                    'specifications': {'duty': variant} if variant else {},
+                    'finish_code': display_finish,
+                    'specifications': {'duty': variant, 'column': col_idx} if variant else {'column': col_idx},
                     'is_active': True,
                     'manufacturer': 'SELECT'
                 }
@@ -565,7 +573,7 @@ class SelectSectionExtractor:
                     data_type="product",
                     raw_text=cell_value[:100],
                     row_index=row_idx,
-                    confidence=0.85 if price_val > 0 else 0.5,
+                    confidence=0.9,  # Higher confidence since we have both SKU and price
                     page_number=page_number,
                     table_index=table_idx
                 )
