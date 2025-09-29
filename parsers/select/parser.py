@@ -112,9 +112,29 @@ class SelectHingesParser:
                 self.logger.debug(f"  {code}: ${price}")
 
     def _parse_model_tables(self, text: str, tables: List[Any]) -> None:
-        """Parse product model tables."""
+        """Parse product model tables page by page using Camelot."""
         self.logger.info("Parsing model tables...")
-        self.products = self.section_extractor.extract_model_tables(text, tables)
+        self.products = []
+
+        # Process each page individually with Camelot
+        for page in self.document.pages:
+            page_text = page.text or ''
+
+            # Extract tables for this page using Camelot
+            page_tables = self.section_extractor.extract_tables_with_camelot(
+                self.pdf_path, page.page_number
+            )
+
+            # If Camelot didn't find tables, fallback to pdfplumber tables
+            if not page_tables and page.tables:
+                page_tables = page.tables
+
+            # Extract products from this page
+            if page_tables:
+                page_products = self.section_extractor.extract_model_tables(
+                    page_text, page_tables, page_number=page.page_number
+                )
+                self.products.extend(page_products)
 
         self.logger.info(f"Found {len(self.products)} products")
 

@@ -32,6 +32,13 @@ class SelectSectionExtractor:
         self.tracker = provenance_tracker
         self.logger = logging.getLogger(f"{__class__.__name__}")
 
+        # Finish code mappings for SELECT
+        self.finish_codes = {
+            'CL': {'code': 'CL', 'label': 'Clear Anodized', 'bhma': None},
+            'BR': {'code': 'BR', 'label': 'Bronze Anodized', 'bhma': None},
+            'BK': {'code': 'BK', 'label': 'Black Anodized', 'bhma': None},
+        }
+
         # SELECT-specific patterns
         self.effective_date_patterns = [
             r'EFFECTIVE\s+([A-Z]+\s+\d{1,2},?\s+\d{4})',
@@ -39,35 +46,21 @@ class SelectSectionExtractor:
             r'EFFECTIVE\s+DATE:?\s*([A-Z]+\s+\d{1,2},?\s+\d{4})',
         ]
 
-        # Net add option patterns with pricing
+        # Net add option patterns with pricing - updated to match actual PDF format
         self.net_add_patterns = {
-            'CTW': [
-                r'CTW-(\d+)\s+\$?(\d+(?:\.\d{2})?)',  # CTW-4 $108
-                r'CTW\s*(\d+)\s+\$?(\d+(?:\.\d{2})?)',
-            ],
-            'EPT': [
-                r'EPT\s+prep\s+\$?(\d+(?:\.\d{2})?)',  # EPT prep $41
-                r'EPT\s+\$?(\d+(?:\.\d{2})?)',
-            ],
-            'EMS': [
-                r'EMS\s+\$?(\d+(?:\.\d{2})?)',  # EMS $46
-            ],
-            'ATW': [
-                r'ATW-(\d+)\s+\$?(\d+(?:\.\d{2})?)',  # ATW-4/8/12 $176/$188/$204
-                r'ATW\s*(\d+)\s+\$?(\d+(?:\.\d{2})?)',
-            ],
-            'TIPIT': [
-                r'TIPIT\s+(\w+)\s+\$?(\d+(?:\.\d{2})?)',  # TIPIT variants
-                r'TIP\s*IT\s+(\w+)\s+\$?(\d+(?:\.\d{2})?)',
-            ],
-            'HT': [
-                r'Hospital\s+Tip\s+\$?(\d+(?:\.\d{2})?)',  # Hospital Tip $34
-                r'HT\s+\$?(\d+(?:\.\d{2})?)',
-            ],
-            'FR3': [
-                r'FR3\s+\$?(\d+(?:\.\d{2})?)',  # FR3 $18
-                r'UL\s+FR3\s+\$?(\d+(?:\.\d{2})?)',
-            ]
+            'CTW-4': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-4'],
+            'CTW-5': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-5'],
+            'CTW-8': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-8'],
+            'CTW-10': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-10'],
+            'CTW-12': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-12'],
+            'EPT': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep'],
+            'EMS': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+EMS'],
+            'ATW-4': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-4'],
+            'ATW-8': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-8'],
+            'ATW-12': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-12'],
+            'CMG': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CMG'],
+            'AP': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep'],
+            'RP': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep'],
         }
 
         # Model table patterns for SL series
@@ -84,6 +77,18 @@ class SelectSectionExtractor:
             'BR': 'Bronze Anodized',
             'BK': 'Black Anodized'
         }
+
+    @staticmethod
+    def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice"):
+        """Extract tables from specific page using Camelot."""
+        import camelot
+        page_str = str(page_number)
+        try:
+            tables = camelot.read_pdf(pdf_path, pages=page_str, flavor=flavor)
+            return [t.df for t in tables] if tables.n else []
+        except Exception as e:
+            logger.warning(f"Camelot extraction failed for page {page_number}: {e}")
+            return []
 
     def extract_effective_date(self, text: str) -> Optional[ParsedItem]:
         """Extract effective date from SELECT PDF text."""
@@ -156,14 +161,14 @@ class SelectSectionExtractor:
         self.logger.info(f"Extracted {len(options)} net add options")
         return options
 
-    def extract_model_tables(self, text: str, tables: List[pd.DataFrame]) -> List[ParsedItem]:
+    def extract_model_tables(self, text: str, tables: List[pd.DataFrame], page_number: int = None) -> List[ParsedItem]:
         """Extract product model tables (SL11, SL14, SL24, SL41, etc.)."""
-        self.tracker.set_context(section="Model Tables", method="table_extraction")
+        self.tracker.set_context(section="Model Tables", method="table_extraction", page_number=page_number)
         products = []
 
         # First try to extract from structured tables
         for table_idx, table in enumerate(tables):
-            self.tracker.set_context(table_index=table_idx)
+            self.tracker.set_context(table_index=table_idx, page_number=page_number)
 
             if self._is_model_table(table):
                 table_products = self._extract_products_from_model_table(table, table_idx)
