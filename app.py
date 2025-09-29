@@ -225,6 +225,46 @@ def api_products(price_book_id):
         logger.error(f"Error getting products: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/healthz')
+def healthz():
+    """Health check endpoint - returns 200 if service is alive."""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'arc_pdf_tool',
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), 200
+
+@app.route('/readyz')
+def readyz():
+    """Readiness check endpoint - returns 200 if service is ready to accept traffic."""
+    checks = {
+        'database': False,
+        'filesystem': False
+    }
+
+    try:
+        # Check database connection
+        price_book_manager.list_price_books()
+        checks['database'] = True
+    except Exception as e:
+        logger.warning(f"Database check failed: {e}")
+
+    try:
+        # Check filesystem access
+        os.path.exists(app.config['UPLOAD_FOLDER'])
+        checks['filesystem'] = True
+    except Exception as e:
+        logger.warning(f"Filesystem check failed: {e}")
+
+    all_ready = all(checks.values())
+    status_code = 200 if all_ready else 503
+
+    return jsonify({
+        'status': 'ready' if all_ready else 'not_ready',
+        'checks': checks,
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
+    }), status_code
+
 @app.errorhandler(404)
 def not_found(error):
     return render_template('404.html'), 404

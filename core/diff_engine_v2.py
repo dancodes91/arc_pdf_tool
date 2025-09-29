@@ -401,10 +401,15 @@ class DiffEngineV2:
         old_model = str(old_product.get('model', '')).upper()
         new_model = str(new_product.get('model', '')).upper()
 
-        # Should have some common characters in model
+        # Should have some common characters in model (relaxed from 30% to 20%)
         if old_model and new_model:
-            common_chars = set(old_model) & set(new_model)
-            if len(common_chars) < len(old_model) * 0.3:  # At least 30% common characters
+            # Remove all separators for comparison (CTW-4 vs CTW4)
+            old_normalized = re.sub(r'[\s\-_]', '', old_model)
+            new_normalized = re.sub(r'[\s\-_]', '', new_model)
+
+            common_chars = set(old_normalized) & set(new_normalized)
+            min_length = min(len(old_normalized), len(new_normalized))
+            if min_length > 0 and len(common_chars) < min_length * 0.2:  # At least 20% common characters
                 return False
 
         return True

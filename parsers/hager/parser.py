@@ -215,15 +215,24 @@ class HagerParser:
                 self.logger.debug(f"  {code}: ${price}")
 
     def _parse_item_tables(self, text: str, tables: List[Any]) -> None:
-        """Parse product item tables page by page."""
+        """Parse product item tables page by page with performance optimization."""
         self.logger.info("Parsing item tables...")
         self.products = []
 
-        # TODO: Performance optimization opportunity - This processes ALL pages which can be slow (2+ minutes for 479 pages).
-        # Consider adding page range limits or better filtering if this becomes a bottleneck in production.
-        # For now, processing all pages to ensure we don't miss products in any PDF format.
+        # PERFORMANCE OPTIMIZATION: Only process pages likely to contain product tables
+        # Skip pages without product indicators (BB, WT, ECBB patterns or $ prices)
+        product_indicators = ['BB', 'WT', 'ECBB', '$', 'Price', 'Model', 'Series']
 
+        pages_to_process = []
         for page in self.document.pages:
+            page_text = page.text or ''
+            # Quick check: does this page have product-like content?
+            if any(indicator in page_text for indicator in product_indicators):
+                pages_to_process.append(page)
+
+        self.logger.info(f"Processing {len(pages_to_process)}/{len(self.document.pages)} pages with product indicators")
+
+        for page in pages_to_process:
             page_text = page.text or ''
 
             # Extract tables for this page using Camelot
