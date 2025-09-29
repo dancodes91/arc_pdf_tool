@@ -476,16 +476,29 @@ class SelectSectionExtractor:
                 if cell_value.lower() in ['nan', 'none', '', '-']:
                     continue
 
-                # Look for SELECT SKU pattern: SL## followed by finish code and variant
-                # Examples: "SL21 CL HD300", "SL11 BR HD600", "SL14CL"
-                sku_match = re.search(r'(SL\s*\d{2})\s*([A-Z]{2})\s*(HD\d+|LD\d+|[A-Z]*\d*)', cell_value, re.IGNORECASE)
+                # Look for SELECT SKU pattern: SL## optionally followed by finish code and variant
+                # Examples: "SL21 CL HD300", "SL11 BR HD600", "SL14CL", or just "SL21"
+                sku_match = re.search(r'(SL\s*\d{2})(?:\s+([A-Z]{2}))?(?:\s+(HD\d+|LD\d+|LL|\d+"?))?', cell_value, re.IGNORECASE)
 
                 if not sku_match:
                     continue
 
                 base_model = sku_match.group(1).replace(' ', '')  # SL21
-                finish_code = sku_match.group(2).upper()  # CL, BR, BK
+                finish_code = sku_match.group(2).upper() if sku_match.group(2) else None  # CL, BR, BK or None
                 variant = sku_match.group(3).upper() if sku_match.group(3) else ""  # HD300, etc
+
+                # If finish code missing, check adjacent cells
+                if not finish_code:
+                    for offset in [-1, 1]:
+                        adj_col = col_idx + offset
+                        if 0 <= adj_col < len(row):
+                            adj_text = str(row.iloc[adj_col]).strip().upper()
+                            if adj_text in ['CL', 'BR', 'BK']:
+                                finish_code = adj_text
+                                break
+                    # If still no finish, use a default to not lose the entry
+                    if not finish_code:
+                        finish_code = "XX"  # Unknown finish placeholder
 
                 # Build full SKU
                 sku = f"{base_model}{finish_code}{variant}".replace(' ', '')
@@ -502,7 +515,8 @@ class SelectSectionExtractor:
                 for price_str in price_matches:
                     try:
                         pval = float(price_str)
-                        if 50 <= pval <= 5000:  # Reasonable range for hinges
+                        # Relaxed range: allow lower prices (20-40 range common in SELECT)
+                        if 10 <= pval <= 5000:
                             price_val = pval
                             break
                     except:
@@ -510,7 +524,7 @@ class SelectSectionExtractor:
 
                 # If no price in same cell, check adjacent cells
                 if price_val is None:
-                    for offset in [1, -1, 2]:
+                    for offset in [1, -1, 2, -2]:  # Check more adjacent cells
                         adj_col = col_idx + offset
                         if 0 <= adj_col < len(row):
                             adj_cell = str(row.iloc[adj_col]).strip()
@@ -518,7 +532,8 @@ class SelectSectionExtractor:
                             for price_str in price_matches:
                                 try:
                                     pval = float(price_str)
-                                    if 50 <= pval <= 5000:
+                                    # Relaxed range here too
+                                    if 10 <= pval <= 5000:
                                         price_val = pval
                                         break
                                 except:

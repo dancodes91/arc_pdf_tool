@@ -119,39 +119,35 @@ class SelectHingesParser:
                 self.logger.debug(f"  {code}: ${price}")
 
     def _parse_model_tables(self, text: str, tables: List[Any]) -> None:
-        """Parse product model tables page by page using Camelot."""
+        """Parse product model tables page by page - ALWAYS try Camelot for complete extraction."""
         self.logger.info("Parsing model tables...")
         self.products = []
+        pages_processed = []
 
-        # Process each page - use Camelot for pages with product indicators
+        # Process EVERY page with Camelot to maximize extraction
         for page in self.document.pages:
             page_text = page.text or ''
+            page_num = page.page_number
 
-            # Quick check if page likely has products (skip front matter/options pages)
-            page_upper = page_text.upper() if page_text else ''
-            has_product_indicators = any(ind in page_upper for ind in ['SL11', 'SL14', 'SL18', 'SL21', 'SL24', 'SL41', 'SL51'])
+            # Always try Camelot first (prefer structured output)
+            camelot_tables = self.section_extractor.extract_tables_with_camelot(
+                self.pdf_path, page_num, flavor="lattice"
+            )
 
-            # Get tables - use Camelot for product pages, pdfplumber for others
-            if has_product_indicators:
-                page_tables = self.section_extractor.extract_tables_with_camelot(
-                    self.pdf_path, page.page_number, flavor="lattice"
-                )
-                if not page_tables and page.tables:
-                    page_tables = page.tables
-            elif page.tables:
-                page_tables = page.tables
-            else:
-                continue
+            # Use Camelot if available, otherwise fallback to pdfplumber
+            page_tables = camelot_tables if camelot_tables else page.tables
 
             # Extract products from this page
             if page_tables:
                 page_products = self.section_extractor.extract_model_tables(
-                    page_text, page_tables, page_number=page.page_number
+                    page_text, page_tables, page_number=page_num
                 )
                 if page_products:
                     self.products.extend(page_products)
+                    pages_processed.append(page_num)
+                    self.logger.debug(f"Page {page_num}: extracted {len(page_products)} products")
 
-        self.logger.info(f"Found {len(self.products)} products")
+        self.logger.info(f"Found {len(self.products)} products across {len(pages_processed)} pages: {pages_processed}")
 
         # Log sample products for verification
         for i, product in enumerate(self.products[:5]):  # First 5 products
