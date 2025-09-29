@@ -353,6 +353,10 @@ class DiffEngineV2:
             for match_text, score, _ in fuzzy_results:
                 if score >= self.fuzzy_threshold and match_text not in used_new_products:
                     # Additional validation for fuzzy matches
+                    # Safety check: ensure match_text exists in lookup
+                    if match_text not in new_lookup:
+                        continue
+
                     new_product = new_lookup[match_text]
 
                     if self._validate_fuzzy_match(old_product, new_product):
