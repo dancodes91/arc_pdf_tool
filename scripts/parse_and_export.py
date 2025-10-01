@@ -6,8 +6,28 @@ Demonstrates the complete parsing and export pipeline.
 import argparse
 import sys
 import logging
+import warnings
+import atexit
+import shutil
 from pathlib import Path
 from datetime import datetime
+
+# Suppress Windows temp file cleanup errors from Camelot
+# See: https://github.com/camelot-dev/camelot/issues/174
+def ignore_cleanup_errors():
+    """Suppress harmless Windows PermissionError during temp file cleanup."""
+    pass
+
+# Replace shutil.rmtree with error-ignoring version for atexit cleanup
+original_rmtree = shutil.rmtree
+def rmtree_ignore_errors(path, *args, **kwargs):
+    """Wrapper for rmtree that ignores Windows permission errors."""
+    try:
+        original_rmtree(path, *args, **kwargs)
+    except PermissionError:
+        # Ignore Windows file locking errors - temp files will be cleaned by OS
+        pass
+shutil.rmtree = rmtree_ignore_errors
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
