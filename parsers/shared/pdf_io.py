@@ -220,12 +220,20 @@ class EnhancedPDFExtractor:
             try:
                 xref = img[0]
                 pix = fitz.Pixmap(doc, xref)
+
+                # Convert CMYK to RGB if needed
+                if pix.n - pix.alpha > 3:  # CMYK or other color space
+                    pix = fitz.Pixmap(fitz.csRGB, pix)  # Convert to RGB
+
+                # Now save as PNG
                 if pix.n - pix.alpha < 4:  # GRAY or RGB
                     img_data = pix.tobytes("png")
                     images.append(Image.open(io.BytesIO(img_data)))
                 pix = None
             except Exception as e:
-                self.logger.warning(f"Could not extract image {img_index}: {e}")
+                # Only log if it's not the common CMYK issue
+                if "pixmap must be grayscale or rgb" not in str(e):
+                    self.logger.warning(f"Could not extract image {img_index}: {e}")
 
         # Try to extract tables (basic table detection)
         tables = self._detect_tables_from_text(text)
