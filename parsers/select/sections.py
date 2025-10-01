@@ -196,6 +196,7 @@ class SelectSectionExtractor:
         """Extract product model tables using table normalization and melting for finish columns."""
         self.tracker.set_context(section="Model Tables", method="table_extraction", page_number=page_number)
         products = []
+        seen_skus = set()  # Track SKUs across all extraction methods
 
         for table_idx, table in enumerate(tables):
             if isinstance(table, pd.DataFrame):
@@ -213,12 +214,31 @@ class SelectSectionExtractor:
             # Try structured extraction first (for proper tables with headers)
             structured_products = self._extract_products_structured(df, table_idx, page_number)
             if structured_products:
-                products.extend(structured_products)
-                continue
+                for p in structured_products:
+                    sku = p.value.get('sku')
+                    if sku and sku not in seen_skus:
+                        products.append(p)
+                        seen_skus.add(sku)
 
-            # Fallback to pattern-based extraction for complex layouts
-            pattern_products = self._extract_products_from_table_simple(df, table_idx, page_number)
-            products.extend(pattern_products)
+            # If structured didn't work, try pattern-based extraction for complex layouts
+            if not structured_products:
+                pattern_products = self._extract_products_from_table_simple(df, table_idx, page_number)
+                if pattern_products:
+                    for p in pattern_products:
+                        sku = p.value.get('sku')
+                        if sku and sku not in seen_skus:
+                            products.append(p)
+                            seen_skus.add(sku)
+
+            # ENHANCEMENT: ALWAYS run grid extraction to catch any missed price cells
+            # This adds products that structured/pattern methods may have missed
+            grid_products = self._extract_all_price_cells(df, table_idx, page_number, existing_skus=seen_skus)
+            if grid_products:
+                for p in grid_products:
+                    sku = p.value.get('sku')
+                    if sku and sku not in seen_skus:
+                        products.append(p)
+                        seen_skus.add(sku)
 
         self.logger.info(f"Extracted {len(products)} products from model tables")
         return products
@@ -506,9 +526,9 @@ class SelectSectionExtractor:
                         header_text = str(df.iloc[0, col_idx]).strip().upper()
                         if any(f in header_text for f in ['CL', 'BR', 'BK']):
                             finish_code = next((f for f in ['CL', 'BR', 'BK'] if f in header_text), None)
-                    # Last resort: use position-based code
+                    # SKIP products without valid finish codes - no position-based fallback
                     if not finish_code:
-                        finish_code = f"V{col_idx}"  # Variant by column position
+                        continue  # Skip this product entirely
 
                 # Build full SKU with position to make unique
                 sku = f"{base_model}-{finish_code}-{variant}".replace(' ', '') if variant else f"{base_model}-{finish_code}"
@@ -755,6 +775,141 @@ class SelectSectionExtractor:
             'FR3': 'Fire Rating 3 Hour'
         }
         return names.get(option_code, option_code)
+
+    def _extract_all_price_cells(self, df: pd.DataFrame, table_idx: int, page_number: int = None, existing_skus: set = None) -> List[ParsedItem]:
+        """
+        ENHANCED: Extract ALL price cells as products with inference.
+        This aggressive mode extracts every valid price and infers model/finish/specs from context.
+        Only creates products with valid finish codes (CL/BR/BK).
+        """
+        products = []
+        if existing_skus is None:
+            existing_skus = set()
+
+        if df.empty or len(df) < 2:
+            return products
+
+        # Get headers for column inference
+        headers = [str(col).strip().upper() for col in df.columns]
+
+        # Process each row
+        for row_idx, row in df.iterrows():
+            if row_idx == 0:  # Skip header
+                continue
+
+            # Get row header (first column - usually model)
+            row_header = str(row.iloc[0]).strip() if len(row) > 0 else ""
+
+            # Extract base model from row header
+            model_match = re.search(r'(SL\s*\d{2})', row_header, re.IGNORECASE)
+            base_model = model_match.group(1).replace(' ', '').upper() if model_match else None
+
+            if not base_model:
+                continue
+
+            # Extract length/duty from row if present
+            length_duty = ""
+            length_match = re.search(r'(HD\d+|LD\d+|LL|\d+\s*")', row_header)
+            if length_match:
+                length_duty = length_match.group(1).replace(' ', '')
+
+            # Scan all cells in this row for prices
+            for col_idx, cell_value in enumerate(row):
+                cell_str = str(cell_value).strip()
+
+                if cell_str.lower() in ['nan', 'none', '', '-', 'n/a']:
+                    continue
+
+                # Extract price
+                price = None
+                price_matches = re.findall(r'\$?\s*(\d+\.?\d{0,2})', cell_str.replace(',', ''))
+                for price_str in price_matches:
+                    try:
+                        pval = float(price_str)
+                        if 10 <= pval <= 5000:
+                            price = pval
+                            break
+                    except:
+                        continue
+
+                if not price:
+                    continue
+
+                # Infer finish from column header - ONLY accept valid finish codes
+                finish_code = None
+                col_header = headers[col_idx] if col_idx < len(headers) else ""
+
+                # Check column header for finish code
+                if col_header in ['CL', 'BR', 'BK']:
+                    finish_code = col_header
+                elif 'CL' in col_header or 'CLEAR' in col_header:
+                    finish_code = 'CL'
+                elif 'BR' in col_header or 'BRONZE' in col_header:
+                    finish_code = 'BR'
+                elif 'BK' in col_header or 'BLACK' in col_header:
+                    finish_code = 'BK'
+                else:
+                    # Check cell text for finish code
+                    if re.search(r'\bCL\b', cell_str, re.IGNORECASE):
+                        finish_code = 'CL'
+                    elif re.search(r'\bBR\b', cell_str, re.IGNORECASE):
+                        finish_code = 'BR'
+                    elif re.search(r'\bBK\b', cell_str, re.IGNORECASE):
+                        finish_code = 'BK'
+
+                # SKIP this cell if we couldn't identify a valid finish code
+                # This prevents creating products with generic/invalid finishes
+                if not finish_code:
+                    continue
+
+                # Check for length/duty in cell if not in row header
+                if not length_duty:
+                    length_match = re.search(r'(HD\d+|LD\d+|LL|\d+\s*")', cell_str)
+                    if length_match:
+                        length_duty = length_match.group(1).replace(' ', '')
+
+                # Build SKU
+                sku_parts = [base_model, finish_code]
+                if length_duty:
+                    sku_parts.append(length_duty)
+
+                sku = '-'.join(sku_parts)
+
+                # Skip duplicates (check both local and existing SKUs)
+                if sku in existing_skus:
+                    continue
+
+                # Create product
+                product_data = {
+                    'sku': sku,
+                    'model': base_model,
+                    'series': 'SL',
+                    'finish': finish_code,
+                    'length_duty': length_duty or 'Standard',
+                    'base_price': price,
+                    'currency': 'USD',
+                    'manufacturer': 'SELECT Hinges',
+                    'is_active': True,
+                    'description': f"{base_model} {finish_code} {length_duty or ''}".strip()
+                }
+
+                # Confidence based on inference level
+                # High confidence since we validated finish code is CL/BR/BK
+                confidence = 0.85
+                if not length_duty:
+                    confidence -= 0.05  # Slightly lower if no length/duty info
+                confidence = max(confidence, 0.80)
+
+                item = self.tracker.create_parsed_item(
+                    value=product_data,
+                    data_type="product",
+                    raw_text=f"{base_model} {finish_code} ${price}",
+                    row_index=row_idx,
+                    confidence=confidence
+                )
+                products.append(item)
+
+        return products
 
     def _get_option_constraints(self, option_code: str) -> Dict[str, Any]:
         """Get constraints for option."""
