@@ -221,13 +221,17 @@ class HagerParser:
 
         # PERFORMANCE OPTIMIZATION: Only process pages likely to contain product tables
         # Skip pages without product indicators (BB, WT, ECBB patterns or $ prices)
-        product_indicators = ['BB', 'WT', 'ECBB', '$', 'Price', 'Model', 'Series']
+        # ENHANCED: Require multiple indicators to avoid processing irrelevant pages
+        product_keywords = ['BB', 'WT', 'ECBB', 'Model', 'Series']
 
         pages_to_process = []
         for page in self.document.pages:
             page_text = page.text or ''
-            # Quick check: does this page have product-like content?
-            if any(indicator in page_text for indicator in product_indicators):
+            # Require: (1) Must have price symbol AND (2) Must have 2+ product keywords
+            has_price = '$' in page_text
+            keyword_count = sum(1 for kw in product_keywords if kw in page_text)
+
+            if has_price and keyword_count >= 2:
                 pages_to_process.append(page)
 
         self.logger.info(f"Processing {len(pages_to_process)}/{len(self.document.pages)} pages with product indicators")

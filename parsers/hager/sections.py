@@ -394,6 +394,7 @@ class HagerSectionExtractor:
         """Extract product items from tables using Camelot DataFrame parsing."""
         self.tracker.set_context(section="Item Tables", page_number=page_number)
         products = []
+        seen_skus = set()  # Track SKUs to prevent duplicates
 
         # Process Camelot tables for structured data
         for table_idx, table in enumerate(tables):
@@ -404,7 +405,12 @@ class HagerSectionExtractor:
             # Check if this is a product table
             if self._is_hager_product_table(df):
                 table_products = self._extract_products_from_table(df, table_idx, page_number)
-                products.extend(table_products)
+                # Add only unique products
+                for p in table_products:
+                    sku = p.value.get('sku') or p.value.get('model_number')
+                    if sku and sku not in seen_skus:
+                        products.append(p)
+                        seen_skus.add(sku)
 
         # Fallback to text patterns for specific series
         for series_code, pattern in self.product_patterns.items():
@@ -413,7 +419,12 @@ class HagerSectionExtractor:
                 series_products = self._extract_products_from_series_text(
                     series_match.group(0), series_code, page_number
                 )
-                products.extend(series_products)
+                # Add only unique products
+                for p in series_products:
+                    sku = p.value.get('sku') or p.value.get('model_number')
+                    if sku and sku not in seen_skus:
+                        products.append(p)
+                        seen_skus.add(sku)
 
         return products
 
