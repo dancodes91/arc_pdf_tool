@@ -97,10 +97,15 @@ class HagerSectionExtractor:
     def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice"):
         """Extract tables from specific page using Camelot."""
         import camelot
+        import gc
         page_str = str(page_number)
         try:
             tables = camelot.read_pdf(pdf_path, pages=page_str, flavor=flavor)
-            return [t.df for t in tables] if tables.n else []
+            result = [t.df for t in tables] if tables.n else []
+            # Force cleanup to prevent Windows file locking on temp files
+            del tables
+            gc.collect()
+            return result
         except Exception as e:
             logger.warning(f"Camelot extraction failed for page {page_number}: {e}")
             return []
