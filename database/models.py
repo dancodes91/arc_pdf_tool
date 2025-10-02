@@ -37,7 +37,7 @@ class PriceBook(Base):
     
     # Relationships
     manufacturer = relationship("Manufacturer", back_populates="price_books")
-    products = relationship("Product", back_populates="price_book")
+    products = relationship("Product", back_populates="price_book", cascade="all, delete-orphan")
 
 class ProductFamily(Base):
     """Product families/categories"""
@@ -60,7 +60,7 @@ class Product(Base):
     
     id = Column(Integer, primary_key=True)
     family_id = Column(Integer, ForeignKey('product_families.id'))
-    price_book_id = Column(Integer, ForeignKey('price_books.id'), nullable=False)
+    price_book_id = Column(Integer, ForeignKey('price_books.id', ondelete='CASCADE'), nullable=False)
     sku = Column(String(100), nullable=False)
     model = Column(String(100))
     description = Column(Text)
