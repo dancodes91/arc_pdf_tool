@@ -1,0 +1,661 @@
+{
+  "range": "101-200",
+  "pages_analyzed": 100,
+  "sections_found": [
+    {
+      "page": 101,
+      "type": "section_title",
+      "text": "Extra Heavy Duty Hold Open Cushion Stop Arm",
+      "match": "Extra Heavy Duty Hold Open Cushion Stop Arm"
+    },
+    {
+      "page": 105,
+      "type": "section_title",
+      "text": "Closer Body Only",
+      "match": "Closer Body Only"
+    },
+    {
+      "page": 107,
+      "type": "section_title",
+      "text": "Blade Stop Spacer",
+      "match": "Blade Stop Spacer"
+    },
+    {
+      "page": 108,
+      "type": "section_title",
+      "text": "CCaassee BBooxx",
+      "match": "CCaassee BBooxx"
+    },
+    {
+      "page": 110,
+      "type": "section_title",
+      "text": "CaCsaese BBooxx",
+      "match": "CaCsaese BBooxx"
+    },
+    {
+      "page": 111,
+      "type": "section_title",
+      "text": "CaCsaese BBooxx",
+      "match": "CaCsaese BBooxx"
+    },
+    {
+      "page": 112,
+      "type": "section_title",
+      "text": "CaCsaese BBooxx",
+      "match": "CaCsaese BBooxx"
+    },
+    {
+      "page": 113,
+      "type": "section_title",
+      "text": "CCaassee BBooxx",
+      "match": "CCaassee BBooxx"
+    },
+    {
+      "page": 114,
+      "type": "section_title",
+      "text": "CCaassee BBooxx",
+      "match": "CCaassee BBooxx"
+    },
+    {
+      "page": 115,
+      "type": "section_title",
+      "text": "CCaassee BBooxx",
+      "match": "CCaassee BBooxx"
+    },
+    {
+      "page": 116,
+      "type": "section_title",
+      "text": "CCaassee BBooxx",
+      "match": "CCaassee BBooxx"
+    },
+    {
+      "page": 117,
+      "type": "section_title",
+      "text": "CCaassee BBooxx",
+      "match": "CCaassee BBooxx"
+    },
+    {
+      "page": 118,
+      "type": "section_title",
+      "text": "CCaassee BBooxx",
+      "match": "CCaassee BBooxx"
+    },
+    {
+      "page": 119,
+      "type": "section_title",
+      "text": "CCaassee BBooxx",
+      "match": "CCaassee BBooxx"
+    },
+    {
+      "page": 120,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 121,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 122,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 123,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 124,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 125,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 126,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 127,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 128,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 129,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 130,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 131,
+      "type": "section_title",
+      "text": "SEelercietrsi fied Products",
+      "match": "SEelercietrsi fied Products"
+    },
+    {
+      "page": 132,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 133,
+      "type": "section_title",
+      "text": "Electrified Products",
+      "match": "Electrified Products"
+    },
+    {
+      "page": 134,
+      "type": "section_title",
+      "text": "Description Mount Finish List",
+      "match": "Description Mount Finish List"
+    },
+    {
+      "page": 136,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 137,
+      "type": "section_title",
+      "text": "Low Energy Automatic Door Opener",
+      "match": "Low Energy Automatic Door Opener"
+    },
+    {
+      "page": 138,
+      "type": "section_title",
+      "text": "Low Energy Automatic Door Opener",
+      "match": "Low Energy Automatic Door Opener"
+    },
+    {
+      "page": 139,
+      "type": "section_title",
+      "text": "Low Energy Automatic Door Opener",
+      "match": "Low Energy Automatic Door Opener"
+    },
+    {
+      "page": 141,
+      "type": "section_title",
+      "text": "Mounting Options",
+      "match": "Mounting Options"
+    },
+    {
+      "page": 142,
+      "type": "section_title",
+      "text": "Bodyguard Sensor",
+      "match": "Bodyguard Sensor"
+    },
+    {
+      "page": 143,
+      "type": "section_title",
+      "text": "Exit Devices",
+      "match": "Exit Devices"
+    },
+    {
+      "page": 144,
+      "type": "section_title",
+      "text": "Exit Devices",
+      "match": "Exit Devices"
+    },
+    {
+      "page": 145,
+      "type": "section_title",
+      "text": "Exit Devices",
+      "match": "Exit Devices"
+    },
+    {
+      "page": 146,
+      "type": "section_title",
+      "text": "Exit Devices",
+      "match": "Exit Devices"
+    },
+    {
+      "page": 147,
+      "type": "section_title",
+      "text": "Exit Devices",
+      "match": "Exit Devices"
+    },
+    {
+      "page": 148,
+      "type": "section_title",
+      "text": "Exit Devices",
+      "match": "Exit Devices"
+    },
+    {
+      "page": 149,
+      "type": "section_title",
+      "text": "Exit Devices",
+      "match": "Exit Devices"
+    },
+    {
+      "page": 150,
+      "type": "section_title",
+      "text": "EExxiitt DDeevviicceess",
+      "match": "EExxiitt DDeevviicceess"
+    },
+    {
+      "page": 151,
+      "type": "section_title",
+      "text": "List Fire Case",
+      "match": "List Fire Case"
+    },
+    {
+      "page": 152,
+      "type": "section_title",
+      "text": "List Fire Case",
+      "match": "List Fire Case"
+    },
+    {
+      "page": 153,
+      "type": "section_title",
+      "text": "List Fire Case",
+      "match": "List Fire Case"
+    },
+    {
+      "page": 154,
+      "type": "section_title",
+      "text": "List Fire Case",
+      "match": "List Fire Case"
+    },
+    {
+      "page": 155,
+      "type": "section_title",
+      "text": "List Fire Case",
+      "match": "List Fire Case"
+    },
+    {
+      "page": 156,
+      "type": "section_title",
+      "text": "Blank Escutcheon",
+      "match": "Blank Escutcheon"
+    },
+    {
+      "page": 158,
+      "type": "section_title",
+      "text": "Cylinder Escutcheon",
+      "match": "Cylinder Escutcheon"
+    },
+    {
+      "page": 160,
+      "type": "section_title",
+      "text": "Dummy Trim",
+      "match": "Dummy Trim"
+    },
+    {
+      "page": 162,
+      "type": "section_title",
+      "text": "Night Latch",
+      "match": "Night Latch"
+    },
+    {
+      "page": 164,
+      "type": "section_title",
+      "text": "Pull when device is",
+      "match": "Pull when device is"
+    },
+    {
+      "page": 166,
+      "type": "section_title",
+      "text": "Cylinder Dogging Conversion Kit for panic rated",
+      "match": "Cylinder Dogging Conversion Kit for panic rated"
+    },
+    {
+      "page": 169,
+      "type": "section_title",
+      "text": "Flush End Cap",
+      "match": "Flush End Cap"
+    },
+    {
+      "page": 172,
+      "type": "section_title",
+      "text": "List Fire Case",
+      "match": "List Fire Case"
+    },
+    {
+      "page": 173,
+      "type": "section_title",
+      "text": "cylinder with standard cam must be",
+      "match": "cylinder with standard cam must be"
+    },
+    {
+      "page": 174,
+      "type": "section_title",
+      "text": "cylinder with standard cam must be",
+      "match": "cylinder with standard cam must be"
+    },
+    {
+      "page": 176,
+      "type": "section_title",
+      "text": "Cylinder Escutcheon",
+      "match": "Cylinder Escutcheon"
+    },
+    {
+      "page": 177,
+      "type": "section_title",
+      "text": "Dummy Trim",
+      "match": "Dummy Trim"
+    },
+    {
+      "page": 178,
+      "type": "section_title",
+      "text": "Night Latch",
+      "match": "Night Latch"
+    },
+    {
+      "page": 183,
+      "type": "section_title",
+      "text": "List Fire Case",
+      "match": "List Fire Case"
+    },
+    {
+      "page": 184,
+      "type": "section_title",
+      "text": "Blank Escutcheon",
+      "match": "Blank Escutcheon"
+    },
+    {
+      "page": 185,
+      "type": "section_title",
+      "text": "Dummy Trim",
+      "match": "Dummy Trim"
+    },
+    {
+      "page": 186,
+      "type": "section_title",
+      "text": "Fixed Case",
+      "match": "Fixed Case"
+    },
+    {
+      "page": 187,
+      "type": "section_title",
+      "text": "Fixed Case",
+      "match": "Fixed Case"
+    },
+    {
+      "page": 188,
+      "type": "section_title",
+      "text": "Pull Plate",
+      "match": "Pull Plate"
+    },
+    {
+      "page": 190,
+      "type": "section_title",
+      "text": "Rim Device",
+      "match": "Rim Device"
+    },
+    {
+      "page": 191,
+      "type": "section_title",
+      "text": "Rod Guide Replacement",
+      "match": "Rod Guide Replacement"
+    },
+    {
+      "page": 193,
+      "type": "section_title",
+      "text": "List Fire Case",
+      "match": "List Fire Case"
+    },
+    {
+      "page": 194,
+      "type": "section_title",
+      "text": "Rim Cylinder",
+      "match": "Rim Cylinder"
+    },
+    {
+      "page": 195,
+      "type": "section_title",
+      "text": "Retaining Cup",
+      "match": "Retaining Cup"
+    },
+    {
+      "page": 197,
+      "type": "section_title",
+      "text": "TABLE OF CONTENTS",
+      "match": "TABLE OF CONTENTS"
+    },
+    {
+      "page": 199,
+      "type": "section_title",
+      "text": "INTRODUCTION",
+      "match": "INTRODUCTION"
+    },
+    {
+      "page": 200,
+      "type": "section_title",
+      "text": "Interior Strike",
+      "match": "Interior Strike"
+    }
+  ],
+  "tables_found": [
+    {
+      "page": 103,
+      "table_index": 1,
+      "rows": 2,
+      "cols": 3,
+      "sample_rows": [
+        [
+          "Delayed Action Valve",
+          "",
+          "23.07"
+        ],
+        [
+          "Check with factory for pricing and availability of plated products.",
+          "",
+          "POA"
+        ]
+      ],
+      "has_prices": true
+    },
+    {
+      "page": 134,
+      "table_index": 0,
+      "rows": 40,
+      "cols": 5,
+      "sample_rows": [
+        [
+          "Description",
+          "Mount",
+          "Finish",
+          "List",
+          ""
+        ],
+        [
+          "8318 Single Operator",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "1 unit, single cover, non handed",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "has_prices": false
+    },
+    {
+      "page": 135,
+      "table_index": 1,
+      "rows": 49,
+      "cols": 5,
+      "sample_rows": [
+        [
+          "8319 Simultaneous Pair",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "2 units, double cover, non-handed",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Push arms include 35mm spindle",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "has_prices": true
+    },
+    {
+      "page": 136,
+      "table_index": 1,
+      "rows": 42,
+      "cols": 5,
+      "sample_rows": [
+        [
+          "Stocking Inventory Ordering Options",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "The below items do not inlude arms.",
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "Arms need to be ordered seperately.",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "has_prices": false
+    },
+    {
+      "page": 146,
+      "table_index": 0,
+      "rows": 15,
+      "cols": 4,
+      "sample_rows": [
+        [
+          "FUNCTION",
+          "FUNCTION #",
+          "DESCRIPTION",
+          "ADD TO LIST\nPRICE"
+        ],
+        [
+          "Request to Exit",
+          "RX",
+          "Used to shunt an alarm, activate an alarm, provide release of magnetic locks, or\nsignal a console.",
+          "$383.12"
+        ],
+        [
+          "Dual Request to Exit",
+          "RX2",
+          "Features two SPDT switches",
+          "$460.00"
+        ]
+      ],
+      "has_prices": true
+    },
+    {
+      "page": 147,
+      "table_index": 0,
+      "rows": 5,
+      "cols": 3,
+      "sample_rows": [
+        [
+          "PRODUCT #",
+          "DESCRIPTION",
+          "LIST PRICE"
+        ],
+        [
+          "2903",
+          "Provides 24 Vollt DC power for Fail Safe or Fail Secure locking devices and interface with building alarm controls,\ncard readers, keypads, and other door controls",
+          "Reference Electrified\nProducts for Pricing"
+        ],
+        [
+          "2904",
+          "Provides 24 Vollt DC power and control for openings with an electrified locking device and automatic door\noperator",
+          "Reference Electrified\nProducts for Pricing"
+        ]
+      ],
+      "has_prices": false
+    }
+  ],
+  "sample_tables": [
+    {
+      "page": 101,
+      "tables": []
+    },
+    {
+      "page": 111,
+      "tables": []
+    },
+    {
+      "page": 121,
+      "tables": []
+    },
+    {
+      "page": 131,
+      "tables": []
+    },
+    {
+      "page": 141,
+      "tables": []
+    },
+    {
+      "page": 151,
+      "tables": []
+    },
+    {
+      "page": 161,
+      "tables": []
+    },
+    {
+      "page": 171,
+      "tables": []
+    },
+    {
+      "page": 181,
+      "tables": []
+    },
+    {
+      "page": 191,
+      "tables": []
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,1040 @@
+{
+  "range": "201-300",
+  "pages_analyzed": 100,
+  "sections_found": [
+    {
+      "page": 201,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 202,
+      "type": "section_title",
+      "text": "Latchbolts Box",
+      "match": "Latchbolts Box"
+    },
+    {
+      "page": 203,
+      "type": "section_title",
+      "text": "Components and Screwpacks",
+      "match": "Components and Screwpacks"
+    },
+    {
+      "page": 204,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 205,
+      "type": "section_title",
+      "text": "Latchbolts",
+      "match": "Latchbolts"
+    },
+    {
+      "page": 206,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 207,
+      "type": "section_title",
+      "text": "Components and Screwpacks",
+      "match": "Components and Screwpacks"
+    },
+    {
+      "page": 208,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 209,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 210,
+      "type": "section_title",
+      "text": "Components and Screwpacks",
+      "match": "Components and Screwpacks"
+    },
+    {
+      "page": 211,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 212,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 213,
+      "type": "section_title",
+      "text": "Components and Screwpacks",
+      "match": "Components and Screwpacks"
+    },
+    {
+      "page": 214,
+      "type": "section_title",
+      "text": "Components and Screwpacks",
+      "match": "Components and Screwpacks"
+    },
+    {
+      "page": 215,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 216,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 217,
+      "type": "section_title",
+      "text": "Description Function List",
+      "match": "Description Function List"
+    },
+    {
+      "page": 218,
+      "type": "section_title",
+      "text": "Latchbolts",
+      "match": "Latchbolts"
+    },
+    {
+      "page": 219,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 220,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 221,
+      "type": "section_title",
+      "text": "Latchbolts",
+      "match": "Latchbolts"
+    },
+    {
+      "page": 222,
+      "type": "section_title",
+      "text": "Latchbolts",
+      "match": "Latchbolts"
+    },
+    {
+      "page": 223,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 224,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 225,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 226,
+      "type": "section_title",
+      "text": "Latchbolts",
+      "match": "Latchbolts"
+    },
+    {
+      "page": 227,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 228,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 229,
+      "type": "section_title",
+      "text": "Latchbolts Box",
+      "match": "Latchbolts Box"
+    },
+    {
+      "page": 230,
+      "type": "section_title",
+      "text": "Components and Screwpacks",
+      "match": "Components and Screwpacks"
+    },
+    {
+      "page": 231,
+      "type": "section_title",
+      "text": "HOW TO ORDER EXAMPLE",
+      "match": "HOW TO ORDER EXAMPLE"
+    },
+    {
+      "page": 232,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 233,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 234,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 235,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 236,
+      "type": "section_title",
+      "text": "Description Function List",
+      "match": "Description Function List"
+    },
+    {
+      "page": 237,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 238,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 239,
+      "type": "section_title",
+      "text": "Description",
+      "match": "Description"
+    },
+    {
+      "page": 240,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 241,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 242,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 243,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 244,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 245,
+      "type": "section_title",
+      "text": "Fixed Cylinder Key Box",
+      "match": "Fixed Cylinder Key Box"
+    },
+    {
+      "page": 246,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 247,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 248,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 249,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 250,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 251,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 252,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 253,
+      "type": "section_title",
+      "text": "Description Finish List",
+      "match": "Description Finish List"
+    },
+    {
+      "page": 254,
+      "type": "section_title",
+      "text": "Cylinder Collars",
+      "match": "Cylinder Collars"
+    },
+    {
+      "page": 255,
+      "type": "section_title",
+      "text": "Fixed Cylinder and SFIC Core Parts",
+      "match": "Fixed Cylinder and SFIC Core Parts"
+    },
+    {
+      "page": 256,
+      "type": "section_title",
+      "text": "Description List",
+      "match": "Description List"
+    },
+    {
+      "page": 257,
+      "type": "section_title",
+      "text": "Description List",
+      "match": "Description List"
+    },
+    {
+      "page": 258,
+      "type": "section_title",
+      "text": "Description List",
+      "match": "Description List"
+    },
+    {
+      "page": 259,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 260,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 261,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 262,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 263,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 264,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 265,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 266,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 267,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 268,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 269,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 270,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 271,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 272,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 273,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 274,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 275,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 276,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 277,
+      "type": "section_title",
+      "text": "Residential Hinges",
+      "match": "Residential Hinges"
+    },
+    {
+      "page": 278,
+      "type": "section_title",
+      "text": "Series eConestoga Barn Door Hardware Series",
+      "match": "Series eConestoga Barn Door Hardware Series"
+    },
+    {
+      "page": 279,
+      "type": "section_title",
+      "text": "eConestoga Barn Door Hardware Series eConestoga Barn Door Hardware Series Series",
+      "match": "eConestoga Barn Door Hardware Series eConestoga Barn Door Hardware Series Series"
+    },
+    {
+      "page": 280,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 281,
+      "type": "section_title",
+      "text": "HOW TO ORDER",
+      "match": "HOW TO ORDER"
+    },
+    {
+      "page": 282,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 283,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 284,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 285,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 286,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 287,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 288,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 289,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 290,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 291,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 292,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 293,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 294,
+      "type": "section_title",
+      "text": "Roton Continuous Hinges",
+      "match": "Roton Continuous Hinges"
+    },
+    {
+      "page": 295,
+      "type": "section_title",
+      "text": "Roton Continuous Geared Hinges",
+      "match": "Roton Continuous Geared Hinges"
+    },
+    {
+      "page": 296,
+      "type": "section_title",
+      "text": "Roton Continuous Geared Hinges",
+      "match": "Roton Continuous Geared Hinges"
+    },
+    {
+      "page": 297,
+      "type": "section_title",
+      "text": "Roton Continuous Geared Hinges",
+      "match": "Roton Continuous Geared Hinges"
+    },
+    {
+      "page": 298,
+      "type": "section_title",
+      "text": "Roton Continuous Geared Hinges",
+      "match": "Roton Continuous Geared Hinges"
+    },
+    {
+      "page": 299,
+      "type": "section_title",
+      "text": "SReortioens Continuous Geared Hinges",
+      "match": "SReortioens Continuous Geared Hinges"
+    },
+    {
+      "page": 300,
+      "type": "section_title",
+      "text": "Roton Continuous Geared Hinges",
+      "match": "Roton Continuous Geared Hinges"
+    }
+  ],
+  "tables_found": [
+    {
+      "page": 260,
+      "table_index": 0,
+      "rows": 16,
+      "cols": 5,
+      "sample_rows": [
+        [
+          "US & HAGER",
+          "DESCRIPTION",
+          "STEEL",
+          "BRASS",
+          "STAINLESS STEEL"
+        ],
+        [
+          "1D",
+          "Black",
+          "N/A",
+          "N/A",
+          "N/A"
+        ],
+        [
+          "2D",
+          "Brass Tone Dichromate",
+          "N/A",
+          "N/A",
+          "N/A"
+        ]
+      ],
+      "has_prices": false
+    },
+    {
+      "page": 261,
+      "table_index": 0,
+      "rows": 19,
+      "cols": 4,
+      "sample_rows": [
+        [
+          "GROUP",
+          "DESCRIPTION",
+          "DISC %",
+          ""
+        ],
+        [
+          "BB1541 - RCBB1541 - RCBB1542 (3.5)",
+          null,
+          null,
+          null
+        ],
+        [
+          "80M 3.5 - SS BB (32-32D)",
+          null,
+          null,
+          null
+        ]
+      ],
+      "has_prices": false
+    },
+    {
+      "page": 261,
+      "table_index": 1,
+      "rows": 23,
+      "cols": 4,
+      "sample_rows": [
+        [
+          "GROUP",
+          "DESCRIPTION",
+          "DISC %",
+          ""
+        ],
+        [
+          "1741 - RC1741 - 1842 (4.0)",
+          null,
+          null,
+          null
+        ],
+        [
+          "91A 4.0 - PB BOX (10A-ABA-AN-10R-1D-15-26-26D)\n91C 4.0 - PB BOX (10R-15)\n91G 4.0 - PB BOX (2D-4-P-3LB)",
+          null,
+          null,
+          null
+        ]
+      ],
+      "has_prices": false
+    },
+    {
+      "page": 261,
+      "table_index": 2,
+      "rows": 2,
+      "cols": 1,
+      "sample_rows": [
+        [
+          "RCBB1841 (4.0)"
+        ],
+        [
+          "9CA 4.0 - BB BULK (10R-15)"
+        ]
+      ],
+      "has_prices": false
+    },
+    {
+      "page": 283,
+      "table_index": 0,
+      "rows": 12,
+      "cols": 5,
+      "sample_rows": [
+        [
+          "UL10C Fire Rated Roton",
+          "Fully\nConcealed",
+          "Full\nSurface",
+          "Half\nSurface",
+          "NOTES:\n1. All Roton\nhinges will be\nmarked with\nUL stamp if they are\nfire-rated.\n2. Several hinge\nmodels cannot be\nfire-rated. Check each\nprofile.\n3. Models that require\nstuds have an extra\ncharge. Four studs\nare required for UL\nstud hinges. Add to\nthe hinge list price\nbefore applying buying\ngroup discount - add\n$56.80."
+        ],
+        [
+          "20 Minute Fire Rated Wood Core Door x Fire Rated Hollow Metal\nFrame",
+          "UL \u2014 FF STANDARD",
+          null,
+          null,
+          null
+        ],
+        [
+          "20 Minute Fire Rated Metal Door x Fire Rated Hollow Metal Frame",
+          "UL \u2014 FF STANDARD",
+          null,
+          null,
+          null
+        ]
+      ],
+      "has_prices": true
+    },
+    {
+      "page": 284,
+      "table_index": 0,
+      "rows": 24,
+      "cols": 3,
+      "sample_rows": [
+        [
+          "Roton Cover Channel\nCompatibility",
+          null,
+          null
+        ],
+        [
+          "Hinge\nModel",
+          "CCBF\ntalF",
+          "dnuoR\nCCBR"
+        ],
+        [
+          "750-134",
+          "\u2022",
+          "\u2022"
+        ]
+      ],
+      "has_prices": false
+    },
+    {
+      "page": 286,
+      "table_index": 0,
+      "rows": 6,
+      "cols": 4,
+      "sample_rows": [
+        [
+          ", RETW",
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "",
+          null,
+          null
+        ],
+        [
+          null,
+          "",
+          ", RETW",
+          ""
+        ]
+      ],
+      "has_prices": false
+    },
+    {
+      "page": 286,
+      "table_index": 1,
+      "rows": 11,
+      "cols": 11,
+      "sample_rows": [
+        [
+          "",
+          "Opening",
+          "Door Height",
+          "Actual Hinge\nLength",
+          "EMN",
+          "ETM",
+          "ETW",
+          "EPT",
+          "E1S",
+          "E",
+          "RETW"
+        ],
+        [
+          "79 SD",
+          "80\u201d",
+          "79-1/8\u201d",
+          "79\u201d",
+          "40-3/4\"",
+          "42-3/4\"",
+          "40-3/4\"",
+          "34-3/8\"",
+          "42-1/2\u201d",
+          "42-1/2\u201d",
+          "\u2013"
+        ],
+        [
+          "79 HD",
+          "80\u201d",
+          "79-1/8\u201d",
+          "79\u201d",
+          "40-3/4\"",
+          "43-3/8\"",
+          "40-3/4\"",
+          "34-3/8\"",
+          "42-1/2\u201d",
+          "42-1/2\u201d",
+          "43-3/8\""
+        ]
+      ],
+      "has_prices": false
+    },
+    {
+      "page": 287,
+      "table_index": 0,
+      "rows": 25,
+      "cols": 8,
+      "sample_rows": [
+        [
+          null,
+          "01 noitaraperP\nTPE\nro\n2\nTPE refsnarT\nnirpuD\nrewoP\nnoV",
+          "stcatnoC\ncirtcelE\ndesopxE",
+          "sehctiwS\ncirtcelE\ndesopxE",
+          "eriW-hguorhT\ncirtcelE\ndelaecnoC",
+          "gnirotinoM\ncirtcelE\ndelaecnoC",
+          "eriW-hguorhT\ngnirotinoM\ncirtcelE\ndna\ndelaecnoC",
+          "eriW-hguorhT\ncirtcelE\nelbavomeR"
+        ],
+        [
+          "Part Number",
+          "EPT",
+          "E",
+          "E1S",
+          "ETW",
+          "EMN",
+          "ETM",
+          "RETW"
+        ],
+        [
+          "780-045HD",
+          "\u2022",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "has_prices": false
+    },
+    {
+      "page": 291,
+      "table_index": 0,
+      "rows": 5,
+      "cols": 2,
+      "sample_rows": [
+        [
+          "Bearing At Top\nBearing\nCover\nChannel",
+          null
+        ],
+        [
+          "",
+          null
+        ],
+        [
+          null,
+          ""
+        ]
+      ],
+      "has_prices": false
+    },
+    {
+      "page": 292,
+      "table_index": 0,
+      "rows": 19,
+      "cols": 3,
+      "sample_rows": [
+        [
+          "Hospital Tip and TIPIT\u00ae Compatibility",
+          null,
+          null
+        ],
+        [
+          "Part #",
+          "Molded Hospital Tip",
+          "TIPIT\u00ae"
+        ],
+        [
+          "750-134",
+          "",
+          "\u2022"
+        ]
+      ],
+      "has_prices": false
+    }
+  ],
+  "sample_tables": [
+    {
+      "page": 201,
+      "tables": []
+    },
+    {
+      "page": 211,
+      "tables": []
+    },
+    {
+      "page": 221,
+      "tables": []
+    },
+    {
+      "page": 231,
+      "tables": []
+    },
+    {
+      "page": 241,
+      "tables": []
+    },
+    {
+      "page": 251,
+      "tables": []
+    },
+    {
+      "page": 261,
+      "tables": [
+        {
+          "page": 261,
+          "table_index": 0,
+          "rows": 19,
+          "cols": 4,
+          "sample_rows": [
+            [
+              "GROUP",
+              "DESCRIPTION",
+              "DISC %",
+              ""
+            ],
+            [
+              "BB1541 - RCBB1541 - RCBB1542 (3.5)",
+              null,
+              null,
+              null
+            ],
+            [
+              "80M 3.5 - SS BB (32-32D)",
+              null,
+              null,
+              null
+            ]
+          ],
+          "has_prices": false
+        },
+        {
+          "page": 261,
+          "table_index": 1,
+          "rows": 23,
+          "cols": 4,
+          "sample_rows": [
+            [
+              "GROUP",
+              "DESCRIPTION",
+              "DISC %",
+              ""
+            ],
+            [
+              "1741 - RC1741 - 1842 (4.0)",
+              null,
+              null,
+              null
+            ],
+            [
+              "91A 4.0 - PB BOX (10A-ABA-AN-10R-1D-15-26-26D)\n91C 4.0 - PB BOX (10R-15)\n91G 4.0 - PB BOX (2D-4-P-3LB)",
+              null,
+              null,
+              null
+            ]
+          ],
+          "has_prices": false
+        }
+      ]
+    },
+    {
+      "page": 271,
+      "tables": []
+    },
+    {
+      "page": 281,
+      "tables": []
+    },
+    {
+      "page": 291,
+      "tables": [
+        {
+          "page": 291,
+          "table_index": 0,
+          "rows": 5,
+          "cols": 2,
+          "sample_rows": [
+            [
+              "Bearing At Top\nBearing\nCover\nChannel",
+              null
+            ],
+            [
+              "",
+              null
+            ],
+            [
+              null,
+              ""
+            ]
+          ],
+          "has_prices": false
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

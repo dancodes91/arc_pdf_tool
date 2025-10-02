@@ -1,0 +1,233 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://arc-pdf-tool.com/schemas/pricing-row.schema.json",
+  "title": "Hager Price Book Product Row",
+  "description": "Normalized schema for a single product/SKU entry from Hager price book",
+  "type": "object",
+  "required": ["sku", "manufacturer", "base_price"],
+  "properties": {
+    "sku": {
+      "type": "string",
+      "description": "Stock Keeping Unit - unique product identifier",
+      "pattern": "^[A-Z0-9-]+$",
+      "examples": ["BB1100US3", "EC1105US10B", "1-810-5824"]
+    },
+    "model": {
+      "type": "string",
+      "description": "Base model number (without finish suffix)",
+      "pattern": "^[A-Z0-9-]+$",
+      "examples": ["BB1100", "EC1105", "700"]
+    },
+    "family": {
+      "type": "string",
+      "description": "Product family/series",
+      "examples": ["BB1100 Series", "EC Series", "Commercial Hinges"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Full product description",
+      "maxLength": 1000
+    },
+    "size": {
+      "type": "string",
+      "description": "Physical size specification",
+      "pattern": "^\\d+(\\.\\d+)?[\"′]?\\s*[x×]\\s*\\d+(\\.\\d+)?[\"′]?$",
+      "examples": ["4½\" × 4½\"", "5\" × 4½\"", "6\" × 4½\""]
+    },
+    "finish": {
+      "type": "string",
+      "description": "BHMA finish code",
+      "pattern": "^US[A-Z0-9]+$",
+      "examples": ["US3", "US4", "US10B", "US26D", "USP"]
+    },
+    "finish_name": {
+      "type": "string",
+      "description": "Human-readable finish name",
+      "examples": ["Bright Brass", "Satin Chrome", "Oil-Rubbed Bronze"]
+    },
+    "material": {
+      "type": "string",
+      "enum": ["Steel", "Brass", "Stainless Steel", "Bronze", "Aluminum"],
+      "description": "Base material"
+    },
+    "base_price": {
+      "type": "number",
+      "description": "Base list price in USD",
+      "minimum": 0,
+      "multipleOf": 0.01,
+      "examples": [125.50, 918.49, 10.30]
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of measure for pricing",
+      "enum": ["each", "per box", "per foot", "per pair", "per set"],
+      "default": "each"
+    },
+    "quantity_per_unit": {
+      "type": "integer",
+      "description": "Quantity in unit (e.g., 100 for 'per box')",
+      "minimum": 1,
+      "default": 1
+    },
+    "currency": {
+      "type": "string",
+      "enum": ["USD"],
+      "default": "USD"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "When this price becomes effective (ISO 8601)",
+      "examples": ["2025-04-07"]
+    },
+    "manufacturer": {
+      "type": "string",
+      "const": "Hager",
+      "description": "Manufacturer name"
+    },
+    "options": {
+      "type": "array",
+      "description": "Available options/add-ons for this product",
+      "items": {
+        "type": "object",
+        "required": ["code", "add_type", "amount"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Option code",
+            "examples": ["ETW", "CTW", "EPT", "EMS", "TIPIT", "NRP"]
+          },
+          "label": {
+            "type": "string",
+            "description": "Option description",
+            "examples": ["Electric Through-Wire", "Non-Removable Pin"]
+          },
+          "add_type": {
+            "type": "string",
+            "enum": ["net_add", "percent", "replace"],
+            "description": "How the option modifies price"
+          },
+          "amount": {
+            "type": "number",
+            "description": "Dollar amount or percentage"
+          },
+          "constraints": {
+            "type": "object",
+            "description": "Constraints on when option is available",
+            "properties": {
+              "requires": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Other options that must be present"
+              },
+              "excludes": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Options that cannot be combined"
+              },
+              "size_range": {
+                "type": "string",
+                "description": "Size constraint (e.g., '4-8 inches')"
+              }
+            }
+          }
+        }
+      }
+    },
+    "specifications": {
+      "type": "object",
+      "description": "Technical specifications",
+      "properties": {
+        "bearing_type": {
+          "type": "string",
+          "enum": ["Ball Bearing", "Anti-Friction", "Plain Bearing", "None"],
+          "description": "Type of bearing"
+        },
+        "weight_class": {
+          "type": "string",
+          "enum": ["Standard Weight", "Heavy Weight", "Extra Heavy Weight"],
+          "description": "Weight classification"
+        },
+        "fire_rating": {
+          "type": "string",
+          "description": "Fire rating (e.g., '3-hour', 'A-label')",
+          "examples": ["3-hour", "A-label", "B-label"]
+        },
+        "certifications": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Certifications and standards",
+          "examples": [["UL", "ANSI/BHMA A156.1"]]
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes or special instructions",
+      "maxLength": 500
+    },
+    "page_ref": {
+      "type": "integer",
+      "description": "PDF page number where product appears",
+      "minimum": 1,
+      "maximum": 417
+    },
+    "confidence": {
+      "type": "number",
+      "description": "Parser confidence score (0.0-1.0)",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 1.0
+    },
+    "is_active": {
+      "type": "boolean",
+      "description": "Whether product is currently active",
+      "default": true
+    },
+    "retired_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date product was retired (if applicable)"
+    }
+  },
+  "examples": [
+    {
+      "sku": "BB1100US3",
+      "model": "BB1100",
+      "family": "BB1100 Series",
+      "description": "4½\" × 4½\" Ball Bearing Hinge, Standard Weight",
+      "size": "4½\" × 4½\"",
+      "finish": "US3",
+      "finish_name": "Bright Brass",
+      "material": "Brass",
+      "base_price": 125.50,
+      "unit": "each",
+      "quantity_per_unit": 1,
+      "currency": "USD",
+      "effective_date": "2025-04-07",
+      "manufacturer": "Hager",
+      "options": [
+        {
+          "code": "ETW-4",
+          "label": "Electric Through-Wire (4-wire)",
+          "add_type": "net_add",
+          "amount": 918.49
+        },
+        {
+          "code": "NRP",
+          "label": "Non-Removable Pin",
+          "add_type": "net_add",
+          "amount": 15.00
+        }
+      ],
+      "specifications": {
+        "bearing_type": "Ball Bearing",
+        "weight_class": "Standard Weight",
+        "certifications": ["ANSI/BHMA A156.1", "UL Listed"]
+      },
+      "page_ref": 45,
+      "confidence": 1.0,
+      "is_active": true
+    }
+  ]
+}
