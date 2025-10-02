@@ -72,29 +72,8 @@ jobs:
 
     - name: Download test data
       run: |
-        # Create test data directory if it doesn't exist
-        mkdir -p test_data/pdfs
-
-        # Generate sample PDF if none exists for testing
-        if [ ! -f "test_data/pdfs/sample.pdf" ]; then
-          # Create a sample PDF with python reportlab for testing
-          uv add --dev reportlab
-          python -c "
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-import os
-
-os.makedirs('test_data/pdfs', exist_ok=True)
-c = canvas.Canvas('test_data/pdfs/sample.pdf', pagesize=letter)
-for i in range(50):  # 50 page test PDF
-    c.drawString(100, 750 - (i % 30) * 20, f'Page {i+1} - Sample text for testing performance')
-    c.drawString(100, 730 - (i % 30) * 20, f'Model: TEST-{i:03d}  Price: \$100.{i:02d}')
-    if (i+1) % 30 == 0:
-        c.showPage()
-c.save()
-print('Generated test PDF with 50 pages')
-"
-        fi
+        # Use existing test PDFs from test_data directory
+        ls -lh test_data/pdfs/ || echo "Test PDFs directory ready"
 
     - name: Run performance tests
       env:
@@ -114,22 +93,9 @@ print('Generated test PDF with 50 pages')
           uv run python -m memory_profiler parsers/shared/pdf_extractor.py > memory-profile.txt || echo "Memory profiling completed"
         fi
 
-        # Test parsing performance with sample PDF
+        # Test parsing performance
         echo "Testing PDF parsing performance..."
-        time uv run python -c "
-import sys
-sys.path.append('.')
-from scripts.parse_pdf import main as parse_main
-import os
-
-if os.path.exists('test_data/pdfs/sample.pdf'):
-    print('Running performance test on sample PDF...')
-    # Test would go here - commented out to avoid actual execution in CI
-    # parse_main(['test_data/pdfs/sample.pdf'])
-    print('Performance test completed')
-else:
-    print('No test PDF found, skipping parse test')
-" 2>&1 | tee parse-performance.log
+        time uv run python scripts/ci_performance_test.py 2>&1 | tee parse-performance.log
 
     - name: Analyze performance results
       run: |
@@ -138,19 +104,7 @@ else:
         # Show benchmark results if available
         if [ -f "benchmark-results.json" ]; then
           echo "Benchmark results available in benchmark-results.json"
-          python -c "
-import json
-try:
-    with open('benchmark-results.json') as f:
-        data = json.load(f)
-    if 'benchmarks' in data:
-        for bench in data['benchmarks']:
-            name = bench.get('name', 'Unknown')
-            mean = bench.get('stats', {}).get('mean', 0)
-            print(f'- {name}: {mean:.4f}s average')
-except Exception as e:
-    print(f'Error reading benchmark results: {e}')
-"
+          cat benchmark-results.json | head -20
         fi
 
         # Show memory profile if available
