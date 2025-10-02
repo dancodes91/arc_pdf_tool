@@ -1,0 +1,258 @@
+digraph ARC_PDF_Tool_Architecture {
+    // Graph styling
+    graph [
+        rankdir=TB,
+        bgcolor="#f9f9f9",
+        fontname="Arial",
+        fontsize=14,
+        label="ARC PDF Tool - Service & Module Dependency Graph\nCommit: b5cc756 | Generated: 2025-10-02",
+        labelloc=t
+    ];
+
+    node [
+        fontname="Arial",
+        fontsize=12,
+        shape=box,
+        style="filled,rounded",
+        fillcolor="#e6f3ff",
+        color="#4a90e2"
+    ];
+
+    edge [
+        fontname="Arial",
+        fontsize=10,
+        color="#666"
+    ];
+
+    // ==================== EXTERNAL SERVICES ====================
+    subgraph cluster_external {
+        label="External Services";
+        style=dashed;
+        color="#999";
+        fillcolor="#fff8e1";
+
+        postgres [label="PostgreSQL\n(port 5432)", fillcolor="#336791", fontcolor=white];
+        redis [label="Redis\n(port 6379)", fillcolor="#dc382d", fontcolor=white];
+        minio [label="MinIO\n(ports 9000/9001)", fillcolor="#c72c48", fontcolor=white];
+        baserow [label="Baserow\n(port 3000)", fillcolor="#4caf50", fontcolor=white];
+        tesseract [label="Tesseract OCR\n(binary)", fillcolor="#ff9800", fontcolor=white];
+    }
+
+    // ==================== FRONTEND LAYER ====================
+    subgraph cluster_frontend {
+        label="Frontend Layer";
+        style=filled;
+        fillcolor="#e3f2fd";
+        color="#1976d2";
+
+        nextjs [label="Next.js App\nfrontend/app/", fillcolor="#000000", fontcolor=white];
+        ui_components [label="UI Components\nfrontend/components/ui/"];
+        state_stores [label="Zustand Stores\nfrontend/lib/stores/"];
+    }
+
+    // ==================== API LAYER ====================
+    subgraph cluster_api {
+        label="API Layer";
+        style=filled;
+        fillcolor="#e8f5e9";
+        color="#388e3c";
+
+        flask_app [label="Flask App\napp.py", fillcolor="#000000", fontcolor=white];
+        api_routes [label="API Blueprint\napi_routes.py"];
+        api_admin [label="Admin Endpoints\napi/admin/"];
+        api_auth [label="Auth Module\napi/auth.py\n(UNUSED)", fillcolor="#ffcdd2"];
+        api_schemas [label="Pydantic Schemas\napi/schemas.py"];
+        error_handlers [label="Error Handlers\napi/error_handlers.py"];
+    }
+
+    // ==================== CORE BUSINESS LOGIC ====================
+    subgraph cluster_core {
+        label="Core Business Logic";
+        style=filled;
+        fillcolor="#fff3e0";
+        color="#f57c00";
+
+        tasks [label="Celery Tasks\ncore/tasks.py"];
+        diff_engine_v2 [label="Diff Engine v2\ncore/diff_engine_v2.py"];
+        diff_engine_legacy [label="Diff Engine (Legacy)\ndiff_engine.py", fillcolor="#ffcdd2"];
+        database_core [label="Database Utils\ncore/database.py"];
+        observability [label="Observability\ncore/observability.py"];
+        resilience [label="Resilience\ncore/resilience.py"];
+        exceptions [label="Exceptions\ncore/exceptions.py"];
+    }
+
+    // ==================== DATA LAYER ====================
+    subgraph cluster_data {
+        label="Data Layer";
+        style=filled;
+        fillcolor="#f3e5f5";
+        color="#7b1fa2";
+
+        models [label="SQLAlchemy Models\ndatabase/models.py"];
+        manager [label="PriceBook Manager\ndatabase/manager.py"];
+        diff_results_model [label="Diff Results\nmodels/diff_results.py"];
+        baserow_syncs_model [label="Baserow Syncs\nmodels/baserow_syncs.py"];
+    }
+
+    // ==================== PARSER LAYER ====================
+    subgraph cluster_parsers {
+        label="Parser Layer";
+        style=filled;
+        fillcolor="#fce4ec";
+        color="#c2185b";
+
+        base_parser [label="Base Parser\nparsers/base_parser.py"];
+        hager_parser [label="Hager Parser\nparsers/hager/parser.py"];
+        hager_sections [label="Hager Sections\nparsers/hager/sections.py"];
+        select_parser [label="SELECT Parser\nparsers/select/parser.py"];
+        select_sections [label="SELECT Sections\nparsers/select/sections.py"];
+
+        // Shared utilities subgraph
+        subgraph cluster_shared {
+            label="Shared Utilities";
+            style=dashed;
+
+            pdf_io [label="PDF I/O\nparsers/shared/pdf_io.py"];
+            confidence [label="Confidence Scorer\nparsers/shared/confidence.py"];
+            normalization [label="Normalization\nparsers/shared/normalization.py"];
+            provenance [label="Provenance Tracker\nparsers/shared/provenance.py"];
+            page_classifier [label="Page Classifier\nparsers/shared/page_classifier.py"];
+            table_processor [label="Table Processor\nparsers/shared/table_processor.py"];
+            ocr_processor [label="OCR Processor\nparsers/shared/ocr_processor.py"];
+            enhanced_extractor [label="Enhanced Extractor\nparsers/shared/enhanced_extractor.py"];
+        }
+    }
+
+    // ==================== SERVICE LAYER ====================
+    subgraph cluster_services {
+        label="Service Layer";
+        style=filled;
+        fillcolor="#e0f2f1";
+        color="#00796b";
+
+        exporters [label="Data Exporters\nservices/exporters.py"];
+        diff_service [label="Diff Service\nservices/diff_service.py"];
+        etl_loader [label="ETL Loader\nservices/etl_loader.py"];
+        publish_baserow [label="Baserow Publisher\nservices/publish_baserow.py"];
+    }
+
+    // ==================== INTEGRATION LAYER ====================
+    subgraph cluster_integrations {
+        label="Integration Layer";
+        style=filled;
+        fillcolor="#ede7f6";
+        color="#512da8";
+
+        baserow_client [label="Baserow Client\nintegrations/baserow_client.py"];
+    }
+
+    // ==================== CONFIG & SCRIPTS ====================
+    config [label="Configuration\nconfig.py", fillcolor="#ffeb3b", color="#f57f17"];
+
+    // ==================== FRONTEND DEPENDENCIES ====================
+    nextjs -> api_routes [label="HTTP REST\n(axios)"];
+    nextjs -> ui_components;
+    nextjs -> state_stores;
+
+    // ==================== API LAYER DEPENDENCIES ====================
+    flask_app -> api_routes [label="register_blueprint"];
+    flask_app -> config;
+    flask_app -> manager [label="PriceBookManager"];
+    flask_app -> diff_engine_legacy [label="DiffEngine"];
+    flask_app -> hager_parser [label="HagerParser"];
+    flask_app -> select_parser [label="SelectHingesParser"];
+
+    api_routes -> manager;
+    api_routes -> diff_engine_legacy;
+    api_routes -> exporters [label="export_price_book"];
+    api_routes -> error_handlers;
+
+    api_admin -> diff_engine_v2;
+    api_admin -> baserow_client;
+
+    // ==================== CORE LAYER DEPENDENCIES ====================
+    tasks -> observability [label="get_logger"];
+    tasks -> redis [label="broker + backend", style=dashed];
+    tasks -> postgres [label="data persistence", style=dashed];
+
+    diff_engine_v2 -> models;
+    diff_engine_v2 -> diff_results_model;
+
+    diff_engine_legacy -> manager;
+
+    // ==================== DATA LAYER DEPENDENCIES ====================
+    manager -> models [label="CRUD operations"];
+    manager -> postgres [label="SQLAlchemy session", style=dashed];
+
+    models -> postgres [label="ORM mapping", style=dashed];
+
+    // ==================== PARSER LAYER DEPENDENCIES ====================
+    hager_parser -> hager_sections;
+    hager_parser -> pdf_io;
+    hager_parser -> confidence;
+    hager_parser -> normalization;
+    hager_parser -> provenance;
+
+    select_parser -> select_sections;
+    select_parser -> pdf_io;
+    select_parser -> provenance;
+
+    hager_sections -> table_processor;
+    hager_sections -> page_classifier;
+    hager_sections -> normalization;
+
+    select_sections -> table_processor;
+    select_sections -> enhanced_extractor;
+
+    pdf_io -> tesseract [label="OCR fallback", style=dashed];
+    ocr_processor -> tesseract [label="pytesseract", style=dashed];
+    table_processor -> pdf_io;
+    enhanced_extractor -> pdf_io;
+    enhanced_extractor -> ocr_processor;
+
+    hager_parser -> base_parser [label="inheritance", style=dotted];
+    select_parser -> base_parser [label="inheritance", style=dotted];
+
+    // ==================== SERVICE LAYER DEPENDENCIES ====================
+    exporters -> models [label="query data"];
+    exporters -> manager [label="get price books"];
+
+    publish_baserow -> baserow_client;
+    publish_baserow -> models;
+    publish_baserow -> baserow_syncs_model;
+
+    etl_loader -> models;
+    etl_loader -> normalization;
+
+    diff_service -> diff_engine_v2;
+    diff_service -> models;
+
+    // ==================== INTEGRATION LAYER DEPENDENCIES ====================
+    baserow_client -> baserow [label="HTTP API", style=dashed];
+
+    // ==================== STORAGE DEPENDENCIES ====================
+    exporters -> minio [label="optional object storage", style=dashed];
+    flask_app -> minio [label="file uploads (optional)", style=dashed];
+
+    // ==================== WORKER DEPENDENCIES ====================
+    tasks -> hager_parser [label="PDF processing"];
+    tasks -> select_parser [label="PDF processing"];
+    tasks -> publish_baserow [label="Baserow sync"];
+
+    // Legend
+    subgraph cluster_legend {
+        label="Legend";
+        style=filled;
+        fillcolor=white;
+        color=black;
+
+        legend_solid [label="Direct Dependency", shape=plaintext];
+        legend_dashed [label="Network/External", shape=plaintext];
+        legend_dotted [label="Inheritance", shape=plaintext];
+        legend_deprecated [label="Deprecated/Unused", fillcolor="#ffcdd2", shape=box];
+
+        legend_solid -> legend_dashed [style=solid];
+        legend_dashed -> legend_dotted [style=dashed];
+        legend_dotted -> legend_deprecated [style=dotted];
+    }
+}

@@ -1,0 +1,446 @@
+{
+  "repo": "arc_pdf_tool",
+  "commit": "b5cc7561410ed07570d77209e8467ef83536c492",
+  "timestamp": "2025-10-02T14:46:34+03:30",
+  "services": [
+    {
+      "name": "flask_api",
+      "language": "python",
+      "entrypoint": "app.py",
+      "run": {
+        "dev": "uv run python app.py",
+        "prod": "docker run -p 5000:5000 --env-file .env arc-api"
+      },
+      "ports": [5000],
+      "env_required": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "SECRET_KEY",
+        "TESSERACT_CMD"
+      ]
+    },
+    {
+      "name": "celery_worker",
+      "language": "python",
+      "entrypoint": "core/tasks.py",
+      "run": {
+        "dev": "uv run celery -A core.tasks worker -l info",
+        "prod": "docker run --env-file .env arc-worker"
+      },
+      "ports": [],
+      "env_required": [
+        "DATABASE_URL",
+        "REDIS_URL",
+        "CELERY_BROKER_URL",
+        "CELERY_RESULT_BACKEND"
+      ]
+    },
+    {
+      "name": "nextjs_frontend",
+      "language": "typescript",
+      "entrypoint": "frontend/app/page.tsx",
+      "run": {
+        "dev": "cd frontend && npm run dev",
+        "prod": "cd frontend && npm run build && npm run start"
+      },
+      "ports": [3000],
+      "env_required": [
+        "NEXT_PUBLIC_API_URL"
+      ]
+    },
+    {
+      "name": "flower_monitor",
+      "language": "python",
+      "entrypoint": "celery flower",
+      "run": {
+        "dev": "uv run celery -A core.tasks flower --port=5555",
+        "prod": "docker-compose up flower"
+      },
+      "ports": [5555],
+      "env_required": [
+        "CELERY_BROKER_URL",
+        "FLOWER_BASIC_AUTH"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "name": "app",
+      "path": "app.py",
+      "imports": [
+        "flask",
+        "flask_cors",
+        "config.Config",
+        "database.manager.PriceBookManager",
+        "diff_engine.DiffEngine",
+        "parsers.HagerParser",
+        "parsers.SelectHingesParser",
+        "export_manager.ExportManager",
+        "api_routes.api"
+      ]
+    },
+    {
+      "name": "api_routes",
+      "path": "api_routes.py",
+      "imports": [
+        "flask.Blueprint",
+        "database.manager.PriceBookManager",
+        "diff_engine.DiffEngine",
+        "export_manager.ExportManager"
+      ]
+    },
+    {
+      "name": "parsers.hager",
+      "path": "parsers/hager/parser.py",
+      "imports": [
+        "parsers.shared.pdf_io.EnhancedPDFExtractor",
+        "parsers.shared.confidence.confidence_scorer",
+        "parsers.shared.normalization.data_normalizer",
+        "parsers.shared.provenance.ProvenanceTracker",
+        "parsers.hager.sections.HagerSectionExtractor"
+      ]
+    },
+    {
+      "name": "parsers.select",
+      "path": "parsers/select/parser.py",
+      "imports": [
+        "parsers.shared.pdf_io.EnhancedPDFExtractor",
+        "parsers.shared.provenance.ProvenanceTracker",
+        "parsers.select.sections.SelectSectionExtractor"
+      ]
+    },
+    {
+      "name": "database.models",
+      "path": "database/models.py",
+      "imports": [
+        "sqlalchemy"
+      ]
+    },
+    {
+      "name": "database.manager",
+      "path": "database/manager.py",
+      "imports": [
+        "database.models"
+      ]
+    },
+    {
+      "name": "services.exporters",
+      "path": "services/exporters.py",
+      "imports": [
+        "pandas",
+        "database.models"
+      ]
+    },
+    {
+      "name": "core.tasks",
+      "path": "core/tasks.py",
+      "imports": [
+        "celery",
+        "core.observability"
+      ]
+    },
+    {
+      "name": "integrations.baserow_client",
+      "path": "integrations/baserow_client.py",
+      "imports": [
+        "httpx"
+      ]
+    }
+  ],
+  "apis": [
+    {
+      "type": "http",
+      "id": "GET /api/price-books",
+      "location": "api_routes.py:26-33",
+      "spec": {
+        "method": "GET",
+        "path": "/api/price-books",
+        "auth": "none",
+        "params": [],
+        "response": "List[PriceBook]"
+      }
+    },
+    {
+      "type": "http",
+      "id": "GET /api/price-books/<id>",
+      "location": "api_routes.py:36-45",
+      "spec": {
+        "method": "GET",
+        "path": "/api/price-books/<int:price_book_id>",
+        "auth": "none",
+        "params": ["price_book_id"],
+        "response": "PriceBookSummary"
+      }
+    },
+    {
+      "type": "http",
+      "id": "GET /api/products/<id>",
+      "location": "api_routes.py:48-69",
+      "spec": {
+        "method": "GET",
+        "path": "/api/products/<int:price_book_id>",
+        "auth": "none",
+        "params": ["price_book_id", "page", "per_page"],
+        "response": "PaginatedProducts"
+      }
+    },
+    {
+      "type": "http",
+      "id": "POST /api/upload",
+      "location": "api_routes.py:72-129",
+      "spec": {
+        "method": "POST",
+        "path": "/api/upload",
+        "auth": "none",
+        "params": ["file", "manufacturer"],
+        "response": "UploadResult"
+      }
+    },
+    {
+      "type": "http",
+      "id": "POST /api/compare",
+      "location": "api_routes.py:132-151",
+      "spec": {
+        "method": "POST",
+        "path": "/api/compare",
+        "auth": "none",
+        "params": ["old_price_book_id", "new_price_book_id"],
+        "response": "ComparisonResult"
+      }
+    },
+    {
+      "type": "http",
+      "id": "GET /api/export/<id>",
+      "location": "api_routes.py:154-175",
+      "spec": {
+        "method": "GET",
+        "path": "/api/export/<int:price_book_id>",
+        "auth": "none",
+        "params": ["price_book_id", "format"],
+        "response": "FileDownload"
+      }
+    },
+    {
+      "type": "http",
+      "id": "GET /healthz",
+      "location": "app.py:229-235",
+      "spec": {
+        "method": "GET",
+        "path": "/healthz",
+        "auth": "none",
+        "params": [],
+        "response": "HealthStatus"
+      }
+    },
+    {
+      "type": "http",
+      "id": "GET /readyz",
+      "location": "app.py:238-266",
+      "spec": {
+        "method": "GET",
+        "path": "/readyz",
+        "auth": "none",
+        "params": [],
+        "response": "ReadinessStatus"
+      }
+    }
+  ],
+  "data": {
+    "databases": [
+      {
+        "type": "postgresql",
+        "name": "arc_pdf_tool",
+        "host": "localhost",
+        "port": 5432,
+        "schemas": [
+          {
+            "table": "manufacturers",
+            "location": "database/models.py:10-22",
+            "columns": ["id", "name", "code", "created_at"]
+          },
+          {
+            "table": "price_books",
+            "location": "database/models.py:24-40",
+            "columns": ["id", "manufacturer_id", "edition", "effective_date", "upload_date", "file_path", "file_size", "status", "parsing_notes"]
+          },
+          {
+            "table": "product_families",
+            "location": "database/models.py:42-55",
+            "columns": ["id", "manufacturer_id", "name", "category", "description", "created_at"]
+          },
+          {
+            "table": "products",
+            "location": "database/models.py:57-78",
+            "columns": ["id", "family_id", "price_book_id", "sku", "model", "description", "base_price", "effective_date", "retired_date", "is_active", "created_at", "updated_at"]
+          },
+          {
+            "table": "finishes",
+            "location": "database/models.py:80-93",
+            "columns": ["id", "manufacturer_id", "code", "name", "bhma_code", "description", "created_at"]
+          },
+          {
+            "table": "product_options",
+            "location": "database/models.py:95-113",
+            "columns": ["id", "product_id", "option_type", "option_code", "option_name", "adder_type", "adder_value", "requires_option", "excludes_option", "is_required", "sort_order", "created_at"]
+          },
+          {
+            "table": "product_prices",
+            "location": "database/models.py:115-131",
+            "columns": ["id", "product_id", "base_price", "finish_adder", "size_adder", "option_adder", "preparation_adder", "total_price", "effective_date", "created_at"]
+          },
+          {
+            "table": "change_logs",
+            "location": "database/models.py:133-151",
+            "columns": ["id", "old_price_book_id", "new_price_book_id", "change_type", "product_id", "old_value", "new_value", "change_percentage", "description", "created_at"]
+          }
+        ]
+      },
+      {
+        "type": "redis",
+        "name": "cache_and_broker",
+        "host": "localhost",
+        "port": 6379,
+        "usage": "Celery broker, result backend, session cache"
+      },
+      {
+        "type": "sqlite",
+        "name": "arc_pdf_tool.db",
+        "usage": "Development fallback",
+        "schemas": []
+      }
+    ],
+    "migrations": [
+      {
+        "version": "dd1b80615a02",
+        "description": "initial_schema_with_normalized_price_",
+        "location": "migrations/versions/dd1b80615a02_initial_schema_with_normalized_price_.py"
+      }
+    ]
+  },
+  "dependencies": [
+    {"name": "pdfplumber", "version": ">=0.10.3", "source": "pyproject.toml:23"},
+    {"name": "camelot-py", "version": ">=0.11.0", "source": "pyproject.toml:24"},
+    {"name": "pytesseract", "version": ">=0.3.10", "source": "pyproject.toml:25"},
+    {"name": "PyMuPDF", "version": ">=1.23.18", "source": "pyproject.toml:28"},
+    {"name": "pandas", "version": ">=2.1.4", "source": "pyproject.toml:31"},
+    {"name": "polars", "version": ">=0.20.3", "source": "pyproject.toml:34"},
+    {"name": "sqlalchemy", "version": ">=2.0.23", "source": "pyproject.toml:37"},
+    {"name": "psycopg2-binary", "version": ">=2.9.9", "source": "pyproject.toml:38"},
+    {"name": "alembic", "version": ">=1.13.1", "source": "pyproject.toml:39"},
+    {"name": "fastapi", "version": ">=0.104.1", "source": "pyproject.toml:41"},
+    {"name": "uvicorn", "version": ">=0.24.0", "source": "pyproject.toml:42"},
+    {"name": "flask", "version": ">=3.0.0", "source": "pyproject.toml:53"},
+    {"name": "flask-cors", "version": ">=4.0.0", "source": "pyproject.toml:54"},
+    {"name": "celery", "version": ">=5.3.4", "source": "pyproject.toml:50"},
+    {"name": "redis", "version": ">=5.0.1", "source": "pyproject.toml:51"},
+    {"name": "rapidfuzz", "version": ">=3.5.2", "source": "pyproject.toml:47"},
+    {"name": "deepdiff", "version": ">=6.7.1", "source": "pyproject.toml:48"},
+    {"name": "next", "version": "14.0.4", "source": "frontend/package.json:12"},
+    {"name": "react", "version": "^18.2.0", "source": "frontend/package.json:13"},
+    {"name": "typescript", "version": "^5.3.2", "source": "frontend/package.json:45"}
+  ],
+  "env": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "SECRET_KEY",
+    "TESSERACT_CMD",
+    "OCR_LANGUAGE",
+    "ENV",
+    "DEBUG",
+    "MAX_CONTENT_LENGTH",
+    "MIN_TABLE_CONFIDENCE",
+    "MAX_PAGES_TO_PROCESS",
+    "MIN_ROW_ACCURACY",
+    "MIN_NUMERIC_ACCURACY",
+    "CELERY_BROKER_URL",
+    "CELERY_RESULT_BACKEND",
+    "BASEROW_TOKEN",
+    "BASEROW_DATABASE_ID",
+    "FLOWER_BASIC_AUTH",
+    "NEXT_PUBLIC_API_URL"
+  ],
+  "ci": [
+    {
+      "provider": "github_actions",
+      "workflow": ".github/workflows/ci.yml",
+      "jobs": [
+        "test (Python 3.11, 3.12)",
+        "build (Docker images: base, api, worker)",
+        "security (Trivy scans, SBOM generation)",
+        "release (tag + GitHub Release)",
+        "deploy-staging"
+      ]
+    },
+    {
+      "provider": "github_actions",
+      "workflow": ".github/workflows/security.yml",
+      "jobs": [
+        "dependency-check (safety, bandit)",
+        "secrets-scan (GitLeaks)",
+        "code-quality (radon)"
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "severity": "critical",
+      "category": "authentication",
+      "evidence": "app.py:1-281, api_routes.py:1-204 - No authentication middleware",
+      "suggestion": "Implement Flask-Login or JWT-based auth; add middleware to api_routes Blueprint"
+    },
+    {
+      "severity": "critical",
+      "category": "hardcoded_secrets",
+      "evidence": "config.py:61 - SECRET_KEY='dev-secret-key-change-in-production'",
+      "suggestion": "Remove default secret; enforce SECRET_KEY env var; fail startup if not set in production"
+    },
+    {
+      "severity": "high",
+      "category": "unpinned_dependencies",
+      "evidence": "pyproject.toml:21-64 - All dependencies use >= version specifiers",
+      "suggestion": "Pin exact versions in pyproject.toml; use uv lock for reproducible builds; add Renovate/Dependabot"
+    },
+    {
+      "severity": "high",
+      "category": "missing_indexes",
+      "evidence": "database/models.py:57-78 - No index on products.price_book_id despite high-read queries",
+      "suggestion": "Add index on products(price_book_id), change_logs(old_price_book_id, new_price_book_id)"
+    },
+    {
+      "severity": "high",
+      "category": "rate_limiting",
+      "evidence": "api_routes.py:72-129 - /api/upload has no rate limiting",
+      "suggestion": "Add Flask-Limiter; set upload rate to 10/hour per IP; validate file size before processing"
+    },
+    {
+      "severity": "medium",
+      "category": "cors_misconfiguration",
+      "evidence": "app.py:23 - CORS allows localhost:3000 only",
+      "suggestion": "Use environment variable for CORS origins; validate against allowlist in production"
+    },
+    {
+      "severity": "medium",
+      "category": "missing_input_validation",
+      "evidence": "api_routes.py:48-69 - page/per_page params not validated for max range",
+      "suggestion": "Add pydantic models for request validation; enforce max per_page=100"
+    },
+    {
+      "severity": "medium",
+      "category": "error_disclosure",
+      "evidence": "api_routes.py:32-33 - str(e) exposes internal errors to client",
+      "suggestion": "Use custom exception handlers; log full traceback; return generic error messages"
+    },
+    {
+      "severity": "low",
+      "category": "deprecated_code",
+      "evidence": "diff_engine.py:1-end + core/diff_engine_v2.py:1-end - Both versions coexist",
+      "suggestion": "Migrate all usages to diff_engine_v2; delete legacy diff_engine.py"
+    },
+    {
+      "severity": "low",
+      "category": "missing_health_checks",
+      "evidence": "docker-compose.yml:69-74 - API healthcheck uses curl (not in image)",
+      "suggestion": "Install curl in Dockerfile.api or use Python httpx for healthcheck"
+    }
+  ]
+}
