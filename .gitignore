@@ -326,3 +326,16 @@ logs/
 *.sqlite3
 .ruff_cache/
 .claude/
+# Test files
+test_upload.py
+test_export.py
+quick_upload_test.py
+test_export_*.csv
+test_export_*.json
+test_export_*.xlsx
+
+# Frontend build artifacts
+frontend/.next/
+frontend/node_modules/
+frontend/next-env.d.ts
+frontend/package-lock.json
