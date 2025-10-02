@@ -2,6 +2,7 @@ import os
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import json
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -42,6 +43,8 @@ class ExportManager:
                 return self._export_to_excel(price_book_id, products, summary, filename)
             elif format.lower() == 'csv':
                 return self._export_to_csv(products, summary, filename)
+            elif format.lower() == 'json':
+                return self._export_to_json(products, summary, filename)
             else:
                 raise ValueError(f"Unsupported format: {format}")
                 
@@ -185,7 +188,7 @@ class ExportManager:
         """Export to CSV format"""
         # Create DataFrame
         df = pd.DataFrame(products)
-        
+
         # Add metadata as first row
         metadata_row = {
             'SKU': f"# {summary['manufacturer']} Price Book Export",
@@ -196,14 +199,38 @@ class ExportManager:
             'Status': '',
             'Family': ''
         }
-        
+
         # Insert metadata row
         df = pd.concat([pd.DataFrame([metadata_row]), df], ignore_index=True)
-        
+
         # Save CSV
         filepath = os.path.join('exports', f"{filename}.csv")
         df.to_csv(filepath, index=False)
-        
+
+        return filepath
+
+    def _export_to_json(self, products: List[Dict], summary: Dict, filename: str) -> str:
+        """Export to JSON format"""
+        # Build complete export structure
+        export_data = {
+            'metadata': {
+                'export_date': datetime.now().isoformat(),
+                'manufacturer': summary['manufacturer'],
+                'edition': summary['edition'],
+                'effective_date': summary['effective_date'],
+                'upload_date': summary['upload_date'],
+                'price_book_id': summary['id'],
+                'status': summary['status'],
+                'total_products': len(products)
+            },
+            'products': products
+        }
+
+        # Save JSON with pretty formatting
+        filepath = os.path.join('exports', f"{filename}.json")
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(export_data, f, indent=2, ensure_ascii=False, default=str)
+
         return filepath
     
     def export_change_log(self, old_price_book_id: int, new_price_book_id: int, format: str = 'excel') -> str:

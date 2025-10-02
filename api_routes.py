@@ -119,7 +119,6 @@ def upload_pdf():
         # Store in database using ETL loader
         from services.etl_loader import ETLLoader
         from database.models import DatabaseManager
-        import os
 
         db_manager = DatabaseManager()
         session = db_manager.get_session()
@@ -182,19 +181,27 @@ def export_price_book(price_book_id):
     """Export price book data"""
     try:
         format_type = request.args.get('format', 'excel')
-        
-        if format_type not in ['excel', 'csv']:
-            return jsonify({'error': 'Invalid format. Use excel or csv'}), 400
-        
+
+        if format_type not in ['excel', 'csv', 'json']:
+            return jsonify({'error': 'Invalid format. Use excel, csv, or json'}), 400
+
         # Export the data
         filepath = export_manager.export_price_book(price_book_id, format_type)
         filename = os.path.basename(filepath)
-        
+
+        # Determine mimetype
+        if format_type == 'excel':
+            mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        elif format_type == 'csv':
+            mimetype = 'text/csv'
+        else:  # json
+            mimetype = 'application/json'
+
         return send_file(
             filepath,
             as_attachment=True,
             download_name=filename,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if format_type == 'excel' else 'text/csv'
+            mimetype=mimetype
         )
         
     except Exception as e:

@@ -7,7 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { FileText, Download, ArrowLeft, Eye, Filter } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { FileText, Download, ArrowLeft, Eye, Filter, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 
 export default function PreviewPage() {
@@ -27,34 +28,72 @@ export default function PreviewPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [priceFilter, setPriceFilter] = useState('')
+  const [summary, setSummary] = useState<any>(null)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     if (priceBookId) {
       fetchProducts(priceBookId)
-      // In a real app, you'd fetch the price book details here
-      setCurrentPriceBook({
-        id: priceBookId,
-        manufacturer: 'Hager', // This would come from API
-        edition: '2025',
-        effective_date: '2025-01-01',
-        upload_date: new Date().toISOString(),
-        status: 'completed',
-        product_count: 0,
-        option_count: 0,
-        file_path: ''
-      })
+      // Fetch price book summary with confidence data
+      async function loadSummary() {
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+          const res = await fetch(`${apiUrl}/api/price-books/${priceBookId}`)
+          const data = await res.json()
+          setSummary(data)
+          setCurrentPriceBook({
+            id: priceBookId,
+            manufacturer: data.manufacturer || 'Unknown',
+            edition: data.edition || '2025',
+            effective_date: data.effective_date || '2025-01-01',
+            upload_date: data.upload_date || new Date().toISOString(),
+            status: data.status || 'completed',
+            product_count: data.product_count || 0,
+            option_count: data.option_count || 0,
+            file_path: data.file_path || ''
+          })
+        } catch (error) {
+          console.error('Error loading summary:', error)
+        }
+      }
+      loadSummary()
     }
   }, [priceBookId, fetchProducts, setCurrentPriceBook])
+
+  async function handleExport(format: 'csv' | 'xlsx' | 'json') {
+    setExporting(true)
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+      const response = await fetch(`${apiUrl}/api/export/${priceBookId}?format=${format === 'xlsx' ? 'excel' : format}`)
+
+      if (!response.ok) throw new Error('Export failed')
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `price_book_${priceBookId}.${format}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Export failed:', error)
+      alert('Export failed. Please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          product.description.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesStatus = !statusFilter || 
+
+    const matchesStatus = !statusFilter ||
                          (statusFilter === 'active' && product.is_active) ||
                          (statusFilter === 'inactive' && !product.is_active)
-    
+
     const matchesPrice = !priceFilter || !product.base_price || (() => {
       const price = product.base_price
       switch (priceFilter) {
@@ -65,7 +104,7 @@ export default function PreviewPage() {
         default: return true
       }
     })()
-    
+
     return matchesSearch && matchesStatus && matchesPrice
   })
 
@@ -103,16 +142,50 @@ export default function PreviewPage() {
           </div>
         </div>
         <div className="flex space-x-2">
-          <Button onClick={() => exportPriceBook(priceBookId, 'excel')}>
+          <Button onClick={() => handleExport('xlsx')} disabled={exporting}>
             <Download className="mr-2 h-4 w-4" />
-            Export Excel
+            Excel
           </Button>
-          <Button variant="outline" onClick={() => exportPriceBook(priceBookId, 'csv')}>
+          <Button variant="outline" onClick={() => handleExport('csv')} disabled={exporting}>
             <Download className="mr-2 h-4 w-4" />
-            Export CSV
+            CSV
+          </Button>
+          <Button variant="outline" onClick={() => handleExport('json')} disabled={exporting}>
+            <Download className="mr-2 h-4 w-4" />
+            JSON
           </Button>
         </div>
       </div>
+
+      {/* Confidence Meter */}
+      {summary?.parsing_metadata && (
+        <Card className={summary.parsing_metadata.overall_confidence < 0.7 ? 'border-yellow-500' : ''}>
+          <CardHeader>
+            <CardTitle className="flex items-center text-base">
+              {summary.parsing_metadata.overall_confidence < 0.7 && (
+                <AlertTriangle className="mr-2 h-4 w-4 text-yellow-500" />
+              )}
+              Parsing Confidence
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Overall Quality</span>
+                <span className="text-sm font-bold">
+                  {Math.round((summary.parsing_metadata.overall_confidence || 0) * 100)}%
+                </span>
+              </div>
+              <Progress value={Math.round((summary.parsing_metadata.overall_confidence || 0) * 100)} />
+              {summary.parsing_metadata.overall_confidence < 0.7 && (
+                <p className="text-sm text-yellow-600 mt-2">
+                  ⚠️ Low confidence detected. Manual review recommended for accuracy.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Error Display */}
       {error && (
