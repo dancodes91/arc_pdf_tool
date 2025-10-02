@@ -245,10 +245,10 @@ class BaserowClient:
             )
             response.raise_for_status()
 
-            tables = response.json()
+            tables_data = response.json()
             existing_table = None
 
-            for table in tables:
+            for table in tables_data:
                 if table["name"] == schema.name:
                     existing_table = table
                     break
