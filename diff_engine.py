@@ -2,7 +2,12 @@ import logging
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
-from fuzzywuzzy import fuzz, process
+try:
+    from rapidfuzz import fuzz, process
+    RAPIDFUZZ_AVAILABLE = True
+except ImportError:
+    from fuzzywuzzy import fuzz, process
+    RAPIDFUZZ_AVAILABLE = False
 import pandas as pd
 
 from database.models import DatabaseManager, Product, PriceBook, ChangeLog, ProductPrice
@@ -95,19 +100,54 @@ class DiffEngine:
         old_products_by_sku = {p['sku']: p for p in old_products}
         new_products_by_sku = {p['sku']: p for p in new_products}
         
-        # Find new products
+        # Find new products (will be filtered after fuzzy matching)
         new_skus = set(new_products_by_sku.keys()) - set(old_products_by_sku.keys())
-        for sku in new_skus:
-            product = new_products_by_sku[sku]
-            change = self._create_change_log_entry(
-                session, old_book.id, new_book.id, product['id'],
-                'new_product', None, product['sku'],
-                f"New product added: {product['sku']} - {product['description']}"
-            )
-            changes.append(change)
         
-        # Find retired products
+        # Find retired products (but check for fuzzy matches first)
         retired_skus = set(old_products_by_sku.keys()) - set(new_products_by_sku.keys())
+
+        # Try fuzzy matching for potentially renamed products
+        fuzzy_matched = set()
+        for old_sku in list(retired_skus):
+            old_product = old_products_by_sku[old_sku]
+
+            # Try to find fuzzy match in new products
+            best_match = None
+            best_score = 0
+
+            for new_sku in new_skus:
+                new_product = new_products_by_sku[new_sku]
+
+                # Calculate fuzzy similarity
+                sku_score = fuzz.ratio(old_sku, new_sku)
+                desc_score = fuzz.ratio(old_product['description'] or '', new_product['description'] or '')
+                model_score = fuzz.ratio(old_product['model'] or '', new_product['model'] or '')
+
+                # Combined score
+                combined_score = (sku_score * 0.5 + desc_score * 0.3 + model_score * 0.2)
+
+                if combined_score > best_score and combined_score > 70:  # Threshold
+                    best_score = combined_score
+                    best_match = (new_sku, new_product, combined_score)
+
+            # If good fuzzy match found, treat as rename
+            if best_match:
+                new_sku, new_product, score = best_match
+                fuzzy_matched.add(old_sku)
+                fuzzy_matched.add(new_sku)
+
+                change = self._create_change_log_entry(
+                    session, old_book.id, new_book.id, new_product['id'],
+                    'fuzzy_match', old_sku, new_sku,
+                    f"Product likely renamed: {old_sku} → {new_sku} (similarity: {score:.0f}%)"
+                )
+                changes.append(change)
+
+        # Remove fuzzy matched items from new/retired sets
+        retired_skus = retired_skus - fuzzy_matched
+        new_skus = new_skus - fuzzy_matched
+
+        # Now mark truly retired products
         for sku in retired_skus:
             product = old_products_by_sku[sku]
             change = self._create_change_log_entry(
@@ -116,7 +156,17 @@ class DiffEngine:
                 f"Product retired: {product['sku']} - {product['description']}"
             )
             changes.append(change)
-        
+
+        # Mark truly new products (after fuzzy matching)
+        for sku in new_skus:
+            product = new_products_by_sku[sku]
+            change = self._create_change_log_entry(
+                session, old_book.id, new_book.id, product['id'],
+                'new_product', None, product['sku'],
+                f"New product added: {product['sku']} - {product['description']}"
+            )
+            changes.append(change)
+
         # Find price changes and updates
         common_skus = set(old_products_by_sku.keys()) & set(new_products_by_sku.keys())
         for sku in common_skus:
