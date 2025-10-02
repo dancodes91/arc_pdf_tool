@@ -95,32 +95,59 @@ def upload_pdf():
         # Get file size
         file_size = os.path.getsize(filepath)
         
-        # Parse PDF based on manufacturer
-        from parsers import HagerParser, SelectHingesParser
-        
+        # Parse PDF based on manufacturer using enhanced parsers
         if manufacturer == 'hager':
+            from parsers.hager.parser import HagerParser
             parser = HagerParser(filepath)
         elif manufacturer == 'select_hinges':
+            from parsers.select.parser import SelectHingesParser
             parser = SelectHingesParser(filepath)
         else:
             # Try to auto-detect manufacturer
-            parser = HagerParser(filepath)  # Default to Hager
+            from parsers.hager.parser import HagerParser
+            parser = HagerParser(filepath)
             detected = parser.identify_manufacturer()
             if detected == 'select_hinges':
+                from parsers.select.parser import SelectHingesParser
                 parser = SelectHingesParser(filepath)
-        
-        # Parse the PDF
+
+        # Parse the PDF with enhanced parser
         parsed_data = parser.parse()
         parsed_data['file_path'] = filepath
         parsed_data['file_size'] = file_size
-        
-        # Store in database
-        result = price_book_manager.normalize_and_store_data(parsed_data)
+
+        # Store in database using ETL loader
+        from services.etl_loader import ETLLoader
+        from database.models import DatabaseManager
+        import os
+
+        db_manager = DatabaseManager()
+        session = db_manager.get_session()
+
+        try:
+            etl_loader = ETLLoader(database_url=os.getenv('DATABASE_URL', 'sqlite:///price_books.db'))
+            load_result = etl_loader.load_parsing_results(parsed_data, session)
+            session.commit()
+
+            result = {
+                'price_book_id': load_result['price_book_id'],
+                'products_created': load_result['products_loaded'],
+                'finishes_loaded': load_result.get('finishes_loaded', 0),
+                'confidence': parsed_data.get('parsing_metadata', {}).get('overall_confidence', 0)
+            }
+        except Exception as db_error:
+            session.rollback()
+            logger.error(f"Database error: {db_error}", exc_info=True)
+            raise
+        finally:
+            session.close()
         
         return jsonify({
             'success': True,
             'price_book_id': result['price_book_id'],
             'products_created': result['products_created'],
+            'finishes_loaded': result['finishes_loaded'],
+            'confidence': result['confidence'],
             'message': f'Successfully uploaded and parsed {filename}'
         })
         

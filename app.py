@@ -79,25 +79,63 @@ def upload_pdf():
                 # Get file size
                 file_size = os.path.getsize(filepath)
                 
-                # Parse PDF based on manufacturer
+                # Parse PDF based on manufacturer using enhanced parsers
                 if manufacturer == 'hager':
+                    from parsers.hager.parser import HagerParser
                     parser = HagerParser(filepath)
                 elif manufacturer == 'select_hinges':
+                    from parsers.select.parser import SelectHingesParser
                     parser = SelectHingesParser(filepath)
                 else:
                     # Try to auto-detect manufacturer
-                    parser = HagerParser(filepath)  # Default to Hager
+                    from parsers.hager.parser import HagerParser
+                    parser = HagerParser(filepath)
                     detected = parser.identify_manufacturer()
                     if detected == 'select_hinges':
+                        from parsers.select.parser import SelectHingesParser
                         parser = SelectHingesParser(filepath)
-                
-                # Parse the PDF
+
+                # Parse the PDF with enhanced parser
+                logger.info(f"Parsing {filename} with enhanced parser")
                 parsed_data = parser.parse()
+
+                # Extract metadata for logging and user feedback
+                parsing_metadata = parsed_data.get('parsing_metadata', {})
+                overall_confidence = parsing_metadata.get('overall_confidence', 0)
+                total_products = parsed_data.get('summary', {}).get('total_products', 0)
+
+                # Check confidence and warn user
+                if overall_confidence < 0.7:
+                    flash(f'Warning: Parsing confidence is {overall_confidence:.1%}. Manual review recommended.', 'warning')
+
+                logger.info(f"Parsed {total_products} products with {overall_confidence:.1%} confidence")
+
+                # Add file metadata to parsed data
                 parsed_data['file_path'] = filepath
                 parsed_data['file_size'] = file_size
-                
-                # Store in database
-                result = price_book_manager.normalize_and_store_data(parsed_data)
+
+                # Store in database using ETL loader
+                from services.etl_loader import ETLLoader
+                from database.models import DatabaseManager
+
+                db_manager = DatabaseManager()
+                session = db_manager.get_session()
+
+                try:
+                    etl_loader = ETLLoader(database_url=Config.DATABASE_URL)
+                    load_result = etl_loader.load_parsing_results(parsed_data, session)
+
+                    price_book_id = load_result['price_book_id']
+                    products_created = load_result['products_loaded']
+
+                    session.commit()
+                    result = {'price_book_id': price_book_id, 'products_created': products_created}
+                except Exception as db_error:
+                    session.rollback()
+                    logger.error(f"Database error: {db_error}", exc_info=True)
+                    raise
+                finally:
+                    session.close()
                 
                 flash(f'Successfully uploaded and parsed {filename}. Found {result["products_created"]} products.', 'success')
                 return redirect(url_for('preview', price_book_id=result['price_book_id']))
