@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Compare, FileText, TrendingUp, TrendingDown, Plus, Minus } from 'lucide-react'
+import { ArrowLeft, GitCompare, FileText, TrendingUp, TrendingDown, Plus, Minus } from 'lucide-react'
 import Link from 'next/link'
 
 export default function ComparePage() {
@@ -165,7 +165,7 @@ export default function ComparePage() {
                 </>
               ) : (
                 <>
-                  <Compare className="mr-2 h-4 w-4" />
+                  <GitCompare className="mr-2 h-4 w-4" />
                   Compare Price Books
                 </>
               )}
@@ -314,7 +314,7 @@ export default function ComparePage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-8">
-              <Compare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <GitCompare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">Ready to Compare</h3>
               <p className="text-muted-foreground">
                 Select two price books above to see their differences

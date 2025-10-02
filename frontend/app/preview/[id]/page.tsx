@@ -35,7 +35,7 @@ export default function PreviewPage() {
     if (priceBookId) {
       fetchProducts(priceBookId)
       // Fetch price book summary with confidence data
-      async function loadSummary() {
+      const loadSummary = async () => {
         try {
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
           const res = await fetch(`${apiUrl}/api/price-books/${priceBookId}`)

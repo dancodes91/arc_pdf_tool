@@ -9,7 +9,7 @@ import { Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react'
 
 export default function UploadPage() {
   const router = useRouter()
-  const { uploadPDF, loading, error } = usePriceBookStore()
+  const { uploadPriceBook, loading, error } = usePriceBookStore()
   const [file, setFile] = useState<File | null>(null)
   const [manufacturer, setManufacturer] = useState('')
   const [dragActive, setDragActive] = useState(false)
@@ -51,7 +51,7 @@ export default function UploadPage() {
     }
 
     try {
-      await uploadPDF(file, manufacturer)
+      await uploadPriceBook(file, manufacturer)
       router.push('/')
     } catch (err) {
       console.error('Upload failed:', err)
