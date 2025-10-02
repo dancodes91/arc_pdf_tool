@@ -5,7 +5,7 @@ import { usePriceBookStore } from '@/lib/stores/priceBookStore'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { FileText, Upload, BarChart3, Download, Eye, Compare } from 'lucide-react'
+import { FileText, Upload, BarChart3, Download, Eye, GitCompare } from 'lucide-react'
 import Link from 'next/link'
 
 export default function Dashboard() {
@@ -54,7 +54,7 @@ export default function Dashboard() {
           </Link>
           <Link href="/compare">
             <Button variant="outline">
-              <Compare className="mr-2 h-4 w-4" />
+              <GitCompare className="mr-2 h-4 w-4" />
               Compare
             </Button>
           </Link>
@@ -227,3 +227,7 @@ export default function Dashboard() {
     </div>
   )
 }
+
+
+
+
