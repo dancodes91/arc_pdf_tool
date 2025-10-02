@@ -66,6 +66,7 @@ interface PriceBookState {
   setCurrentPriceBook: (book: PriceBook) => void
   uploadPriceBook: (file: File, manufacturer: string) => Promise<number>
   exportPriceBook: (priceBookId: number, format: 'excel' | 'csv') => Promise<void>
+  deletePriceBook: (priceBookId: number) => Promise<void>
   comparePriceBooks: (oldId: number, newId: number) => Promise<void>
   setError: (error: string | null) => void
   clearError: () => void
@@ -177,6 +178,23 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
       const errorMessage = error.response?.data?.error || error.message || 'Failed to export price book'
       set({ error: errorMessage, loading: false })
       console.error('Error exporting price book:', error)
+    }
+  },
+
+  deletePriceBook: async (priceBookId: number) => {
+    set({ loading: true, error: null })
+    try {
+      await axios.delete(`${API_BASE_URL}/price-books/${priceBookId}`)
+
+      // Refresh price books list after deletion
+      await get().fetchPriceBooks()
+
+      set({ loading: false })
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to delete price book'
+      set({ error: errorMessage, loading: false })
+      console.error('Error deleting price book:', error)
+      throw new Error(errorMessage)
     }
   },
 

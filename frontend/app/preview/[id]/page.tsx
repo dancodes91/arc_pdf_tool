@@ -253,10 +253,10 @@ export default function PreviewPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {currentPriceBook?.status === 'completed' ? 'Ready' : 'Processing'}
+              {currentPriceBook?.status === 'completed' || currentPriceBook?.status === 'processed' ? 'Ready' : 'Processing'}
             </div>
             <p className="text-xs text-muted-foreground">
-              {currentPriceBook?.status === 'completed' ? 'All data parsed' : 'Still processing'}
+              {currentPriceBook?.status === 'completed' || currentPriceBook?.status === 'processed' ? 'All data parsed' : 'Still processing'}
             </p>
           </CardContent>
         </Card>

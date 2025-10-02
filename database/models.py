@@ -95,9 +95,9 @@ class Finish(Base):
 class ProductOption(Base):
     """Product options, adders, and rules"""
     __tablename__ = 'product_options'
-    
+
     id = Column(Integer, primary_key=True)
-    product_id = Column(Integer, ForeignKey('products.id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('products.id'), nullable=True)  # Nullable for global options (e.g., SELECT net-add options)
     option_type = Column(String(50), nullable=False)  # 'finish', 'size', 'preparation', 'net_add'
     option_code = Column(String(50))
     option_name = Column(String(255))

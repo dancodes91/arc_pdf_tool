@@ -9,8 +9,16 @@ import logging
 from datetime import datetime
 
 from database.manager import PriceBookManager
+from database.models import PriceBook, DatabaseManager
 from diff_engine import DiffEngine
 from export_manager import ExportManager
+
+# Initialize database
+db_manager = DatabaseManager()
+
+def get_session():
+    """Get database session"""
+    return db_manager.get_session()
 
 # Create API blueprint
 api = Blueprint('api', __name__, url_prefix='/api')
@@ -216,6 +224,31 @@ def get_change_log(old_id, new_id):
         return jsonify(changes)
     except Exception as e:
         logger.error(f"Error fetching change log: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@api.route('/price-books/<int:price_book_id>', methods=['DELETE'])
+def delete_price_book(price_book_id):
+    """Delete a price book and all related data"""
+    try:
+        session = get_session()
+        price_book = session.query(PriceBook).get(price_book_id)
+
+        if not price_book:
+            return jsonify({'error': 'Price book not found'}), 404
+
+        # Delete the price book (cascade will handle related records)
+        session.delete(price_book)
+        session.commit()
+        session.close()
+
+        logger.info(f"Deleted price book {price_book_id}")
+        return jsonify({'message': 'Price book deleted successfully'}), 200
+
+    except Exception as e:
+        logger.error(f"Error deleting price book {price_book_id}: {e}")
+        if 'session' in locals():
+            session.rollback()
+            session.close()
         return jsonify({'error': str(e)}), 500
 
 @api.route('/health', methods=['GET'])

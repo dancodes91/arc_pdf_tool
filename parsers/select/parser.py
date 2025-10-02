@@ -369,7 +369,7 @@ class SelectHingesParser:
                 pass
 
         # Get text content
-        text = self._extract_text_content()
+        text = self._combine_text_content()
         if not text:
             return 'select_hinges'  # Default for SELECT parser
 

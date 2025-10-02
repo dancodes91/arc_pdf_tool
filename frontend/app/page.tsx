@@ -5,7 +5,7 @@ import { usePriceBookStore } from '@/lib/stores/priceBookStore'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { FileText, Upload, BarChart3, Download, Eye, GitCompare } from 'lucide-react'
+import { FileText, Upload, BarChart3, Download, Eye, GitCompare, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 export default function Dashboard() {
@@ -20,7 +20,7 @@ export default function Dashboard() {
     fetchPriceBooks()
   }, [fetchPriceBooks])
 
-  const completedBooks = priceBooks.filter(book => book.status === 'completed')
+  const completedBooks = priceBooks.filter(book => book.status === 'completed' || book.status === 'processed')
   const processingBooks = priceBooks.filter(book => book.status === 'processing')
   const totalProducts = priceBooks.reduce((sum, book) => sum + book.product_count, 0)
 
@@ -184,7 +184,7 @@ export default function Dashboard() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      {book.status === 'completed' ? (
+                      {book.status === 'completed' || book.status === 'processed' ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           Completed
                         </span>
@@ -204,16 +204,34 @@ export default function Dashboard() {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         <Link href={`/preview/${book.id}`}>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" title="View details">
                             <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => usePriceBookStore.getState().exportPriceBook(book.id, 'excel')}
+                          title="Export to Excel"
                         >
                           <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (confirm(`Are you sure you want to delete ${book.manufacturer} ${book.edition}?`)) {
+                              try {
+                                await usePriceBookStore.getState().deletePriceBook(book.id)
+                              } catch (error) {
+                                console.error('Delete failed:', error)
+                              }
+                            }
+                          }}
+                          title="Delete price book"
+                          className="hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>

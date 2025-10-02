@@ -489,7 +489,7 @@ class HagerParser:
                 pass
 
         # Get text content
-        text = self._extract_text_content()
+        text = self._combine_text_content()
         if not text:
             return 'hager'  # Default for Hager parser
 
