@@ -10,6 +10,7 @@ from ..shared.confidence import confidence_scorer, ConfidenceScore
 from ..shared.normalization import data_normalizer
 from ..shared.provenance import ProvenanceTracker, ParsedItem, ProvenanceAnalyzer
 from .sections import HagerSectionExtractor
+from .matrix_parser import HagerMatrixParser
 
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class HagerParser:
         # Initialize utilities
         self.provenance_tracker = ProvenanceTracker(pdf_path)
         self.section_extractor = HagerSectionExtractor(self.provenance_tracker)
+        self.matrix_parser = HagerMatrixParser(self.provenance_tracker)
         self.pdf_extractor = EnhancedPDFExtractor(pdf_path, config)
 
         # Parser results
@@ -315,15 +317,23 @@ class HagerParser:
         for page in pages_to_process:
             page_text = page.text or ''
 
-            # Extract tables for this page using Camelot
-            tables = self.section_extractor.extract_tables_with_camelot(
-                self.pdf_path, page.page_number
-            )
+            # Check if this is a price matrix page (new format)
+            if self.matrix_parser.is_matrix_page(page_text):
+                self.logger.debug(f"Page {page.page_number} detected as price matrix")
+                matrix_products = self.matrix_parser.extract_matrix_products(
+                    page_text, page.page_number
+                )
+                self.products.extend(matrix_products)
+            else:
+                # Regular table-based extraction
+                tables = self.section_extractor.extract_tables_with_camelot(
+                    self.pdf_path, page.page_number
+                )
 
-            page_products = self.section_extractor.extract_item_tables(
-                page_text, tables, page.page_number
-            )
-            self.products.extend(page_products)
+                page_products = self.section_extractor.extract_item_tables(
+                    page_text, tables, page.page_number
+                )
+                self.products.extend(page_products)
 
         self.logger.info(f"Found {len(self.products)} products")
 
