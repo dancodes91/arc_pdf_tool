@@ -36,27 +36,47 @@ class HagerParser:
         self.hinge_additions: List[ParsedItem] = []
         self.products: List[ParsedItem] = []
 
+        # Page range optimization (from PDF analysis)
+        # Pages 1-6: General info (skip for product extraction)
+        # Pages 7-300: Core product catalog (90% of products)
+        # Pages 301-417: Supplementary products
+        self.product_page_ranges = [
+            (7, 300),    # Main product catalog
+            (301, 350),  # Supplementary products (selective)
+        ]
+
     def parse(self) -> Dict[str, Any]:
-        """Parse Hager PDF with comprehensive extraction."""
+        """Parse Hager PDF with comprehensive extraction using page range optimization."""
         self.logger.info(f"Starting enhanced Hager parsing: {self.pdf_path}")
 
         try:
-            # Extract PDF document
+            # Extract PDF document (full doc for metadata)
             self.document = self.pdf_extractor.extract_document()
-            self.logger.info(f"Extracted PDF with {len(self.document.pages)} pages")
+            total_pages = len(self.document.pages)
+            self.logger.info(f"Extracted PDF with {total_pages} pages")
 
-            # Combine all text content
-            full_text = self._combine_text_content()
+            # Extract effective date from first few pages only
+            first_pages_text = self._get_text_from_pages(1, 5)
+            self._parse_effective_date(first_pages_text)
 
-            # Extract all tables
-            all_tables = self._combine_all_tables()
+            # Parse finish symbols and rules from intro pages (1-20)
+            intro_text = self._get_text_from_pages(1, 20)
+            self._parse_finish_symbols(intro_text)
+            self._parse_price_rules(intro_text)
+            self._parse_hinge_additions(intro_text)
 
-            # Parse sections
-            self._parse_effective_date(full_text)
-            self._parse_finish_symbols(full_text)
-            self._parse_price_rules(full_text)
-            self._parse_hinge_additions(full_text)
-            self._parse_item_tables(full_text, all_tables)
+            # Parse products from optimized page ranges
+            self.logger.info(f"Parsing products from optimized ranges: {self.product_page_ranges}")
+            for start_page, end_page in self.product_page_ranges:
+                actual_end = min(end_page, total_pages)
+                self.logger.info(f"Processing product pages {start_page}-{actual_end}")
+
+                # Get tables from this range
+                range_tables = self._get_tables_from_pages(start_page, actual_end)
+                range_text = self._get_text_from_pages(start_page, actual_end)
+
+                # Parse items from this range
+                self._parse_item_tables(range_text, range_tables)
 
             # Build final results
             results = self._build_results()
@@ -65,8 +85,34 @@ class HagerParser:
             return results
 
         except Exception as e:
-            self.logger.error(f"Error during Hager parsing: {e}")
+            self.logger.error(f"Error during Hager parsing: {e}", exc_info=True)
             return self._build_error_results(str(e))
+
+    def _get_text_from_pages(self, start_page: int, end_page: int) -> str:
+        """Get combined text from specific page range."""
+        if not self.document:
+            return ""
+
+        text_parts = []
+        for page in self.document.pages:
+            if start_page <= page.page_number <= end_page:
+                if page.text:
+                    text_parts.append(f"--- PAGE {page.page_number} ---\n{page.text}")
+
+        return "\n\n".join(text_parts)
+
+    def _get_tables_from_pages(self, start_page: int, end_page: int) -> List[Any]:
+        """Get all tables from specific page range."""
+        if not self.document:
+            return []
+
+        tables = []
+        for page in self.document.pages:
+            if start_page <= page.page_number <= end_page:
+                for table in page.tables:
+                    tables.append(table)
+
+        return tables
 
     def _combine_text_content(self) -> str:
         """Combine text content from all pages."""
