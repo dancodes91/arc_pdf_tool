@@ -55,6 +55,14 @@ class HagerParser:
             total_pages = len(self.document.pages)
             self.logger.info(f"Extracted PDF with {total_pages} pages")
 
+            # PARALLEL TABLE PRELOAD: Extract all tables once in parallel (massive speedup)
+            all_page_numbers = list(range(1, total_pages + 1))
+            self.logger.info(f"Preloading all tables in parallel (this may take 1-2 minutes)...")
+            self.section_extractor.preload_tables_parallel(
+                self.pdf_path, all_page_numbers, max_workers=4
+            )
+            self.logger.info("Table preloading complete - parsing will now be fast")
+
             # Extract effective date from first few pages only
             first_pages_text = self._get_text_from_pages(1, 5)
             self._parse_effective_date(first_pages_text)
@@ -265,19 +273,41 @@ class HagerParser:
         self.logger.info("Parsing item tables...")
         self.products = []
 
-        # PERFORMANCE OPTIMIZATION: Only process pages likely to contain product tables
-        # Skip pages without product indicators (BB, WT, ECBB patterns or $ prices)
-        # ENHANCED: Require price symbol + at least one product keyword
-        product_keywords = ['BB', 'WT', 'ECBB', 'Model', 'Series']
+        # RELAXED FILTERING: Process pages with prices OR product indicators
+        # Many Hager pages have prices embedded in tables (not visible in plain text)
+        # Expanded product keywords to cover more Hager product families
+        product_keywords = [
+            'BB', 'WT', 'ECBB', 'Model', 'Series',
+            'Hinge', 'List', 'Price', 'Steel', 'Brass',
+            'Description', 'Part Number', 'Finish',
+            'US3', 'US4', 'US10', 'US26',  # Finish codes indicate product pages
+            'Size', 'Heavy', 'Standard'
+        ]
+
+        # Get current page range being processed (from caller)
+        # Only filter pages within the current range
+        current_range_start = None
+        current_range_end = None
 
         pages_to_process = []
         for page in self.document.pages:
-            page_text = page.text or ''
-            # Require: (1) Must have price symbol AND (2) Must have at least 1 product keyword
-            has_price = '$' in page_text
-            has_product_keyword = any(kw in page_text for kw in product_keywords)
+            page_num = page.page_number
 
-            if has_price and has_product_keyword:
+            # Check if page is in current processing range
+            # (This is set by the caller in parse() method via page ranges)
+            in_range = any(start <= page_num <= end for start, end in self.product_page_ranges)
+
+            if not in_range:
+                continue
+
+            page_text = page.text or ''
+
+            # Much more relaxed filter: price symbol OR multiple product keywords
+            has_price = '$' in page_text
+            keyword_count = sum(1 for kw in product_keywords if kw in page_text)
+
+            # Include page if: has price OR has 2+ product keywords
+            if has_price or keyword_count >= 2:
                 pages_to_process.append(page)
 
         self.logger.info(f"Processing {len(pages_to_process)}/{len(self.document.pages)} pages with product indicators")

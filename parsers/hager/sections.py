@@ -28,6 +28,9 @@ def safe_confidence_score(confidence_obj, default=0.7):
 class HagerSectionExtractor:
     """Extract specific sections from Hager PDFs."""
 
+    # Class-level cache for preloaded tables
+    _table_cache: Dict[tuple, Dict[int, List]] = {}
+
     def __init__(self, provenance_tracker: ProvenanceTracker):
         self.tracker = provenance_tracker
         self.logger = logging.getLogger(f"{__class__.__name__}")
@@ -93,14 +96,48 @@ class HagerSectionExtractor:
             'US32D': {'bhma': 'US32D', 'name': 'Antique Brass', 'standard': True},
         }
 
+    @classmethod
+    def preload_tables_parallel(cls, pdf_path: str, page_numbers: List[int],
+                               max_workers: int = None) -> None:
+        """Preload tables for all pages in parallel (call once at parser start)."""
+        from ..shared.parallel_extractor import parallel_table_extraction
+
+        cache_key = (pdf_path, tuple(sorted(page_numbers)))
+        if cache_key in cls._table_cache:
+            logger.info(f"Using cached tables for {len(page_numbers)} pages")
+            return
+
+        logger.info(f"Preloading tables from {len(page_numbers)} pages in parallel...")
+        results = parallel_table_extraction(pdf_path, page_numbers,
+                                           max_workers=max_workers, batch_size=25)
+        cls._table_cache[cache_key] = results
+        total_tables = sum(len(tables) for tables in results.values())
+        logger.info(f"Preloaded {total_tables} tables from {len(results)} pages")
+
+    @classmethod
+    def get_cached_tables(cls, pdf_path: str, page_number: int) -> Optional[List]:
+        """Get preloaded tables for a page."""
+        # Find cache entry containing this page
+        for cache_key, results in cls._table_cache.items():
+            if cache_key[0] == pdf_path and page_number in results:
+                return results[page_number]
+        return None
+
     @staticmethod
     def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice"):
-        """Extract tables from specific page using Camelot."""
+        """Extract tables from specific page (uses cache if available)."""
+        # Try cache first
+        cached = HagerSectionExtractor.get_cached_tables(pdf_path, page_number)
+        if cached is not None:
+            return cached
+
+        # Fallback: extract single page if not cached
         import camelot
         import gc
         page_str = str(page_number)
         try:
-            tables = camelot.read_pdf(pdf_path, pages=page_str, flavor=flavor)
+            tables = camelot.read_pdf(pdf_path, pages=page_str, flavor=flavor,
+                                     suppress_stdout=True, backend='pdfium')
             result = [t.df for t in tables] if tables.n else []
             # Force cleanup to prevent Windows file locking on temp files
             del tables
@@ -122,74 +159,85 @@ class HagerSectionExtractor:
                 continue
 
             # Check if this table contains finish symbols data
-            header_text = " ".join(str(cell) for cell in df.iloc[0]).upper()
+            header_text = " ".join(str(cell) for cell in df.iloc[0] if str(cell).strip()).upper()
             table_text = str(df).upper()
 
             # Check for finish-related keywords in table or header
             has_finish_keywords = any(keyword in header_text or keyword in table_text
-                                    for keyword in ["FINISH", "BHMA", "US3", "US4", "US10", "US26", "US", "2C", "3A"])
+                                    for keyword in ["FINISH", "BHMA", "US3", "US4", "US10", "US26", "US", "2C", "3A", "SYMBOL"])
 
             if not has_finish_keywords:
                 self.logger.debug(f"Table {table_idx} skipped - no finish keywords found")
                 continue
 
-            self.logger.debug(f"Processing table {table_idx} - found finish keywords")
+            self.logger.debug(f"Processing finish table {table_idx}")
 
-            # Process all rows looking for finish codes
-            for row_idx, row in df.iterrows():
-                for col_idx, cell in enumerate(row):
-                    cell_str = str(cell).strip()
+            # Identify column structure for Hager finish table
+            # Expected columns: BHMA SYMBOL / US & HAGER / DESCRIPTION / PRICING INSTRUCTIONS / etc.
+            col_map = {}
+            for col_idx in range(len(df.columns)):
+                col_header = str(df.iloc[0, col_idx] if len(df) > 0 else df.columns[col_idx]).upper().strip()
+                if any(kw in col_header for kw in ['BHMA', 'SYMBOL', 'US']):
+                    col_map['finish_code'] = col_idx
+                elif 'DESC' in col_header:
+                    col_map['description'] = col_idx
+                elif any(kw in col_header for kw in ['PRIC', 'INSTRUCT']):
+                    col_map['pricing'] = col_idx
 
-                    # Look for finish codes - patterns like US3, US4, US10A, US26D, 2C, 3A, etc.
-                    if cell_str and len(cell_str) <= 10:  # Reasonable length for finish codes
-                        # Check if it looks like a finish code
-                        is_finish_code = (
-                            cell_str.startswith('US') or
-                            (cell_str.isalnum() and any(c.isdigit() for c in cell_str)) or
-                            cell_str in ['2C', '3', '3A', '4', '5', '10', '10A', '10B', '15', '26', '26D', '32D']
-                        )
+            # Process rows (skip header row)
+            start_row = 1 if len(df) > 1 else 0
+            for row_idx in range(start_row, len(df)):
+                row = df.iloc[row_idx]
 
-                        if is_finish_code:
-                            self.logger.debug(f"Found finish code: {cell_str} at [{row_idx},{col_idx}]")
+                # Extract finish code
+                finish_code = ""
+                if 'finish_code' in col_map:
+                    finish_code = str(row.iloc[col_map['finish_code']]).strip()
+                else:
+                    # Fall back to scanning all columns for finish code
+                    for cell in row:
+                        cell_str = str(cell).strip()
+                        if cell_str and len(cell_str) <= 10:
+                            is_code = (cell_str.startswith('US') or cell_str in ['2C', '3', '3A', '4', '10', '10A', '10B', '26', '26D', '32D'])
+                            if is_code:
+                                finish_code = cell_str
+                                break
 
-                            # Try to find description and pricing in adjacent cells
-                            desc = ""
-                            pricing_text = ""
+                if not finish_code or finish_code.upper() in ['NAN', 'SYMBOL', 'BHMA', 'US']:
+                    continue
 
-                            # Look in adjacent columns for description and pricing
-                            for offset in [1, 2, 3]:
-                                if col_idx + offset < len(row):
-                                    next_cell = str(row.iloc[col_idx + offset]).strip()
-                                    if next_cell and next_cell.lower() not in ['nan', 'none']:
-                                        if any(c in next_cell for c in ['$', '%', 'price', 'above']):
-                                            pricing_text = next_cell
-                                        elif not desc and len(next_cell) > 3:  # Likely description
-                                            desc = next_cell
+                # Extract description
+                desc = ""
+                if 'description' in col_map:
+                    desc = str(row.iloc[col_map['description']]).strip()
 
-                            # Extract price if possible
-                            base_price = self._extract_price_from_text(pricing_text) if pricing_text else 0.0
+                # Extract pricing instructions
+                pricing_text = ""
+                if 'pricing' in col_map:
+                    pricing_text = str(row.iloc[col_map['pricing']]).strip()
 
-                            # Create finish symbol entry
-                            finish_data = {
-                                'finish_code': cell_str,
-                                'description': desc or f"{cell_str} finish",
-                                'base_price': base_price,
-                                'pricing_text': pricing_text,
-                                'manufacturer': 'hager',
-                            }
+                # Parse price from pricing text (e.g., "20% ABOVE US10A OR US10B PRICE")
+                base_price = self._extract_price_from_text(pricing_text) if pricing_text else 0.0
 
-                            finish_item = self.tracker.create_parsed_item(
-                                value=finish_data,
-                                data_type="finish_symbol",
-                                confidence=0.7,  # Lower confidence for extracted codes
-                                extraction_method='camelot_table_scan',
-                                page_number=page_number,
-                                table_index=table_idx,
-                                source_section='finish_symbols'
-                            )
+                # Create finish symbol entry
+                finish_data = {
+                    'code': finish_code,
+                    'name': desc or f"{finish_code} finish",
+                    'base_price': base_price,
+                    'pricing_text': pricing_text,
+                    'manufacturer': 'hager',
+                }
 
-                            results.append(finish_item)
-                            self.logger.debug(f"Added finish symbol: {cell_str}")
+                finish_item = self.tracker.create_parsed_item(
+                    value=finish_data,
+                    data_type="finish_symbol",
+                    confidence=0.8,
+                    raw_text=f"{finish_code} - {desc} - {pricing_text}",
+                    row_index=row_idx
+                )
+
+                results.append(finish_item)
+                self.logger.debug(f"Added finish symbol: {finish_code} - {desc}")
 
         return results
 
@@ -477,59 +525,122 @@ class HagerSectionExtractor:
         return sum(1 for indicator in indicators if indicator in table_text) >= 2
 
     def _extract_products_from_table(self, table: pd.DataFrame, table_idx: int, page_number: int) -> List[ParsedItem]:
-        """Extract products from Hager table."""
+        """Extract products from Hager table with multiline cell support."""
         products = []
 
         # Identify columns
         columns = self._identify_hager_table_columns(table)
 
-        if columns.get('model') is None or columns.get('price') is None:
-            self.logger.warning(f"Hager table {table_idx} missing essential columns: {columns}")
+        # Only require price column (description may have embedded model codes)
+        if columns.get('price') is None:
+            self.logger.warning(f"Hager table {table_idx} missing price column: {columns}")
             return products
 
         for row_idx, row in table.iterrows():
             try:
-                model_code = str(row.iloc[columns['model']]).strip()
-                price_str = str(row.iloc[columns['price']]).strip()
+                # Get description and price cells with validation
+                desc_col = columns.get('description')
+                if desc_col is None:
+                    desc_col = 1 if len(table.columns) > 1 else 0
+                price_col = columns.get('price')
+                if price_col is None:
+                    continue  # Already checked above, but be defensive
 
-                # Skip header/empty rows
-                if not model_code or model_code.lower() in ['nan', 'model', 'part']:
+                # Ensure column indices are valid integers
+                if not isinstance(desc_col, int) or not isinstance(price_col, int):
+                    continue
+                if desc_col >= len(table.columns) or price_col >= len(table.columns):
                     continue
 
-                # Normalize data
-                sku_normalized = data_normalizer.normalize_sku(model_code, "hager")
-                price_normalized = data_normalizer.normalize_price(price_str)
+                desc_cell = str(row.iloc[desc_col]).strip()
+                price_cell = str(row.iloc[price_col]).strip()
 
-                if sku_normalized['value'] and price_normalized['value']:
-                    product_data = {
-                        'sku': sku_normalized['value'],
-                        'model': self._extract_hager_base_model(sku_normalized['value']),
-                        'description': self._build_hager_description(row, columns),
-                        'base_price': float(price_normalized['value']),
-                        'series': self._extract_series_from_sku(sku_normalized['value']),
-                        'specifications': self._extract_hager_specifications(row, columns),
-                        'manufacturer': 'hager',
-                        'is_active': True
-                    }
+                # Skip header/empty rows
+                if not desc_cell or desc_cell.lower() in ['nan', 'description', 'name']:
+                    continue
+                if not price_cell or price_cell.lower() in ['nan', 'price', 'list']:
+                    continue
 
-                    confidence = min(
-                        safe_confidence_score(sku_normalized['confidence']),
-                        safe_confidence_score(price_normalized['confidence'])
-                    )
+                # MULTILINE PARSING: Check if cells contain newlines (multiple products in one cell)
+                desc_lines = [line.strip() for line in desc_cell.split('\n') if line.strip()]
+                price_lines = [line.strip() for line in price_cell.split('\n') if line.strip()]
 
-                    item = self.tracker.create_parsed_item(
-                        value=product_data,
-                        data_type="product",
-                        raw_text=f"{model_code} - {price_str}",
-                        row_index=row_idx,
-                        confidence=confidence
-                    )
-                    products.append(item)
+                # Extract model codes from description lines
+                # Pattern: ETM-4 (4 wire), BB1100, etc.
+                model_pattern = r'\b([A-Z]{2,4}[-\d]+)\b'
+
+                # If we have matching counts, pair them up
+                if len(desc_lines) == len(price_lines) and len(desc_lines) > 1:
+                    # Multiple products in single row (multiline cell)
+                    for desc_line, price_line in zip(desc_lines, price_lines):
+                        # Extract model code from description
+                        model_match = re.search(model_pattern, desc_line)
+                        if model_match:
+                            model_code = model_match.group(1)
+                            self._create_product_from_parts(
+                                products, model_code, desc_line, price_line,
+                                row_idx, table_idx, page_number
+                            )
+                else:
+                    # Single product or use model column if available
+                    if columns.get('model') is not None:
+                        model_code = str(row.iloc[columns['model']]).strip()
+                        if model_code and model_code.lower() not in ['nan', 'model', 'part', 'number']:
+                            self._create_product_from_parts(
+                                products, model_code, desc_cell, price_cell,
+                                row_idx, table_idx, page_number
+                            )
+                    else:
+                        # Try to extract model from description
+                        model_match = re.search(model_pattern, desc_cell)
+                        if model_match:
+                            model_code = model_match.group(1)
+                            self._create_product_from_parts(
+                                products, model_code, desc_cell, price_cell,
+                                row_idx, table_idx, page_number
+                            )
 
             except Exception as e:
                 self.logger.warning(f"Error processing Hager row {row_idx}: {e}")
 
         return products
+
+    def _create_product_from_parts(self, products: List[ParsedItem], model_code: str,
+                                   description: str, price_str: str, row_idx: int,
+                                   table_idx: int, page_number: int) -> None:
+        """Helper to create a product from extracted parts."""
+        try:
+            # Normalize data
+            sku_normalized = data_normalizer.normalize_sku(model_code, "hager")
+            price_normalized = data_normalizer.normalize_price(price_str)
+
+            if sku_normalized['value'] and price_normalized['value']:
+                product_data = {
+                    'sku': sku_normalized['value'],
+                    'model': self._extract_hager_base_model(sku_normalized['value']),
+                    'description': description,
+                    'base_price': float(price_normalized['value']),
+                    'series': self._extract_series_from_sku(sku_normalized['value']),
+                    'specifications': {},
+                    'manufacturer': 'hager',
+                    'is_active': True
+                }
+
+                confidence = min(
+                    safe_confidence_score(sku_normalized['confidence']),
+                    safe_confidence_score(price_normalized['confidence'])
+                )
+
+                item = self.tracker.create_parsed_item(
+                    value=product_data,
+                    data_type="product",
+                    raw_text=f"{model_code} - {price_str}",
+                    row_index=row_idx,
+                    confidence=confidence
+                )
+                products.append(item)
+        except Exception as e:
+            self.logger.warning(f"Error creating product from {model_code}: {e}")
 
     def _extract_products_from_series_text(self, text_section: str, series_code: str, page_number: int) -> List[ParsedItem]:
         """Extract products from text section for specific series."""
@@ -583,7 +694,7 @@ class HagerSectionExtractor:
         return products
 
     def _identify_hager_table_columns(self, table: pd.DataFrame) -> Dict[str, Optional[int]]:
-        """Identify column purposes in Hager table."""
+        """Identify column purposes in Hager table with enhanced pattern matching."""
         columns = {
             'model': None,
             'price': None,
@@ -593,28 +704,67 @@ class HagerSectionExtractor:
             'size': None
         }
 
-        # Check headers
+        # First, check if headers are in the actual column names (named columns)
         for col_idx, col_name in enumerate(table.columns):
             col_text = str(col_name).lower()
 
-            if any(keyword in col_text for keyword in ['model', 'part', 'item', 'sku']):
+            # Model/SKU/Part Number column
+            if any(keyword in col_text for keyword in ['model', 'part', 'item', 'sku', 'number']):
                 columns['model'] = col_idx
-            elif any(keyword in col_text for keyword in ['price', 'list', 'each', 'cost']):
-                columns['price'] = col_idx
+            # Price column - Hager uses "Steel/Brass List", "Stainless Steel List", etc.
+            elif any(keyword in col_text for keyword in ['price', 'list', 'each', 'cost', 'steel', 'brass', 'stainless']):
+                if columns['price'] is None:  # Take first price column
+                    columns['price'] = col_idx
+            # Description column
             elif any(keyword in col_text for keyword in ['desc', 'description', 'name']):
                 columns['description'] = col_idx
+            # Series/Type column
             elif any(keyword in col_text for keyword in ['series', 'type']):
                 columns['series'] = col_idx
+            # Duty/Weight/Grade column
             elif any(keyword in col_text for keyword in ['duty', 'weight', 'grade']):
                 columns['duty'] = col_idx
+            # Size/Dimension column
             elif any(keyword in col_text for keyword in ['size', 'dimension']):
                 columns['size'] = col_idx
 
-        # Try exact matches
-        if 'Model' in table.columns:
-            columns['model'] = list(table.columns).index('Model')
-        if 'Price' in table.columns:
-            columns['price'] = list(table.columns).index('Price')
+        # If columns are numeric (0, 1, 2...), headers are likely in first row
+        # Check first row for header keywords
+        if columns['description'] is None or columns['price'] is None:
+            if len(table) > 0:
+                first_row = table.iloc[0]
+                for col_idx, cell in enumerate(first_row):
+                    cell_text = str(cell).lower()
+
+                    # Look for header keywords in first row
+                    if 'list' in cell_text or 'price' in cell_text or 'steel' in cell_text or 'brass' in cell_text:
+                        if columns['price'] is None:
+                            columns['price'] = col_idx
+                    elif 'desc' in cell_text:
+                        columns['description'] = col_idx
+                    elif 'part' in cell_text or 'model' in cell_text or 'number' in cell_text:
+                        columns['model'] = col_idx
+
+        # Content-based detection: scan actual data rows for patterns
+        if columns['description'] is None or columns['price'] is None:
+            # Start from row 1 (skip potential header row)
+            for col_idx in range(len(table.columns)):
+                # Get first few non-empty cell contents
+                sample_text = ""
+                for row_idx in range(1, min(4, len(table))):
+                    cell = str(table.iloc[row_idx, col_idx]).strip()
+                    if cell and cell.lower() != 'nan' and len(cell) > 5:
+                        sample_text = cell
+                        break
+
+                # Check if this column contains prices (has $ and numbers)
+                if '$' in sample_text and any(c.isdigit() for c in sample_text):
+                    if columns['price'] is None:
+                        columns['price'] = col_idx
+                # Check if this column contains descriptions (long text, no $)
+                elif len(sample_text) > 20 and '$' not in sample_text:
+                    if columns['description'] is None:
+                        columns['description'] = col_idx
 
         return columns
 
