@@ -800,18 +800,22 @@ class SelectSectionExtractor:
             # Get row header (first column - usually model)
             row_header = str(row.iloc[0]).strip() if len(row) > 0 else ""
 
-            # Extract base model from row header
-            model_match = re.search(r'(SL\s*\d{2})', row_header, re.IGNORECASE)
-            base_model = model_match.group(1).replace(' ', '').upper() if model_match else None
-
-            if not base_model:
+            # Extract full model info from row header (handle 2 or 3 digit models)
+            # Pattern: SL## [FINISH] [DUTY]
+            model_match = re.search(r'(SL\s*\d{2,3})\s*([A-Z]{2})?\s*([A-Z]+\d*)?', row_header, re.IGNORECASE)
+            if not model_match:
                 continue
 
+            base_model = model_match.group(1).replace(' ', '').upper()
+            finish_from_row = model_match.group(2).upper() if model_match.group(2) else None
+            duty_from_row = model_match.group(3).upper() if model_match.group(3) else None
+
             # Extract length/duty from row if present
-            length_duty = ""
-            length_match = re.search(r'(HD\d+|LD\d+|LL|\d+\s*")', row_header)
-            if length_match:
-                length_duty = length_match.group(1).replace(' ', '')
+            length_duty = duty_from_row if duty_from_row else ""
+            if not length_duty:
+                length_match = re.search(r'(HD\d+|LD\d+|LL|\d+\s*")', row_header)
+                if length_match:
+                    length_duty = length_match.group(1).replace(' ', '')
 
             # Scan all cells in this row for prices
             for col_idx, cell_value in enumerate(row):
@@ -835,11 +839,11 @@ class SelectSectionExtractor:
                 if not price:
                     continue
 
-                # Infer finish from column header - ONLY accept valid finish codes
-                finish_code = None
+                # Infer finish from row, column header, or cell - allow None for Pin & Barrel models
+                finish_code = finish_from_row if finish_from_row else None
                 col_header = headers[col_idx] if col_idx < len(headers) else ""
 
-                # Check column header for finish code
+                # Check column header for finish code (override row finish if found)
                 if col_header in ['CL', 'BR', 'BK']:
                     finish_code = col_header
                 elif 'CL' in col_header or 'CLEAR' in col_header:
@@ -848,8 +852,7 @@ class SelectSectionExtractor:
                     finish_code = 'BR'
                 elif 'BK' in col_header or 'BLACK' in col_header:
                     finish_code = 'BK'
-                else:
-                    # Check cell text for finish code
+                elif not finish_code:  # Check cell text if no finish found yet
                     if re.search(r'\bCL\b', cell_str, re.IGNORECASE):
                         finish_code = 'CL'
                     elif re.search(r'\bBR\b', cell_str, re.IGNORECASE):
@@ -857,10 +860,11 @@ class SelectSectionExtractor:
                     elif re.search(r'\bBK\b', cell_str, re.IGNORECASE):
                         finish_code = 'BK'
 
-                # SKIP this cell if we couldn't identify a valid finish code
-                # This prevents creating products with generic/invalid finishes
-                if not finish_code:
-                    continue
+                # Extract length from column header
+                length_from_col = ''
+                length_col_match = re.search(r'(\d+)\s*"', col_header)
+                if length_col_match:
+                    length_from_col = length_col_match.group(1)
 
                 # Check for length/duty in cell if not in row header
                 if not length_duty:
@@ -868,12 +872,16 @@ class SelectSectionExtractor:
                     if length_match:
                         length_duty = length_match.group(1).replace(' ', '')
 
-                # Build SKU
-                sku_parts = [base_model, finish_code]
+                # Build SKU with proper format: {BASE}_{FINISH}_{DUTY}_{LENGTH}
+                sku_parts = [base_model]
+                if finish_code:
+                    sku_parts.append(finish_code)
                 if length_duty:
                     sku_parts.append(length_duty)
+                if length_from_col:
+                    sku_parts.append(length_from_col)
 
-                sku = '-'.join(sku_parts)
+                sku = '_'.join(sku_parts)
 
                 # Skip duplicates (check both local and existing SKUs)
                 if sku in existing_skus:
