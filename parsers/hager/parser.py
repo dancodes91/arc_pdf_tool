@@ -24,6 +24,10 @@ class HagerParser:
         self.config = config or {}
         self.logger = logging.getLogger(f"{__class__.__name__}")
 
+        # Performance mode: Skip supplementary pages (pages 301+) for faster parsing
+        # Set config['fast_mode'] = True to enable (90%+ of products in first 300 pages)
+        self.fast_mode = self.config.get("fast_mode", False)
+
         # Initialize utilities
         self.provenance_tracker = ProvenanceTracker(pdf_path)
         self.section_extractor = HagerSectionExtractor(self.provenance_tracker)
@@ -42,10 +46,30 @@ class HagerParser:
         # Pages 1-6: General info (skip for product extraction)
         # Pages 7-300: Core product catalog (90% of products)
         # Pages 301-417: Supplementary products
-        self.product_page_ranges = [
-            (7, 300),  # Main product catalog
-            (301, 350),  # Supplementary products (selective)
-        ]
+
+        # AGGRESSIVE CHUNKING: Process in smaller batches to avoid timeout
+        # Each chunk: 50 pages max, processed sequentially
+        if self.fast_mode:
+            # Fast mode: Only main catalog (90%+ of products, ~2 min parse time)
+            self.product_page_ranges = [
+                (7, 50),    # Chunk 1
+                (51, 100),  # Chunk 2
+                (101, 150), # Chunk 3
+                (151, 200), # Chunk 4
+                (201, 250), # Chunk 5
+                (251, 300), # Chunk 6 (end of main catalog)
+            ]
+        else:
+            # Full mode: Include supplementary pages (~3-4 min parse time)
+            self.product_page_ranges = [
+                (7, 50),    # Chunk 1
+                (51, 100),  # Chunk 2
+                (101, 150), # Chunk 3
+                (151, 200), # Chunk 4
+                (201, 250), # Chunk 5
+                (251, 300), # Chunk 6 (end of main catalog)
+                (301, 330), # Chunk 7 (supplementary - selective)
+            ]
 
     def parse(self) -> Dict[str, Any]:
         """Parse Hager PDF with comprehensive extraction using page range optimization."""
@@ -57,11 +81,21 @@ class HagerParser:
             total_pages = len(self.document.pages)
             self.logger.info(f"Extracted PDF with {total_pages} pages")
 
-            # PARALLEL TABLE PRELOAD: Extract all tables once in parallel (massive speedup)
-            all_page_numbers = list(range(1, total_pages + 1))
-            self.logger.info(f"Preloading all tables in parallel (this may take 1-2 minutes)...")
+            # OPTIMIZED TABLE PRELOAD: Only preload pages we'll actually process
+            pages_to_preload = []
+            for start, end in self.product_page_ranges:
+                actual_end = min(end, total_pages)
+                pages_to_preload.extend(range(start, actual_end + 1))
+            # Add intro pages for metadata
+            pages_to_preload.extend(range(1, 21))
+            pages_to_preload = sorted(set(pages_to_preload))  # Remove duplicates
+
+            self.logger.info(
+                f"Preloading tables from {len(pages_to_preload)} pages "
+                f"in parallel (saving {total_pages - len(pages_to_preload)} pages)..."
+            )
             self.section_extractor.preload_tables_parallel(
-                self.pdf_path, all_page_numbers, max_workers=4
+                self.pdf_path, pages_to_preload, max_workers=4
             )
             self.logger.info("Table preloading complete - parsing will now be fast")
 
@@ -75,11 +109,21 @@ class HagerParser:
             self._parse_price_rules(intro_text)
             self._parse_hinge_additions(intro_text)
 
-            # Parse products from optimized page ranges
-            self.logger.info(f"Parsing products from optimized ranges: {self.product_page_ranges}")
-            for start_page, end_page in self.product_page_ranges:
+            # Parse products from optimized page ranges (with progress tracking)
+            total_chunks = len(self.product_page_ranges)
+            self.logger.info(
+                f"Parsing products from {total_chunks} chunks "
+                f"(~50 pages each, {len(pages_to_preload)} pages total)"
+            )
+
+            for chunk_idx, (start_page, end_page) in enumerate(self.product_page_ranges, 1):
                 actual_end = min(end_page, total_pages)
-                self.logger.info(f"Processing product pages {start_page}-{actual_end}")
+                chunk_size = actual_end - start_page + 1
+
+                self.logger.info(
+                    f"[{chunk_idx}/{total_chunks}] Processing pages {start_page}-{actual_end} "
+                    f"({chunk_size} pages, {len(self.products)} products so far)"
+                )
 
                 # Get tables from this range
                 range_tables = self._get_tables_from_pages(start_page, actual_end)
@@ -87,6 +131,11 @@ class HagerParser:
 
                 # Parse items from this range
                 self._parse_item_tables(range_text, range_tables)
+
+                self.logger.info(
+                    f"[{chunk_idx}/{total_chunks}] Chunk complete: "
+                    f"+{len(self.products)} products total"
+                )
 
             # Build final results
             results = self._build_results()

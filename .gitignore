@@ -348,3 +348,5 @@ MILESTONE_2_STATUS.md
 # OS files
 .DS_Store
 Thumbs.db
+
+test_data/
