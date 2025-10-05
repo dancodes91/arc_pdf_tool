@@ -1,13 +1,12 @@
 """
 Hager section extraction utilities for finish symbols, rules, and items.
 """
+
 import re
 import logging
-from typing import List, Dict, Any, Optional, Tuple
-from decimal import Decimal
+from typing import List, Dict, Any, Optional
 import pandas as pd
 
-from ..shared.confidence import confidence_scorer, ConfidenceScore
 from ..shared.normalization import data_normalizer
 from ..shared.provenance import ProvenanceTracker, ParsedItem
 
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def safe_confidence_score(confidence_obj, default=0.7):
     """Safely extract confidence score from various types."""
-    if hasattr(confidence_obj, 'score'):
+    if hasattr(confidence_obj, "score"):
         return confidence_obj.score
     elif isinstance(confidence_obj, (int, float)):
         return float(confidence_obj)
@@ -37,68 +36,69 @@ class HagerSectionExtractor:
 
         # Hager finish symbols patterns
         self.finish_symbol_patterns = [
-            r'(US\d+[A-Z]?)\s+([^\n\r]+?)\s+(\$?[\d.]+)',  # US10B Description $price
-            r'Symbol:\s*(US\d+[A-Z]?)\s*-?\s*([^\n\r$]+?)\s*(\$?[\d.]+)',
-            r'(US\d+[A-Z]?)\s*-\s*([^$\n\r]+?)\s*(\$?[\d.]+)',
+            r"(US\d+[A-Z]?)\s+([^\n\r]+?)\s+(\$?[\d.]+)",  # US10B Description $price
+            r"Symbol:\s*(US\d+[A-Z]?)\s*-?\s*([^\n\r$]+?)\s*(\$?[\d.]+)",
+            r"(US\d+[A-Z]?)\s*-\s*([^$\n\r]+?)\s*(\$?[\d.]+)",
         ]
 
         # Price mapping rules (e.g., "US10B use US10A price", "20% above US10A or US10B price")
         self.price_rule_patterns = [
-            r'(US\d+[A-Z]?)\s+(?:use|uses?)\s+(US\d+[A-Z]?)\s+price',
-            r'(US\d+[A-Z]?)\s*=\s*(US\d+[A-Z]?)\s+pricing',
-            r'For\s+(US\d+[A-Z]?)\s+use\s+(US\d+[A-Z]?)',
+            r"(US\d+[A-Z]?)\s+(?:use|uses?)\s+(US\d+[A-Z]?)\s+price",
+            r"(US\d+[A-Z]?)\s*=\s*(US\d+[A-Z]?)\s+pricing",
+            r"For\s+(US\d+[A-Z]?)\s+use\s+(US\d+[A-Z]?)",
             # Percentage-based rules
-            r'(\d+)%\s+above\s+(US\d+[A-Z]?)\s+(?:or\s+(US\d+[A-Z]?)\s+)?price',
-            r'(\d+)%\s+(?:additional|extra|add)\s+(?:to\s+)?(US\d+[A-Z]?)',
-            r'(US\d+[A-Z]?)\s+(?:plus|add)\s+(\d+)%',
+            r"(\d+)%\s+above\s+(US\d+[A-Z]?)\s+(?:or\s+(US\d+[A-Z]?)\s+)?price",
+            r"(\d+)%\s+(?:additional|extra|add)\s+(?:to\s+)?(US\d+[A-Z]?)",
+            r"(US\d+[A-Z]?)\s+(?:plus|add)\s+(\d+)%",
         ]
 
         # Hinge addition patterns (EPT, ETW, EMS, etc.)
         self.addition_patterns = {
-            'EPT': [
-                r'EPT\s+(?:preparation|prep)\s+add\s+(\$?[\d.]+)',
-                r'Electroplated\s+(?:preparation|prep).*?(\$?[\d.]+)',
+            "EPT": [
+                r"EPT\s+(?:preparation|prep)\s+add\s+(\$?[\d.]+)",
+                r"Electroplated\s+(?:preparation|prep).*?(\$?[\d.]+)",
             ],
-            'ETW': [
-                r'ETW\s+(?:electric|thru-wire)\s+add\s+(\$?[\d.]+)',
-                r'Electric\s+thru.*?wire.*?(\$?[\d.]+)',
+            "ETW": [
+                r"ETW\s+(?:electric|thru-wire)\s+add\s+(\$?[\d.]+)",
+                r"Electric\s+thru.*?wire.*?(\$?[\d.]+)",
             ],
-            'EMS': [
-                r'EMS\s+(?:electromagnetic|shield)\s+add\s+(\$?[\d.]+)',
-                r'Electromagnetic\s+shielding.*?(\$?[\d.]+)',
+            "EMS": [
+                r"EMS\s+(?:electromagnetic|shield)\s+add\s+(\$?[\d.]+)",
+                r"Electromagnetic\s+shielding.*?(\$?[\d.]+)",
             ],
-            'HWS': [
-                r'HWS\s+(?:heavy|weight)\s+add\s+(\$?[\d.]+)',
-                r'Heavy\s+weight\s+stainless.*?(\$?[\d.]+)',
+            "HWS": [
+                r"HWS\s+(?:heavy|weight)\s+add\s+(\$?[\d.]+)",
+                r"Heavy\s+weight\s+stainless.*?(\$?[\d.]+)",
             ],
-            'CWP': [
-                r'CWP\s+(?:continuous|weld)\s+add\s+(\$?[\d.]+)',
-                r'Continuous\s+weld\s+prep.*?(\$?[\d.]+)',
-            ]
+            "CWP": [
+                r"CWP\s+(?:continuous|weld)\s+add\s+(\$?[\d.]+)",
+                r"Continuous\s+weld\s+prep.*?(\$?[\d.]+)",
+            ],
         }
 
         # Hager product patterns (series and models)
         self.product_patterns = {
-            'BB1100': r'BB\s*1100.*?(?=BB\s*\d{4}|$)',
-            'BB1279': r'BB\s*1279.*?(?=BB\s*\d{4}|$)',
-            'BB1290': r'BB\s*1290.*?(?=BB\s*\d{4}|$)',
-            'ECBB1100': r'ECBB\s*1100.*?(?=(?:EC)?BB\s*\d{4}|$)',
-            'WT1279': r'WT\s*1279.*?(?=WT\s*\d{4}|$)',
+            "BB1100": r"BB\s*1100.*?(?=BB\s*\d{4}|$)",
+            "BB1279": r"BB\s*1279.*?(?=BB\s*\d{4}|$)",
+            "BB1290": r"BB\s*1290.*?(?=BB\s*\d{4}|$)",
+            "ECBB1100": r"ECBB\s*1100.*?(?=(?:EC)?BB\s*\d{4}|$)",
+            "WT1279": r"WT\s*1279.*?(?=WT\s*\d{4}|$)",
         }
 
         # Standard Hager finish mappings
         self.hager_finishes = {
-            'US3': {'bhma': 'US3', 'name': 'Satin Chrome', 'standard': True},
-            'US4': {'bhma': 'US4', 'name': 'Bright Chrome', 'standard': True},
-            'US10B': {'bhma': 'US10B', 'name': 'Satin Bronze', 'standard': True},
-            'US15': {'bhma': 'US15', 'name': 'Satin Brass', 'standard': True},
-            'US26D': {'bhma': 'US26D', 'name': 'Oil Rubbed Bronze', 'standard': True},
-            'US32D': {'bhma': 'US32D', 'name': 'Antique Brass', 'standard': True},
+            "US3": {"bhma": "US3", "name": "Satin Chrome", "standard": True},
+            "US4": {"bhma": "US4", "name": "Bright Chrome", "standard": True},
+            "US10B": {"bhma": "US10B", "name": "Satin Bronze", "standard": True},
+            "US15": {"bhma": "US15", "name": "Satin Brass", "standard": True},
+            "US26D": {"bhma": "US26D", "name": "Oil Rubbed Bronze", "standard": True},
+            "US32D": {"bhma": "US32D", "name": "Antique Brass", "standard": True},
         }
 
     @classmethod
-    def preload_tables_parallel(cls, pdf_path: str, page_numbers: List[int],
-                               max_workers: int = None) -> None:
+    def preload_tables_parallel(
+        cls, pdf_path: str, page_numbers: List[int], max_workers: int = None
+    ) -> None:
         """Preload tables for all pages in parallel (call once at parser start)."""
         from ..shared.parallel_extractor import parallel_table_extraction
 
@@ -108,8 +108,9 @@ class HagerSectionExtractor:
             return
 
         logger.info(f"Preloading tables from {len(page_numbers)} pages in parallel...")
-        results = parallel_table_extraction(pdf_path, page_numbers,
-                                           max_workers=max_workers, batch_size=25)
+        results = parallel_table_extraction(
+            pdf_path, page_numbers, max_workers=max_workers, batch_size=25
+        )
         cls._table_cache[cache_key] = results
         total_tables = sum(len(tables) for tables in results.values())
         logger.info(f"Preloaded {total_tables} tables from {len(results)} pages")
@@ -134,10 +135,12 @@ class HagerSectionExtractor:
         # Fallback: extract single page if not cached
         import camelot
         import gc
+
         page_str = str(page_number)
         try:
-            tables = camelot.read_pdf(pdf_path, pages=page_str, flavor=flavor,
-                                     suppress_stdout=True, backend='pdfium')
+            tables = camelot.read_pdf(
+                pdf_path, pages=page_str, flavor=flavor, suppress_stdout=True, backend="pdfium"
+            )
             result = [t.df for t in tables] if tables.n else []
             # Force cleanup to prevent Windows file locking on temp files
             del tables
@@ -147,7 +150,9 @@ class HagerSectionExtractor:
             logger.warning(f"Camelot extraction failed for page {page_number}: {e}")
             return []
 
-    def extract_finish_symbols(self, page_text: str, tables: list, page_number: int) -> List[ParsedItem]:
+    def extract_finish_symbols(
+        self, page_text: str, tables: list, page_number: int
+    ) -> List[ParsedItem]:
         """Extract finish symbols table with BHMA codes and pricing using Camelot DataFrame."""
         self.tracker.set_context(section="Finish Symbols", page_number=page_number)
 
@@ -163,8 +168,21 @@ class HagerSectionExtractor:
             table_text = str(df).upper()
 
             # Check for finish-related keywords in table or header
-            has_finish_keywords = any(keyword in header_text or keyword in table_text
-                                    for keyword in ["FINISH", "BHMA", "US3", "US4", "US10", "US26", "US", "2C", "3A", "SYMBOL"])
+            has_finish_keywords = any(
+                keyword in header_text or keyword in table_text
+                for keyword in [
+                    "FINISH",
+                    "BHMA",
+                    "US3",
+                    "US4",
+                    "US10",
+                    "US26",
+                    "US",
+                    "2C",
+                    "3A",
+                    "SYMBOL",
+                ]
+            )
 
             if not has_finish_keywords:
                 self.logger.debug(f"Table {table_idx} skipped - no finish keywords found")
@@ -176,13 +194,15 @@ class HagerSectionExtractor:
             # Expected columns: BHMA SYMBOL / US & HAGER / DESCRIPTION / PRICING INSTRUCTIONS / etc.
             col_map = {}
             for col_idx in range(len(df.columns)):
-                col_header = str(df.iloc[0, col_idx] if len(df) > 0 else df.columns[col_idx]).upper().strip()
-                if any(kw in col_header for kw in ['BHMA', 'SYMBOL', 'US']):
-                    col_map['finish_code'] = col_idx
-                elif 'DESC' in col_header:
-                    col_map['description'] = col_idx
-                elif any(kw in col_header for kw in ['PRIC', 'INSTRUCT']):
-                    col_map['pricing'] = col_idx
+                col_header = (
+                    str(df.iloc[0, col_idx] if len(df) > 0 else df.columns[col_idx]).upper().strip()
+                )
+                if any(kw in col_header for kw in ["BHMA", "SYMBOL", "US"]):
+                    col_map["finish_code"] = col_idx
+                elif "DESC" in col_header:
+                    col_map["description"] = col_idx
+                elif any(kw in col_header for kw in ["PRIC", "INSTRUCT"]):
+                    col_map["pricing"] = col_idx
 
             # Process rows (skip header row)
             start_row = 1 if len(df) > 1 else 0
@@ -191,41 +211,52 @@ class HagerSectionExtractor:
 
                 # Extract finish code
                 finish_code = ""
-                if 'finish_code' in col_map:
-                    finish_code = str(row.iloc[col_map['finish_code']]).strip()
+                if "finish_code" in col_map:
+                    finish_code = str(row.iloc[col_map["finish_code"]]).strip()
                 else:
                     # Fall back to scanning all columns for finish code
                     for cell in row:
                         cell_str = str(cell).strip()
                         if cell_str and len(cell_str) <= 10:
-                            is_code = (cell_str.startswith('US') or cell_str in ['2C', '3', '3A', '4', '10', '10A', '10B', '26', '26D', '32D'])
+                            is_code = cell_str.startswith("US") or cell_str in [
+                                "2C",
+                                "3",
+                                "3A",
+                                "4",
+                                "10",
+                                "10A",
+                                "10B",
+                                "26",
+                                "26D",
+                                "32D",
+                            ]
                             if is_code:
                                 finish_code = cell_str
                                 break
 
-                if not finish_code or finish_code.upper() in ['NAN', 'SYMBOL', 'BHMA', 'US']:
+                if not finish_code or finish_code.upper() in ["NAN", "SYMBOL", "BHMA", "US"]:
                     continue
 
                 # Extract description
                 desc = ""
-                if 'description' in col_map:
-                    desc = str(row.iloc[col_map['description']]).strip()
+                if "description" in col_map:
+                    desc = str(row.iloc[col_map["description"]]).strip()
 
                 # Extract pricing instructions
                 pricing_text = ""
-                if 'pricing' in col_map:
-                    pricing_text = str(row.iloc[col_map['pricing']]).strip()
+                if "pricing" in col_map:
+                    pricing_text = str(row.iloc[col_map["pricing"]]).strip()
 
                 # Parse price from pricing text (e.g., "20% ABOVE US10A OR US10B PRICE")
                 base_price = self._extract_price_from_text(pricing_text) if pricing_text else 0.0
 
                 # Create finish symbol entry
                 finish_data = {
-                    'code': finish_code,
-                    'name': desc or f"{finish_code} finish",
-                    'base_price': base_price,
-                    'pricing_text': pricing_text,
-                    'manufacturer': 'hager',
+                    "code": finish_code,
+                    "name": desc or f"{finish_code} finish",
+                    "base_price": base_price,
+                    "pricing_text": pricing_text,
+                    "manufacturer": "hager",
                 }
 
                 finish_item = self.tracker.create_parsed_item(
@@ -233,7 +264,7 @@ class HagerSectionExtractor:
                     data_type="finish_symbol",
                     confidence=0.8,
                     raw_text=f"{finish_code} - {desc} - {pricing_text}",
-                    row_index=row_idx
+                    row_index=row_idx,
                 )
 
                 results.append(finish_item)
@@ -241,7 +272,9 @@ class HagerSectionExtractor:
 
         return results
 
-    def extract_price_rules(self, page_text: str, tables: list, page_number: int) -> List[ParsedItem]:
+    def extract_price_rules(
+        self, page_text: str, tables: list, page_number: int
+    ) -> List[ParsedItem]:
         """Extract pricing rules (e.g., US10B uses US10A price) using both tables and text patterns."""
         self.tracker.set_context(section="Price Rules", page_number=page_number)
         rules = []
@@ -270,21 +303,21 @@ class HagerSectionExtractor:
                             target_finish = match.group(2).strip().upper()
 
                             rule_data = {
-                                'rule_type': 'price_mapping',
-                                'source_finish': source_finish,
-                                'target_finish': target_finish,
-                                'description': f"{source_finish} uses {target_finish} pricing",
-                                'manufacturer': 'hager'
+                                "rule_type": "price_mapping",
+                                "source_finish": source_finish,
+                                "target_finish": target_finish,
+                                "description": f"{source_finish} uses {target_finish} pricing",
+                                "manufacturer": "hager",
                             }
 
                             rule_item = self.tracker.create_parsed_item(
                                 value=rule_data,
                                 data_type="price_rule",
                                 confidence=0.9,
-                                extraction_method='camelot_table',
+                                extraction_method="camelot_table",
                                 page_number=page_number,
                                 table_index=table_idx,
-                                source_section='price_rules'
+                                source_section="price_rules",
                             )
                             rules.append(rule_item)
                         except (IndexError, AttributeError) as e:
@@ -297,40 +330,46 @@ class HagerSectionExtractor:
             for match in matches:
                 try:
                     groups = match.groups()
-                    rule_data = {'rule_type': 'price_mapping', 'manufacturer': 'hager'}
+                    rule_data = {"rule_type": "price_mapping", "manufacturer": "hager"}
 
                     # Handle different pattern types
-                    if '% above' in match.group(0):
+                    if "% above" in match.group(0):
                         # Percentage rule like "20% above US10A or US10B price"
                         percentage = groups[0]
                         base_finish = groups[1]
                         alt_finish = groups[2] if len(groups) > 2 and groups[2] else None
 
-                        rule_data.update({
-                            'rule_type': 'percentage_markup',
-                            'percentage': int(percentage),
-                            'base_finish': base_finish,
-                            'alternative_finish': alt_finish,
-                            'description': f"{percentage}% above {base_finish}" + (f" or {alt_finish}" if alt_finish else "") + " price"
-                        })
+                        rule_data.update(
+                            {
+                                "rule_type": "percentage_markup",
+                                "percentage": int(percentage),
+                                "base_finish": base_finish,
+                                "alternative_finish": alt_finish,
+                                "description": f"{percentage}% above {base_finish}"
+                                + (f" or {alt_finish}" if alt_finish else "")
+                                + " price",
+                            }
+                        )
                     elif len(groups) >= 2:
                         # Standard mapping rule like "US10B use US10A price"
                         source_finish = groups[0].strip().upper()
                         target_finish = groups[1].strip().upper()
 
-                        rule_data.update({
-                            'source_finish': source_finish,
-                            'target_finish': target_finish,
-                            'description': f"{source_finish} uses {target_finish} pricing"
-                        })
+                        rule_data.update(
+                            {
+                                "source_finish": source_finish,
+                                "target_finish": target_finish,
+                                "description": f"{source_finish} uses {target_finish} pricing",
+                            }
+                        )
 
                     rule_item = self.tracker.create_parsed_item(
                         value=rule_data,
                         data_type="price_rule",
                         confidence=0.95,
-                        extraction_method='regex_pattern',
+                        extraction_method="regex_pattern",
                         page_number=page_number,
-                        source_section='price_rules'
+                        source_section="price_rules",
                     )
                     rules.append(rule_item)
 
@@ -340,7 +379,9 @@ class HagerSectionExtractor:
         self.logger.info(f"Extracted {len(rules)} price rules")
         return rules
 
-    def extract_hinge_additions(self, page_text: str, tables: list, page_number: int) -> List[ParsedItem]:
+    def extract_hinge_additions(
+        self, page_text: str, tables: list, page_number: int
+    ) -> List[ParsedItem]:
         """Extract hinge addition options (EPT, ETW, EMS, etc.) using Camelot DataFrame."""
         self.tracker.set_context(section="Hinge Additions", page_number=page_number)
         additions = []
@@ -353,12 +394,16 @@ class HagerSectionExtractor:
 
             # Check if this table contains addition options
             header_text = " ".join(str(cell) for cell in df.iloc[0]).upper()
-            if not any(keyword in header_text for keyword in ["ADDITION", "OPTION", "EPT", "ETW", "EMS"]):
+            if not any(
+                keyword in header_text for keyword in ["ADDITION", "OPTION", "EPT", "ETW", "EMS"]
+            ):
                 continue
 
             # Set up column mapping based on table structure
             if len(df.columns) >= 3:
-                df.columns = ["code", "description", "price"] + [f"col_{i}" for i in range(3, len(df.columns))]
+                df.columns = ["code", "description", "price"] + [
+                    f"col_{i}" for i in range(3, len(df.columns))
+                ]
             else:
                 continue
 
@@ -370,7 +415,7 @@ class HagerSectionExtractor:
                 desc = str(row.get("description", "")).strip()
                 price_text = str(row.get("price", "")).strip()
 
-                if not code or code.lower() in ['nan', 'none']:
+                if not code or code.lower() in ["nan", "none"]:
                     continue
 
                 # Extract price value
@@ -378,24 +423,24 @@ class HagerSectionExtractor:
 
                 # Create addition entry
                 addition_data = {
-                    'option_code': code,
-                    'option_name': desc or self._get_addition_name(code),
-                    'adder_type': 'net_add',
-                    'adder_value': base_price,
-                    'description': desc,
-                    'manufacturer': 'hager',
-                    'constraints': self._get_addition_constraints(code),
-                    'pricing_text': price_text
+                    "option_code": code,
+                    "option_name": desc or self._get_addition_name(code),
+                    "adder_type": "net_add",
+                    "adder_value": base_price,
+                    "description": desc,
+                    "manufacturer": "hager",
+                    "constraints": self._get_addition_constraints(code),
+                    "pricing_text": price_text,
                 }
 
                 addition_item = self.tracker.create_parsed_item(
                     value=addition_data,
                     data_type="hinge_addition",
                     confidence=0.85,
-                    extraction_method='camelot_table',
+                    extraction_method="camelot_table",
                     page_number=page_number,
                     table_index=table_idx,
-                    source_section='hinge_additions'
+                    source_section="hinge_additions",
                 )
 
                 additions.append(addition_item)
@@ -410,25 +455,25 @@ class HagerSectionExtractor:
                         price_str = match.group(1).strip()
                         price_normalized = data_normalizer.normalize_price(price_str)
 
-                        if price_normalized['value']:
+                        if price_normalized["value"]:
                             addition_data = {
-                                'option_code': addition_code,
-                                'option_name': self._get_addition_name(addition_code),
-                                'adder_type': 'net_add',
-                                'adder_value': float(price_normalized['value']),
-                                'description': self._get_addition_description(addition_code),
-                                'manufacturer': 'hager',
-                                'constraints': self._get_addition_constraints(addition_code),
-                                'pricing_text': price_str
+                                "option_code": addition_code,
+                                "option_name": self._get_addition_name(addition_code),
+                                "adder_type": "net_add",
+                                "adder_value": float(price_normalized["value"]),
+                                "description": self._get_addition_description(addition_code),
+                                "manufacturer": "hager",
+                                "constraints": self._get_addition_constraints(addition_code),
+                                "pricing_text": price_str,
                             }
 
                             item = self.tracker.create_parsed_item(
                                 value=addition_data,
                                 data_type="hinge_addition",
-                                confidence=price_normalized['confidence'],
-                                extraction_method='regex_pattern',
+                                confidence=price_normalized["confidence"],
+                                extraction_method="regex_pattern",
                                 page_number=page_number,
-                                source_section='hinge_additions'
+                                source_section="hinge_additions",
                             )
                             additions.append(item)
 
@@ -438,7 +483,9 @@ class HagerSectionExtractor:
         self.logger.info(f"Extracted {len(additions)} hinge additions")
         return additions
 
-    def extract_item_tables(self, page_text: str, tables: list, page_number: int) -> List[ParsedItem]:
+    def extract_item_tables(
+        self, page_text: str, tables: list, page_number: int
+    ) -> List[ParsedItem]:
         """Extract product items from tables using Camelot DataFrame parsing."""
         self.tracker.set_context(section="Item Tables", page_number=page_number)
         products = []
@@ -455,7 +502,7 @@ class HagerSectionExtractor:
                 table_products = self._extract_products_from_table(df, table_idx, page_number)
                 # Add only unique products
                 for p in table_products:
-                    sku = p.value.get('sku') or p.value.get('model_number')
+                    sku = p.value.get("sku") or p.value.get("model_number")
                     if sku and sku not in seen_skus:
                         products.append(p)
                         seen_skus.add(sku)
@@ -469,7 +516,7 @@ class HagerSectionExtractor:
                 )
                 # Add only unique products
                 for p in series_products:
-                    sku = p.value.get('sku') or p.value.get('model_number')
+                    sku = p.value.get("sku") or p.value.get("model_number")
                     if sku and sku not in seen_skus:
                         products.append(p)
                         seen_skus.add(sku)
@@ -479,9 +526,9 @@ class HagerSectionExtractor:
     def _extract_finish_section(self, text: str) -> str:
         """Extract finish symbols section from text."""
         section_patterns = [
-            r'finish\s+symbols?.*?(?=(?:hinge|addition|preparation|price|$))',
-            r'standard\s+finishes?.*?(?=(?:hinge|addition|preparation|$))',
-            r'bhma\s+finish.*?(?=(?:hinge|addition|preparation|$))',
+            r"finish\s+symbols?.*?(?=(?:hinge|addition|preparation|price|$))",
+            r"standard\s+finishes?.*?(?=(?:hinge|addition|preparation|$))",
+            r"bhma\s+finish.*?(?=(?:hinge|addition|preparation|$))",
         ]
 
         for pattern in section_patterns:
@@ -494,9 +541,9 @@ class HagerSectionExtractor:
     def _extract_additions_section(self, text: str) -> str:
         """Extract hinge additions section from text."""
         section_patterns = [
-            r'(?:hinge\s+)?(?:additions?|modifications?).*?(?=(?:finish|price|standard|$))',
-            r'(?:net\s+)?add\s+options?.*?(?=(?:finish|price|standard|$))',
-            r'ept.*?ems.*?(?=(?:finish|price|standard|$))',
+            r"(?:hinge\s+)?(?:additions?|modifications?).*?(?=(?:finish|price|standard|$))",
+            r"(?:net\s+)?add\s+options?.*?(?=(?:finish|price|standard|$))",
+            r"ept.*?ems.*?(?=(?:finish|price|standard|$))",
         ]
 
         for pattern in section_patterns:
@@ -511,20 +558,28 @@ class HagerSectionExtractor:
         if table.empty or len(table) < 2:
             return False
 
-        table_text = ' '.join(table.astype(str).values.flatten()).lower()
+        table_text = " ".join(table.astype(str).values.flatten()).lower()
 
         # Look for Hager-specific indicators
         indicators = [
-            'bb1100', 'bb1279', 'bb1290',  # Ball bearing hinges
-            'ecbb1100',                     # Electric hinge
-            'wt1279',                       # Wide throw
-            'us3', 'us4', 'us10b',         # Finish codes
-            'hager', 'heavy', 'standard',  # General terms
+            "bb1100",
+            "bb1279",
+            "bb1290",  # Ball bearing hinges
+            "ecbb1100",  # Electric hinge
+            "wt1279",  # Wide throw
+            "us3",
+            "us4",
+            "us10b",  # Finish codes
+            "hager",
+            "heavy",
+            "standard",  # General terms
         ]
 
         return sum(1 for indicator in indicators if indicator in table_text) >= 2
 
-    def _extract_products_from_table(self, table: pd.DataFrame, table_idx: int, page_number: int) -> List[ParsedItem]:
+    def _extract_products_from_table(
+        self, table: pd.DataFrame, table_idx: int, page_number: int
+    ) -> List[ParsedItem]:
         """Extract products from Hager table with multiline cell support."""
         products = []
 
@@ -532,17 +587,17 @@ class HagerSectionExtractor:
         columns = self._identify_hager_table_columns(table)
 
         # Only require price column (description may have embedded model codes)
-        if columns.get('price') is None:
+        if columns.get("price") is None:
             self.logger.warning(f"Hager table {table_idx} missing price column: {columns}")
             return products
 
         for row_idx, row in table.iterrows():
             try:
                 # Get description and price cells with validation
-                desc_col = columns.get('description')
+                desc_col = columns.get("description")
                 if desc_col is None:
                     desc_col = 1 if len(table.columns) > 1 else 0
-                price_col = columns.get('price')
+                price_col = columns.get("price")
                 if price_col is None:
                     continue  # Already checked above, but be defensive
 
@@ -556,18 +611,18 @@ class HagerSectionExtractor:
                 price_cell = str(row.iloc[price_col]).strip()
 
                 # Skip header/empty rows
-                if not desc_cell or desc_cell.lower() in ['nan', 'description', 'name']:
+                if not desc_cell or desc_cell.lower() in ["nan", "description", "name"]:
                     continue
-                if not price_cell or price_cell.lower() in ['nan', 'price', 'list']:
+                if not price_cell or price_cell.lower() in ["nan", "price", "list"]:
                     continue
 
                 # MULTILINE PARSING: Check if cells contain newlines (multiple products in one cell)
-                desc_lines = [line.strip() for line in desc_cell.split('\n') if line.strip()]
-                price_lines = [line.strip() for line in price_cell.split('\n') if line.strip()]
+                desc_lines = [line.strip() for line in desc_cell.split("\n") if line.strip()]
+                price_lines = [line.strip() for line in price_cell.split("\n") if line.strip()]
 
                 # Extract model codes from description lines
                 # Pattern: ETM-4 (4 wire), BB1100, etc.
-                model_pattern = r'\b([A-Z]{2,4}[-\d]+)\b'
+                model_pattern = r"\b([A-Z]{2,4}[-\d]+)\b"
 
                 # If we have matching counts, pair them up
                 if len(desc_lines) == len(price_lines) and len(desc_lines) > 1:
@@ -578,17 +633,32 @@ class HagerSectionExtractor:
                         if model_match:
                             model_code = model_match.group(1)
                             self._create_product_from_parts(
-                                products, model_code, desc_line, price_line,
-                                row_idx, table_idx, page_number
+                                products,
+                                model_code,
+                                desc_line,
+                                price_line,
+                                row_idx,
+                                table_idx,
+                                page_number,
                             )
                 else:
                     # Single product or use model column if available
-                    if columns.get('model') is not None:
-                        model_code = str(row.iloc[columns['model']]).strip()
-                        if model_code and model_code.lower() not in ['nan', 'model', 'part', 'number']:
+                    if columns.get("model") is not None:
+                        model_code = str(row.iloc[columns["model"]]).strip()
+                        if model_code and model_code.lower() not in [
+                            "nan",
+                            "model",
+                            "part",
+                            "number",
+                        ]:
                             self._create_product_from_parts(
-                                products, model_code, desc_cell, price_cell,
-                                row_idx, table_idx, page_number
+                                products,
+                                model_code,
+                                desc_cell,
+                                price_cell,
+                                row_idx,
+                                table_idx,
+                                page_number,
                             )
                     else:
                         # Try to extract model from description
@@ -596,8 +666,13 @@ class HagerSectionExtractor:
                         if model_match:
                             model_code = model_match.group(1)
                             self._create_product_from_parts(
-                                products, model_code, desc_cell, price_cell,
-                                row_idx, table_idx, page_number
+                                products,
+                                model_code,
+                                desc_cell,
+                                price_cell,
+                                row_idx,
+                                table_idx,
+                                page_number,
                             )
 
             except Exception as e:
@@ -605,30 +680,37 @@ class HagerSectionExtractor:
 
         return products
 
-    def _create_product_from_parts(self, products: List[ParsedItem], model_code: str,
-                                   description: str, price_str: str, row_idx: int,
-                                   table_idx: int, page_number: int) -> None:
+    def _create_product_from_parts(
+        self,
+        products: List[ParsedItem],
+        model_code: str,
+        description: str,
+        price_str: str,
+        row_idx: int,
+        table_idx: int,
+        page_number: int,
+    ) -> None:
         """Helper to create a product from extracted parts."""
         try:
             # Normalize data
             sku_normalized = data_normalizer.normalize_sku(model_code, "hager")
             price_normalized = data_normalizer.normalize_price(price_str)
 
-            if sku_normalized['value'] and price_normalized['value']:
+            if sku_normalized["value"] and price_normalized["value"]:
                 product_data = {
-                    'sku': sku_normalized['value'],
-                    'model': self._extract_hager_base_model(sku_normalized['value']),
-                    'description': description,
-                    'base_price': float(price_normalized['value']),
-                    'series': self._extract_series_from_sku(sku_normalized['value']),
-                    'specifications': {},
-                    'manufacturer': 'hager',
-                    'is_active': True
+                    "sku": sku_normalized["value"],
+                    "model": self._extract_hager_base_model(sku_normalized["value"]),
+                    "description": description,
+                    "base_price": float(price_normalized["value"]),
+                    "series": self._extract_series_from_sku(sku_normalized["value"]),
+                    "specifications": {},
+                    "manufacturer": "hager",
+                    "is_active": True,
                 }
 
                 confidence = min(
-                    safe_confidence_score(sku_normalized['confidence']),
-                    safe_confidence_score(price_normalized['confidence'])
+                    safe_confidence_score(sku_normalized["confidence"]),
+                    safe_confidence_score(price_normalized["confidence"]),
                 )
 
                 item = self.tracker.create_parsed_item(
@@ -636,18 +718,20 @@ class HagerSectionExtractor:
                     data_type="product",
                     raw_text=f"{model_code} - {price_str}",
                     row_index=row_idx,
-                    confidence=confidence
+                    confidence=confidence,
                 )
                 products.append(item)
         except Exception as e:
             self.logger.warning(f"Error creating product from {model_code}: {e}")
 
-    def _extract_products_from_series_text(self, text_section: str, series_code: str, page_number: int) -> List[ParsedItem]:
+    def _extract_products_from_series_text(
+        self, text_section: str, series_code: str, page_number: int
+    ) -> List[ParsedItem]:
         """Extract products from text section for specific series."""
         products = []
 
         # Pattern for product entries in text
-        product_pattern = r'(\w+(?:-\w+)*)\s+([^\$\n]+?)\s+(\$?[\d.]+)'
+        product_pattern = r"(\w+(?:-\w+)*)\s+([^\$\n]+?)\s+(\$?[\d.]+)"
         matches = re.finditer(product_pattern, text_section)
 
         for match in matches:
@@ -663,28 +747,31 @@ class HagerSectionExtractor:
                 sku_normalized = data_normalizer.normalize_sku(full_sku, "hager")
                 price_normalized = data_normalizer.normalize_price(price_str)
 
-                if sku_normalized['value'] and price_normalized['value']:
+                if sku_normalized["value"] and price_normalized["value"]:
                     product_data = {
-                        'sku': sku_normalized['value'],
-                        'model': series_code,
-                        'description': f"{series_code} {description}".strip(),
-                        'base_price': float(price_normalized['value']),
-                        'series': series_code,
-                        'specifications': {'variant': variant},
-                        'manufacturer': 'hager',
-                        'is_active': True
+                        "sku": sku_normalized["value"],
+                        "model": series_code,
+                        "description": f"{series_code} {description}".strip(),
+                        "base_price": float(price_normalized["value"]),
+                        "series": series_code,
+                        "specifications": {"variant": variant},
+                        "manufacturer": "hager",
+                        "is_active": True,
                     }
 
-                    confidence = min(
-                        safe_confidence_score(sku_normalized['confidence']),
-                        safe_confidence_score(price_normalized['confidence'])
-                    ) * 0.8  # Lower confidence for text extraction
+                    confidence = (
+                        min(
+                            safe_confidence_score(sku_normalized["confidence"]),
+                            safe_confidence_score(price_normalized["confidence"]),
+                        )
+                        * 0.8
+                    )  # Lower confidence for text extraction
 
                     item = self.tracker.create_parsed_item(
                         value=product_data,
                         data_type="product",
                         raw_text=match.group(0),
-                        confidence=confidence
+                        confidence=confidence,
                     )
                     products.append(item)
 
@@ -696,12 +783,12 @@ class HagerSectionExtractor:
     def _identify_hager_table_columns(self, table: pd.DataFrame) -> Dict[str, Optional[int]]:
         """Identify column purposes in Hager table with enhanced pattern matching."""
         columns = {
-            'model': None,
-            'price': None,
-            'description': None,
-            'series': None,
-            'duty': None,
-            'size': None
+            "model": None,
+            "price": None,
+            "description": None,
+            "series": None,
+            "duty": None,
+            "size": None,
         }
 
         # First, check if headers are in the actual column names (named columns)
@@ -709,62 +796,70 @@ class HagerSectionExtractor:
             col_text = str(col_name).lower()
 
             # Model/SKU/Part Number column
-            if any(keyword in col_text for keyword in ['model', 'part', 'item', 'sku', 'number']):
-                columns['model'] = col_idx
+            if any(keyword in col_text for keyword in ["model", "part", "item", "sku", "number"]):
+                columns["model"] = col_idx
             # Price column - Hager uses "Steel/Brass List", "Stainless Steel List", etc.
-            elif any(keyword in col_text for keyword in ['price', 'list', 'each', 'cost', 'steel', 'brass', 'stainless']):
-                if columns['price'] is None:  # Take first price column
-                    columns['price'] = col_idx
+            elif any(
+                keyword in col_text
+                for keyword in ["price", "list", "each", "cost", "steel", "brass", "stainless"]
+            ):
+                if columns["price"] is None:  # Take first price column
+                    columns["price"] = col_idx
             # Description column
-            elif any(keyword in col_text for keyword in ['desc', 'description', 'name']):
-                columns['description'] = col_idx
+            elif any(keyword in col_text for keyword in ["desc", "description", "name"]):
+                columns["description"] = col_idx
             # Series/Type column
-            elif any(keyword in col_text for keyword in ['series', 'type']):
-                columns['series'] = col_idx
+            elif any(keyword in col_text for keyword in ["series", "type"]):
+                columns["series"] = col_idx
             # Duty/Weight/Grade column
-            elif any(keyword in col_text for keyword in ['duty', 'weight', 'grade']):
-                columns['duty'] = col_idx
+            elif any(keyword in col_text for keyword in ["duty", "weight", "grade"]):
+                columns["duty"] = col_idx
             # Size/Dimension column
-            elif any(keyword in col_text for keyword in ['size', 'dimension']):
-                columns['size'] = col_idx
+            elif any(keyword in col_text for keyword in ["size", "dimension"]):
+                columns["size"] = col_idx
 
         # If columns are numeric (0, 1, 2...), headers are likely in first row
         # Check first row for header keywords
-        if columns['description'] is None or columns['price'] is None:
+        if columns["description"] is None or columns["price"] is None:
             if len(table) > 0:
                 first_row = table.iloc[0]
                 for col_idx, cell in enumerate(first_row):
                     cell_text = str(cell).lower()
 
                     # Look for header keywords in first row
-                    if 'list' in cell_text or 'price' in cell_text or 'steel' in cell_text or 'brass' in cell_text:
-                        if columns['price'] is None:
-                            columns['price'] = col_idx
-                    elif 'desc' in cell_text:
-                        columns['description'] = col_idx
-                    elif 'part' in cell_text or 'model' in cell_text or 'number' in cell_text:
-                        columns['model'] = col_idx
+                    if (
+                        "list" in cell_text
+                        or "price" in cell_text
+                        or "steel" in cell_text
+                        or "brass" in cell_text
+                    ):
+                        if columns["price"] is None:
+                            columns["price"] = col_idx
+                    elif "desc" in cell_text:
+                        columns["description"] = col_idx
+                    elif "part" in cell_text or "model" in cell_text or "number" in cell_text:
+                        columns["model"] = col_idx
 
         # Content-based detection: scan actual data rows for patterns
-        if columns['description'] is None or columns['price'] is None:
+        if columns["description"] is None or columns["price"] is None:
             # Start from row 1 (skip potential header row)
             for col_idx in range(len(table.columns)):
                 # Get first few non-empty cell contents
                 sample_text = ""
                 for row_idx in range(1, min(4, len(table))):
                     cell = str(table.iloc[row_idx, col_idx]).strip()
-                    if cell and cell.lower() != 'nan' and len(cell) > 5:
+                    if cell and cell.lower() != "nan" and len(cell) > 5:
                         sample_text = cell
                         break
 
                 # Check if this column contains prices (has $ and numbers)
-                if '$' in sample_text and any(c.isdigit() for c in sample_text):
-                    if columns['price'] is None:
-                        columns['price'] = col_idx
+                if "$" in sample_text and any(c.isdigit() for c in sample_text):
+                    if columns["price"] is None:
+                        columns["price"] = col_idx
                 # Check if this column contains descriptions (long text, no $)
-                elif len(sample_text) > 20 and '$' not in sample_text:
-                    if columns['description'] is None:
-                        columns['description'] = col_idx
+                elif len(sample_text) > 20 and "$" not in sample_text:
+                    if columns["description"] is None:
+                        columns["description"] = col_idx
 
         return columns
 
@@ -772,10 +867,10 @@ class HagerSectionExtractor:
         """Extract base model from Hager SKU."""
         # Common Hager patterns
         patterns = [
-            r'^(BB\d{4})',    # BB1100, BB1279
-            r'^(ECBB\d{4})',  # ECBB1100
-            r'^(WT\d{4})',    # WT1279
-            r'^([A-Z]{2,4}\d+)', # General pattern
+            r"^(BB\d{4})",  # BB1100, BB1279
+            r"^(ECBB\d{4})",  # ECBB1100
+            r"^(WT\d{4})",  # WT1279
+            r"^([A-Z]{2,4}\d+)",  # General pattern
         ]
 
         for pattern in patterns:
@@ -789,94 +884,96 @@ class HagerSectionExtractor:
         """Extract series from Hager SKU."""
         sku_upper = sku.upper()
 
-        if sku_upper.startswith('BB'):
-            return 'Ball Bearing Hinge'
-        elif sku_upper.startswith('ECBB'):
-            return 'Electric Hinge'
-        elif sku_upper.startswith('WT'):
-            return 'Wide Throw Hinge'
+        if sku_upper.startswith("BB"):
+            return "Ball Bearing Hinge"
+        elif sku_upper.startswith("ECBB"):
+            return "Electric Hinge"
+        elif sku_upper.startswith("WT"):
+            return "Wide Throw Hinge"
         else:
-            return 'Standard Hinge'
+            return "Standard Hinge"
 
     def _build_hager_description(self, row: pd.Series, columns: Dict[str, Optional[int]]) -> str:
         """Build Hager product description."""
         parts = []
 
-        if columns.get('description') is not None:
-            desc = str(row.iloc[columns['description']]).strip()
-            if desc and desc.lower() != 'nan':
+        if columns.get("description") is not None:
+            desc = str(row.iloc[columns["description"]]).strip()
+            if desc and desc.lower() != "nan":
                 parts.append(desc)
 
-        if columns.get('duty') is not None:
-            duty = str(row.iloc[columns['duty']]).strip()
-            if duty and duty.lower() != 'nan':
+        if columns.get("duty") is not None:
+            duty = str(row.iloc[columns["duty"]]).strip()
+            if duty and duty.lower() != "nan":
                 parts.append(f"Duty: {duty}")
 
-        if columns.get('size') is not None:
-            size = str(row.iloc[columns['size']]).strip()
-            if size and size.lower() != 'nan':
+        if columns.get("size") is not None:
+            size = str(row.iloc[columns["size"]]).strip()
+            if size and size.lower() != "nan":
                 parts.append(f"Size: {size}")
 
         return " - ".join(parts) if parts else "Hager Hardware"
 
-    def _extract_hager_specifications(self, row: pd.Series, columns: Dict[str, Optional[int]]) -> Dict[str, Any]:
+    def _extract_hager_specifications(
+        self, row: pd.Series, columns: Dict[str, Optional[int]]
+    ) -> Dict[str, Any]:
         """Extract Hager specifications."""
         specs = {}
 
-        if columns.get('duty') is not None:
-            duty = str(row.iloc[columns['duty']]).strip()
-            if duty and duty.lower() != 'nan':
-                specs['duty'] = duty
+        if columns.get("duty") is not None:
+            duty = str(row.iloc[columns["duty"]]).strip()
+            if duty and duty.lower() != "nan":
+                specs["duty"] = duty
 
-        if columns.get('size') is not None:
-            size = str(row.iloc[columns['size']]).strip()
-            if size and size.lower() != 'nan':
-                specs['size'] = size
+        if columns.get("size") is not None:
+            size = str(row.iloc[columns["size"]]).strip()
+            if size and size.lower() != "nan":
+                specs["size"] = size
 
         return specs
 
     def _get_addition_name(self, code: str) -> str:
         """Get full name for addition code."""
         names = {
-            'EPT': 'Electroplated Preparation',
-            'ETW': 'Electric Thru-Wire',
-            'EMS': 'Electromagnetic Shielding',
-            'HWS': 'Heavy Weight Stainless',
-            'CWP': 'Continuous Weld Preparation'
+            "EPT": "Electroplated Preparation",
+            "ETW": "Electric Thru-Wire",
+            "EMS": "Electromagnetic Shielding",
+            "HWS": "Heavy Weight Stainless",
+            "CWP": "Continuous Weld Preparation",
         }
         return names.get(code, code)
 
     def _get_addition_description(self, code: str) -> str:
         """Get description for addition code."""
         descriptions = {
-            'EPT': 'Electroplated finish preparation',
-            'ETW': 'Electric through-wire capability',
-            'EMS': 'Electromagnetic shielding option',
-            'HWS': 'Heavy weight stainless steel option',
-            'CWP': 'Continuous weld preparation'
+            "EPT": "Electroplated finish preparation",
+            "ETW": "Electric through-wire capability",
+            "EMS": "Electromagnetic shielding option",
+            "HWS": "Heavy weight stainless steel option",
+            "CWP": "Continuous weld preparation",
         }
         return descriptions.get(code, f"{code} option")
 
     def _get_addition_constraints(self, code: str) -> Dict[str, Any]:
         """Get constraints for addition code."""
         constraints = {
-            'EPT': {'compatible_finishes': ['US3', 'US4', 'US15']},
-            'ETW': {'requires_power': True},
-            'EMS': {'excludes': ['ETW']},
-            'HWS': {'weight_rating': 'heavy_duty'},
-            'CWP': {'preparation_required': True}
+            "EPT": {"compatible_finishes": ["US3", "US4", "US15"]},
+            "ETW": {"requires_power": True},
+            "EMS": {"excludes": ["ETW"]},
+            "HWS": {"weight_rating": "heavy_duty"},
+            "CWP": {"preparation_required": True},
         }
         return constraints.get(code, {})
 
     def _extract_price_from_text(self, price_text: str) -> float:
         """Extract numeric price value from text."""
-        if not price_text or price_text.lower() in ['nan', 'none', '']:
+        if not price_text or price_text.lower() in ["nan", "none", ""]:
             return 0.0
 
         try:
             # Use the shared normalization utility
             price_normalized = data_normalizer.normalize_price(price_text)
-            return float(price_normalized.get('value', 0))
+            return float(price_normalized.get("value", 0))
         except (ValueError, TypeError):
             return 0.0
 
@@ -899,17 +996,17 @@ class HagerSectionExtractor:
                     price_normalized = data_normalizer.normalize_price(price_str)
 
                     finish_data = {
-                        'code': code,
-                        'name': description,
-                        'base_price': price_normalized.get('value', 0),
-                        'manufacturer': 'hager'
+                        "code": code,
+                        "name": description,
+                        "base_price": price_normalized.get("value", 0),
+                        "manufacturer": "hager",
                     }
 
                     item = self.tracker.create_parsed_item(
                         value=finish_data,
                         data_type="finish_symbol",
                         raw_text=match.group(0),
-                        confidence=safe_confidence_score(price_normalized.get('confidence', 0.8))
+                        confidence=safe_confidence_score(price_normalized.get("confidence", 0.8)),
                     )
                     results.append(item)
 
@@ -933,18 +1030,18 @@ class HagerSectionExtractor:
                     target_finish = match.group(2).strip().upper()
 
                     rule_data = {
-                        'rule_type': 'price_mapping',
-                        'source_finish': source_finish,
-                        'target_finish': target_finish,
-                        'description': f"{source_finish} uses {target_finish} pricing",
-                        'manufacturer': 'hager'
+                        "rule_type": "price_mapping",
+                        "source_finish": source_finish,
+                        "target_finish": target_finish,
+                        "description": f"{source_finish} uses {target_finish} pricing",
+                        "manufacturer": "hager",
                     }
 
                     item = self.tracker.create_parsed_item(
                         value=rule_data,
                         data_type="price_rule",
                         raw_text=match.group(0),
-                        confidence=0.95
+                        confidence=0.95,
                     )
                     results.append(item)
 
@@ -968,22 +1065,22 @@ class HagerSectionExtractor:
                         price_str = match.group(1).strip()
                         price_normalized = data_normalizer.normalize_price(price_str)
 
-                        if price_normalized['value']:
+                        if price_normalized["value"]:
                             addition_data = {
-                                'option_code': addition_code,
-                                'option_name': self._get_addition_name(addition_code),
-                                'adder_type': 'net_add',
-                                'adder_value': float(price_normalized['value']),
-                                'description': self._get_addition_description(addition_code),
-                                'manufacturer': 'hager',
-                                'constraints': self._get_addition_constraints(addition_code)
+                                "option_code": addition_code,
+                                "option_name": self._get_addition_name(addition_code),
+                                "adder_type": "net_add",
+                                "adder_value": float(price_normalized["value"]),
+                                "description": self._get_addition_description(addition_code),
+                                "manufacturer": "hager",
+                                "constraints": self._get_addition_constraints(addition_code),
                             }
 
                             item = self.tracker.create_parsed_item(
                                 value=addition_data,
                                 data_type="hinge_addition",
                                 raw_text=match.group(0),
-                                confidence=safe_confidence_score(price_normalized['confidence'])
+                                confidence=safe_confidence_score(price_normalized["confidence"]),
                             )
                             results.append(item)
 

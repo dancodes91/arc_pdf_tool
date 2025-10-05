@@ -1,21 +1,22 @@
 """Analyze the 99 pages with prices to understand table structures."""
+
 import json
 import pdfplumber
 import re
 
 # Load analysis
-with open('hager_page_analysis.json') as f:
+with open("hager_page_analysis.json") as f:
     analysis = json.load(f)
 
-price_pages = analysis['pages_with_prices']
+price_pages = analysis["pages_with_prices"]
 print(f"Analyzing {len(price_pages)} pages with prices...")
 
 # Sample pages from different sections
 samples = [
-    price_pages[0],   # First
+    price_pages[0],  # First
     price_pages[10],  # Early
-    price_pages[len(price_pages)//2],  # Middle
-    price_pages[-10], # Late
+    price_pages[len(price_pages) // 2],  # Middle
+    price_pages[-10],  # Late
     price_pages[-1],  # Last
 ]
 
@@ -32,10 +33,10 @@ with pdfplumber.open(pdf_path) as pdf:
         tables = page.extract_tables()
 
         # Look for product patterns
-        bb_pat = r'\bBB\d+'
-        ecbb_pat = r'\bECBB\d+'
-        wt_pat = r'\bWT\d+'
-        price_pat = r'\$\d+\.\d{2}'
+        bb_pat = r"\bBB\d+"
+        ecbb_pat = r"\bECBB\d+"
+        wt_pat = r"\bWT\d+"
+        price_pat = r"\$\d+\.\d{2}"
         print(f"\nProduct Indicators:")
         print(f"  BB models: {len(re.findall(bb_pat, text))}")
         print(f"  ECBB models: {len(re.findall(ecbb_pat, text))}")
@@ -56,12 +57,12 @@ with pdfplumber.open(pdf_path) as pdf:
 
             # Check if has prices
             table_str = str(table)
-            has_price = '$' in table_str
-            price_pattern = r'\$\d+\.\d{2}'
+            has_price = "$" in table_str
+            price_pattern = r"\$\d+\.\d{2}"
             price_count = len(re.findall(price_pattern, table_str))
 
             # Check if has part numbers
-            part_pattern = r'\d{1,2}-\d{3}-\d{4}'
+            part_pattern = r"\d{1,2}-\d{3}-\d{4}"
             has_part_num = bool(re.search(part_pattern, table_str))
             part_count = len(re.findall(part_pattern, table_str))
 

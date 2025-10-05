@@ -5,15 +5,13 @@ try:
     from .select.parser import SelectHingesParser
 
     # Legacy parser for compatibility (if needed)
-    from .base_parser import BasePDFParser
 
-    __all__ = ['HagerParser', 'SelectHingesParser', 'BasePDFParser']
+    __all__ = ["HagerParser", "SelectHingesParser", "BasePDFParser"]
 
 except ImportError as e:
     # Fallback to legacy parsers if enhanced ones fail
     print(f"Warning: Enhanced parsers unavailable, falling back to legacy: {e}")
     try:
-        from .base_parser import BasePDFParser
         from .hager_parser import HagerParser as LegacyHagerParser
         from .select_hinges_parser import SelectHingesParser as LegacySelectHingesParser
 
@@ -21,7 +19,7 @@ except ImportError as e:
         HagerParser = LegacyHagerParser
         SelectHingesParser = LegacySelectHingesParser
 
-        __all__ = ['BasePDFParser', 'HagerParser', 'SelectHingesParser']
+        __all__ = ["BasePDFParser", "HagerParser", "SelectHingesParser"]
     except ImportError:
         print("Critical: No parsers available")
         __all__ = []

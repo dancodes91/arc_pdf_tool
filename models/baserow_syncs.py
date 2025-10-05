@@ -4,10 +4,10 @@ Database model for tracking Baserow synchronization operations.
 Provides audit trail and status tracking for price book publishing
 operations to Baserow with detailed outcome and error information.
 """
+
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import Column, String, DateTime, Integer, Text, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
 import uuid
 
 from database.models import Base
@@ -20,6 +20,7 @@ class BaserowSync(Base):
     Provides comprehensive audit trail for publishing operations
     including status, timing, row counts, and error information.
     """
+
     __tablename__ = "baserow_syncs"
 
     # Primary identification
@@ -27,7 +28,9 @@ class BaserowSync(Base):
     price_book_id = Column(Integer, ForeignKey("price_books.id"), nullable=False, index=True)
 
     # Operation tracking
-    status = Column(String(20), nullable=False, default="pending", index=True)  # pending, running, completed, failed
+    status = Column(
+        String(20), nullable=False, default="pending", index=True
+    )  # pending, running, completed, failed
     initiated_by = Column(String(100), nullable=True)  # User ID or system identifier
     started_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
@@ -59,7 +62,9 @@ class BaserowSync(Base):
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self) -> str:
-        return f"<BaserowSync(id={self.id}, price_book_id={self.price_book_id}, status={self.status})>"
+        return (
+            f"<BaserowSync(id={self.id}, price_book_id={self.price_book_id}, status={self.status})>"
+        )
 
     @property
     def duration_seconds(self) -> Optional[float]:
@@ -108,20 +113,23 @@ class BaserowSync(Base):
             "rows_updated": self.rows_updated,
             "duration_seconds": self.duration_seconds,
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
 
         if include_details:
             import json
-            base_data.update({
-                "options": json.loads(self.options) if self.options else {},
-                "tables_synced": json.loads(self.tables_synced) if self.tables_synced else [],
-                "errors": json.loads(self.errors) if self.errors else [],
-                "warnings": json.loads(self.warnings) if self.warnings else [],
-                "summary": json.loads(self.summary) if self.summary else {},
-                "baserow_workspace_id": self.baserow_workspace_id,
-                "baserow_database_id": self.baserow_database_id
-            })
+
+            base_data.update(
+                {
+                    "options": json.loads(self.options) if self.options else {},
+                    "tables_synced": json.loads(self.tables_synced) if self.tables_synced else [],
+                    "errors": json.loads(self.errors) if self.errors else [],
+                    "warnings": json.loads(self.warnings) if self.warnings else [],
+                    "summary": json.loads(self.summary) if self.summary else {},
+                    "baserow_workspace_id": self.baserow_workspace_id,
+                    "baserow_database_id": self.baserow_database_id,
+                }
+            )
 
         return base_data
 
@@ -154,11 +162,7 @@ class BaserowSync(Base):
 
     @classmethod
     def create_for_operation(
-        cls,
-        price_book_id: str,
-        user_id: str = None,
-        options: dict = None,
-        dry_run: bool = False
+        cls, price_book_id: str, user_id: str = None, options: dict = None, dry_run: bool = False
     ) -> "BaserowSync":
         """
         Create a new sync record for an operation.
@@ -180,16 +184,12 @@ class BaserowSync(Base):
             status="pending",
             dry_run=dry_run,
             options=json.dumps(options) if options else None,
-            started_at=datetime.utcnow()
+            started_at=datetime.utcnow(),
         )
 
     @classmethod
     def get_recent_syncs(
-        cls,
-        session,
-        price_book_id: str = None,
-        limit: int = 50,
-        status: str = None
+        cls, session, price_book_id: str = None, limit: int = 50, status: str = None
     ) -> list:
         """
         Get recent sync operations.
@@ -227,12 +227,7 @@ class BaserowSync(Base):
         return session.query(cls).filter(cls.status == "running").all()
 
     @classmethod
-    def cleanup_old_syncs(
-        cls,
-        session,
-        days_to_keep: int = 30,
-        keep_failed: bool = True
-    ) -> int:
+    def cleanup_old_syncs(cls, session, days_to_keep: int = 30, keep_failed: bool = True) -> int:
         """
         Clean up old sync records.
 

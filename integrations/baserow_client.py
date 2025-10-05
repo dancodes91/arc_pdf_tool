@@ -4,17 +4,18 @@ Baserow API client for idempotent data synchronization.
 Handles schema mapping, table creation, field management, and chunked upserts
 with natural key hashing for stable synchronization between systems.
 """
+
 import hashlib
-import json
 import time
 import logging
-from typing import Dict, List, Any, Optional, Tuple, Union
+from typing import Dict, List, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
 import asyncio
 
 try:
     import httpx
+
     HTTPX_AVAILABLE = True
 except ImportError:
     HTTPX_AVAILABLE = False
@@ -29,6 +30,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BaserowConfig:
     """Configuration for Baserow client."""
+
     api_url: str = "https://api.baserow.io"
     api_token: str = ""
     database_id: int = 0
@@ -41,6 +43,7 @@ class BaserowConfig:
 @dataclass
 class FieldDefinition:
     """Baserow field definition."""
+
     name: str
     field_type: str
     type_config: Dict[str, Any] = field(default_factory=dict)
@@ -51,6 +54,7 @@ class FieldDefinition:
 @dataclass
 class TableSchema:
     """Complete table schema definition."""
+
     name: str
     fields: List[FieldDefinition]
     natural_key_fields: List[str]  # Fields that compose the natural key
@@ -62,7 +66,9 @@ ARC_SCHEMA_DEFINITIONS = {
         name="Items",
         natural_key_fields=["manufacturer", "family", "model", "finish", "size"],
         fields=[
-            FieldDefinition("natural_key_hash", "text", {"max_length": 64}, required=True, unique=True),
+            FieldDefinition(
+                "natural_key_hash", "text", {"max_length": 64}, required=True, unique=True
+            ),
             FieldDefinition("manufacturer", "text", {"max_length": 50}, required=True),
             FieldDefinition("family", "text", {"max_length": 50}, required=True),
             FieldDefinition("model", "text", {"max_length": 100}, required=True),
@@ -78,36 +84,42 @@ ARC_SCHEMA_DEFINITIONS = {
             FieldDefinition("source_page", "number"),
             FieldDefinition("created_at", "date", {"date_include_time": True}),
             FieldDefinition("updated_at", "date", {"date_include_time": True}),
-        ]
+        ],
     ),
-
     "ItemPrices": TableSchema(
         name="ItemPrices",
         natural_key_fields=["item_natural_key", "finish", "price_type"],
         fields=[
-            FieldDefinition("natural_key_hash", "text", {"max_length": 64}, required=True, unique=True),
+            FieldDefinition(
+                "natural_key_hash", "text", {"max_length": 64}, required=True, unique=True
+            ),
             FieldDefinition("item_natural_key", "text", {"max_length": 64}, required=True),
             FieldDefinition("finish", "text", {"max_length": 20}, required=True),
-            FieldDefinition("price_type", "text", {"max_length": 20}, required=True),  # base, list, net
+            FieldDefinition(
+                "price_type", "text", {"max_length": 20}, required=True
+            ),  # base, list, net
             FieldDefinition("price", "number", {"number_decimal_places": 2}, required=True),
             FieldDefinition("currency", "text", {"max_length": 3}),
             FieldDefinition("effective_date", "date"),
             FieldDefinition("confidence_score", "number", {"number_decimal_places": 3}),
             FieldDefinition("created_at", "date", {"date_include_time": True}),
             FieldDefinition("updated_at", "date", {"date_include_time": True}),
-        ]
+        ],
     ),
-
     "Options": TableSchema(
         name="Options",
         natural_key_fields=["manufacturer", "option_code"],
         fields=[
-            FieldDefinition("natural_key_hash", "text", {"max_length": 64}, required=True, unique=True),
+            FieldDefinition(
+                "natural_key_hash", "text", {"max_length": 64}, required=True, unique=True
+            ),
             FieldDefinition("manufacturer", "text", {"max_length": 50}, required=True),
             FieldDefinition("option_code", "text", {"max_length": 20}, required=True),
             FieldDefinition("option_name", "text", {"max_length": 100}),
             FieldDefinition("description", "long_text"),
-            FieldDefinition("option_type", "text", {"max_length": 30}),  # preparation, material, etc.
+            FieldDefinition(
+                "option_type", "text", {"max_length": 30}
+            ),  # preparation, material, etc.
             FieldDefinition("adder_value", "number", {"number_decimal_places": 2}),
             FieldDefinition("adder_type", "text", {"max_length": 20}),  # fixed, percentage
             FieldDefinition("constraints", "long_text"),  # JSON string
@@ -115,14 +127,15 @@ ARC_SCHEMA_DEFINITIONS = {
             FieldDefinition("confidence_score", "number", {"number_decimal_places": 3}),
             FieldDefinition("created_at", "date", {"date_include_time": True}),
             FieldDefinition("updated_at", "date", {"date_include_time": True}),
-        ]
+        ],
     ),
-
     "ItemOptions": TableSchema(
         name="ItemOptions",
         natural_key_fields=["item_natural_key", "option_natural_key"],
         fields=[
-            FieldDefinition("natural_key_hash", "text", {"max_length": 64}, required=True, unique=True),
+            FieldDefinition(
+                "natural_key_hash", "text", {"max_length": 64}, required=True, unique=True
+            ),
             FieldDefinition("item_natural_key", "text", {"max_length": 64}, required=True),
             FieldDefinition("option_natural_key", "text", {"max_length": 64}, required=True),
             FieldDefinition("is_compatible", "boolean"),
@@ -130,17 +143,22 @@ ARC_SCHEMA_DEFINITIONS = {
             FieldDefinition("notes", "long_text"),
             FieldDefinition("created_at", "date", {"date_include_time": True}),
             FieldDefinition("updated_at", "date", {"date_include_time": True}),
-        ]
+        ],
     ),
-
     "Rules": TableSchema(
         name="Rules",
         natural_key_fields=["manufacturer", "rule_type", "source_identifier"],
         fields=[
-            FieldDefinition("natural_key_hash", "text", {"max_length": 64}, required=True, unique=True),
+            FieldDefinition(
+                "natural_key_hash", "text", {"max_length": 64}, required=True, unique=True
+            ),
             FieldDefinition("manufacturer", "text", {"max_length": 50}, required=True),
-            FieldDefinition("rule_type", "text", {"max_length": 30}, required=True),  # price_mapping, percentage_markup
-            FieldDefinition("source_identifier", "text", {"max_length": 100}, required=True),  # finish, model, etc.
+            FieldDefinition(
+                "rule_type", "text", {"max_length": 30}, required=True
+            ),  # price_mapping, percentage_markup
+            FieldDefinition(
+                "source_identifier", "text", {"max_length": 100}, required=True
+            ),  # finish, model, etc.
             FieldDefinition("target_identifier", "text", {"max_length": 100}),
             FieldDefinition("rule_data", "long_text"),  # JSON string with rule specifics
             FieldDefinition("description", "long_text"),
@@ -148,14 +166,15 @@ ARC_SCHEMA_DEFINITIONS = {
             FieldDefinition("confidence_score", "number", {"number_decimal_places": 3}),
             FieldDefinition("created_at", "date", {"date_include_time": True}),
             FieldDefinition("updated_at", "date", {"date_include_time": True}),
-        ]
+        ],
     ),
-
     "ChangeLog": TableSchema(
         name="ChangeLog",
         natural_key_fields=["old_book_id", "new_book_id", "change_type", "item_identifier"],
         fields=[
-            FieldDefinition("natural_key_hash", "text", {"max_length": 64}, required=True, unique=True),
+            FieldDefinition(
+                "natural_key_hash", "text", {"max_length": 64}, required=True, unique=True
+            ),
             FieldDefinition("old_book_id", "text", {"max_length": 50}),
             FieldDefinition("new_book_id", "text", {"max_length": 50}),
             FieldDefinition("change_type", "text", {"max_length": 30}, required=True),
@@ -170,8 +189,8 @@ ARC_SCHEMA_DEFINITIONS = {
             FieldDefinition("applied", "boolean"),
             FieldDefinition("created_at", "date", {"date_include_time": True}),
             FieldDefinition("updated_at", "date", {"date_include_time": True}),
-        ]
-    )
+        ],
+    ),
 }
 
 
@@ -194,7 +213,7 @@ class BaserowClient:
         if not HTTPX_AVAILABLE:
             raise BaserowError(
                 operation="initialization",
-                response="httpx library not available. Install with: pip install httpx"
+                response="httpx library not available. Install with: pip install httpx",
             )
 
         # HTTP client with timeout and retry configuration
@@ -202,8 +221,8 @@ class BaserowClient:
             timeout=httpx.Timeout(self.config.timeout),
             headers={
                 "Authorization": f"Token {self.config.api_token}",
-                "Content-Type": "application/json"
-            }
+                "Content-Type": "application/json",
+            },
         )
 
         # Cache for table and field information
@@ -220,7 +239,7 @@ class BaserowClient:
         circuit_breaker_name="baserow_api",
         circuit_config=CircuitBreakerConfig(failure_threshold=5, recovery_timeout=120),
         retry_config=RetryConfig(max_attempts=3, base_delay=1.0),
-        rate_limiter_name="baserow_api"
+        rate_limiter_name="baserow_api",
     )
     async def get_or_create_table(self, schema: TableSchema) -> Dict[str, Any]:
         """
@@ -254,14 +273,16 @@ class BaserowClient:
                     break
 
             if existing_table:
-                self.logger.info(f"Found existing table: {schema.name} (ID: {existing_table['id']})")
+                self.logger.info(
+                    f"Found existing table: {schema.name} (ID: {existing_table['id']})"
+                )
                 table_info = existing_table
             else:
                 # Create new table
                 self.logger.info(f"Creating new table: {schema.name}")
                 create_response = await self.client.post(
                     f"{self.config.api_url}/api/database/{self.config.database_id}/tables/",
-                    json={"name": schema.name}
+                    json={"name": schema.name},
                 )
                 create_response.raise_for_status()
                 table_info = create_response.json()
@@ -282,15 +303,12 @@ class BaserowClient:
                 raise BaserowError(
                     operation="get_or_create_table",
                     status_code=e.response.status_code,
-                    response=e.response.text
+                    response=e.response.text,
                 )
         except httpx.TimeoutException:
             raise NetworkTimeoutError("Baserow table operation", self.config.timeout)
 
-    @resilient(
-        circuit_breaker_name="baserow_api",
-        retry_config=RetryConfig(max_attempts=2)
-    )
+    @resilient(circuit_breaker_name="baserow_api", retry_config=RetryConfig(max_attempts=2))
     async def ensure_fields(self, table_id: int, field_definitions: List[FieldDefinition]):
         """
         Ensure all required fields exist in the table.
@@ -318,12 +336,12 @@ class BaserowClient:
                     field_data = {
                         "name": field_def.name,
                         "type": field_def.field_type,
-                        **field_def.type_config
+                        **field_def.type_config,
                     }
 
                     create_response = await self.client.post(
                         f"{self.config.api_url}/api/database/tables/{table_id}/fields/",
-                        json=field_data
+                        json=field_data,
                     )
                     create_response.raise_for_status()
 
@@ -335,7 +353,7 @@ class BaserowClient:
             raise BaserowError(
                 operation="ensure_fields",
                 status_code=e.response.status_code,
-                response=e.response.text
+                response=e.response.text,
             )
 
     def generate_natural_key_hash(self, data: Dict[str, Any], key_fields: List[str]) -> str:
@@ -362,18 +380,17 @@ class BaserowClient:
 
         # Create stable key string and hash
         key_string = "|".join(key_values)
-        return hashlib.sha256(key_string.encode('utf-8')).hexdigest()
+        return hashlib.sha256(key_string.encode("utf-8")).hexdigest()
 
     @resilient(
-        circuit_breaker_name="baserow_api",
-        retry_config=RetryConfig(max_attempts=3, base_delay=2.0)
+        circuit_breaker_name="baserow_api", retry_config=RetryConfig(max_attempts=3, base_delay=2.0)
     )
     async def upsert_rows(
         self,
         table_id: int,
         rows: List[Dict[str, Any]],
         key_field: str = "natural_key_hash",
-        chunk_size: Optional[int] = None
+        chunk_size: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Upsert rows into table using natural key for deduplication.
@@ -389,23 +406,27 @@ class BaserowClient:
         """
         chunk_size = chunk_size or self.config.chunk_size
 
-        self.logger.info(f"Upserting {len(rows)} rows to table {table_id} in chunks of {chunk_size}")
+        self.logger.info(
+            f"Upserting {len(rows)} rows to table {table_id} in chunks of {chunk_size}"
+        )
 
         summary = {
             "total_rows": len(rows),
             "chunks_processed": 0,
             "rows_created": 0,
             "rows_updated": 0,
-            "errors": []
+            "errors": [],
         }
 
         # Process in chunks
         for i in range(0, len(rows), chunk_size):
-            chunk = rows[i:i + chunk_size]
+            chunk = rows[i : i + chunk_size]
             chunk_start = i + 1
             chunk_end = min(i + chunk_size, len(rows))
 
-            self.logger.info(f"Processing chunk {summary['chunks_processed'] + 1}: rows {chunk_start}-{chunk_end}")
+            self.logger.info(
+                f"Processing chunk {summary['chunks_processed'] + 1}: rows {chunk_start}-{chunk_end}"
+            )
 
             try:
                 chunk_result = await self._upsert_chunk(table_id, chunk, key_field)
@@ -425,18 +446,22 @@ class BaserowClient:
                 self.logger.error(error_msg, exception=e)
                 summary["errors"].append(error_msg)
 
-        self.logger.info(f"Upsert complete: {summary['rows_created']} created, {summary['rows_updated']} updated")
+        self.logger.info(
+            f"Upsert complete: {summary['rows_created']} created, {summary['rows_updated']} updated"
+        )
         metrics_collector.record_timing("baserow_upsert_operation", time.time() * 1000)
 
         return summary
 
-    async def _upsert_chunk(self, table_id: int, chunk: List[Dict], key_field: str) -> Dict[str, int]:
+    async def _upsert_chunk(
+        self, table_id: int, chunk: List[Dict], key_field: str
+    ) -> Dict[str, int]:
         """Upsert a single chunk of rows."""
 
         # Get existing rows by key field
-        existing_rows = await self._get_existing_rows(table_id,
-                                                     [row[key_field] for row in chunk],
-                                                     key_field)
+        existing_rows = await self._get_existing_rows(
+            table_id, [row[key_field] for row in chunk], key_field
+        )
         existing_keys = {row[key_field]: row for row in existing_rows}
 
         created_count = 0
@@ -457,7 +482,9 @@ class BaserowClient:
 
         return {"created": created_count, "updated": updated_count}
 
-    async def _get_existing_rows(self, table_id: int, key_values: List[str], key_field: str) -> List[Dict]:
+    async def _get_existing_rows(
+        self, table_id: int, key_values: List[str], key_field: str
+    ) -> List[Dict]:
         """Get existing rows by key field values."""
         if not key_values:
             return []
@@ -465,13 +492,10 @@ class BaserowClient:
         try:
             # Build filter for the key field
             # Note: This is a simplified approach - Baserow's filtering may require different syntax
-            filter_params = {
-                f"filter__{key_field}__equal": ",".join(key_values)
-            }
+            filter_params = {f"filter__{key_field}__equal": ",".join(key_values)}
 
             response = await self.client.get(
-                f"{self.config.api_url}/api/database/tables/{table_id}/rows/",
-                params=filter_params
+                f"{self.config.api_url}/api/database/tables/{table_id}/rows/", params=filter_params
             )
             response.raise_for_status()
 
@@ -497,8 +521,7 @@ class BaserowClient:
         row_data["updated_at"] = now
 
         response = await self.client.post(
-            f"{self.config.api_url}/api/database/tables/{table_id}/rows/",
-            json=row_data
+            f"{self.config.api_url}/api/database/tables/{table_id}/rows/", json=row_data
         )
         response.raise_for_status()
         return response.json()
@@ -509,8 +532,7 @@ class BaserowClient:
         row_data["updated_at"] = datetime.utcnow().isoformat()
 
         response = await self.client.patch(
-            f"{self.config.api_url}/api/database/tables/{table_id}/rows/{row_id}/",
-            json=row_data
+            f"{self.config.api_url}/api/database/tables/{table_id}/rows/{row_id}/", json=row_data
         )
         response.raise_for_status()
         return response.json()
@@ -520,7 +542,7 @@ class BaserowClient:
         try:
             response = await self.client.get(
                 f"{self.config.api_url}/api/database/tables/{table_id}/rows/",
-                params={"size": 1}  # Just get count, not actual data
+                params={"size": 1},  # Just get count, not actual data
             )
             response.raise_for_status()
 
@@ -528,14 +550,14 @@ class BaserowClient:
             return {
                 "table_id": table_id,
                 "total_rows": data.get("count", 0),
-                "has_data": data.get("count", 0) > 0
+                "has_data": data.get("count", 0) > 0,
             }
 
         except httpx.HTTPStatusError as e:
             raise BaserowError(
                 operation="get_table_stats",
                 status_code=e.response.status_code,
-                response=e.response.text
+                response=e.response.text,
             )
 
     async def test_connection(self) -> bool:

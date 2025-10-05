@@ -11,16 +11,21 @@ import subprocess
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+
 def main():
     print("🎯 MILESTONE 1 COMPLETE DEMONSTRATION")
-    print("="*60)
+    print("=" * 60)
 
     # Step 1: Show test results
     print("\n📋 Step 1: Running full test suite...")
     try:
-        result = subprocess.run(['uv', 'run', 'python', '-m', 'pytest', 'tests/', '-q'],
-                              capture_output=True, text=True, cwd=Path(__file__).parent.parent)
-        if '80 passed' in result.stdout:
+        result = subprocess.run(
+            ["uv", "run", "python", "-m", "pytest", "tests/", "-q"],
+            capture_output=True,
+            text=True,
+            cwd=Path(__file__).parent.parent,
+        )
+        if "80 passed" in result.stdout:
             print("✅ SUCCESS: All 80 tests passing!")
         else:
             print(f"⚠️  Test output: {result.stdout}")
@@ -30,7 +35,9 @@ def main():
     # Step 2: Check if PDF exists
     pdf_path = Path("test_data/pdfs/2025-hager-price-book.pdf")
     if not pdf_path.exists():
-        pdf_path = Path("D:/BkUP_DntRmvMe!/MyDocDrvD/Desktop/projects/arc_pdf_tool/test_data/pdfs/2025-hager-price-book.pdf")
+        pdf_path = Path(
+            "D:/BkUP_DntRmvMe!/MyDocDrvD/Desktop/projects/arc_pdf_tool/test_data/pdfs/2025-hager-price-book.pdf"
+        )
 
     if pdf_path.exists():
         print(f"\n📄 Step 2: Found PDF file: {pdf_path}")
@@ -46,7 +53,7 @@ def main():
             from parsers.hager.parser import HagerParser
 
             # Configure for demo (limit pages for speed)
-            config = {'max_pages': 10, 'verbose': True}
+            config = {"max_pages": 10, "verbose": True}
             parser = HagerParser(str(pdf_path), config)
 
             print("   Parsing first 10 pages for demonstration...")
@@ -67,9 +74,9 @@ def main():
             print(f"✅ JSON export: {json_file}")
 
             # Export products to CSV if any found
-            if results.get('products'):
+            if results.get("products"):
                 csv_file = output_dir / "milestone1_demo_products.csv"
-                QuickExporter.export_products_to_csv(results['products'], str(csv_file))
+                QuickExporter.export_products_to_csv(results["products"], str(csv_file))
                 print(f"✅ CSV export: {csv_file}")
 
         except Exception as e:
@@ -88,7 +95,7 @@ def main():
 
         # Test database
         db_file = "demo_test.db"
-        dm = DatabaseManager(f'sqlite:///{db_file}')
+        dm = DatabaseManager(f"sqlite:///{db_file}")
         dm.initialize_database()
         manufacturers = dm.list_manufacturers()
         print(f"✅ Database system: {len(manufacturers)} manufacturers configured")
@@ -117,6 +124,7 @@ def main():
             print(f"   📄 {file}")
 
     print("\n🚀 Ready for Milestone 2!")
+
 
 if __name__ == "__main__":
     main()

@@ -4,8 +4,8 @@ Admin API endpoints for diff management and review workflows.
 Provides REST API for creating, reviewing, and applying price book diffs
 with confidence-based review queues and approval workflows.
 """
+
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
-from fastapi.responses import JSONResponse
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -81,7 +81,7 @@ diff_service = DiffService()
 async def create_diff(
     request: CreateDiffRequest,
     background_tasks: BackgroundTasks,
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """
     Create a new diff between two price books.
@@ -103,9 +103,9 @@ async def create_diff(
                     total_changes=len(existing_diff.changes),
                     needs_review=len(existing_diff.review_queue),
                     summary=existing_diff.summary,
-                    review_status="pending"  # Would need to check actual status
+                    review_status="pending",  # Would need to check actual status
                 ),
-                message="Diff already exists"
+                message="Diff already exists",
             )
 
         # Create diff in background
@@ -114,13 +114,13 @@ async def create_diff(
             request.old_book_id,
             request.new_book_id,
             request.options,
-            current_user
+            current_user,
         )
 
         return ResponseModel(
             success=True,
             data=None,
-            message="Diff creation started. Check status with GET /admin/diff/{old_book_id}/{new_book_id}"
+            message="Diff creation started. Check status with GET /admin/diff/{old_book_id}/{new_book_id}",
         )
 
     except Exception as e:
@@ -129,9 +129,7 @@ async def create_diff(
 
 @router.get("/{old_book_id}/{new_book_id}", response_model=ResponseModel[DiffSummaryResponse])
 async def get_diff_summary(
-    old_book_id: str,
-    new_book_id: str,
-    current_user: str = Depends(get_current_user)
+    old_book_id: str, new_book_id: str, current_user: str = Depends(get_current_user)
 ):
     """Get summary of existing diff between two books."""
     try:
@@ -149,8 +147,8 @@ async def get_diff_summary(
                 total_changes=len(diff_result.changes),
                 needs_review=len(diff_result.review_queue),
                 summary=diff_result.summary,
-                review_status="pending"  # Would need to check actual status
-            )
+                review_status="pending",  # Would need to check actual status
+            ),
         )
 
     except HTTPException:
@@ -159,7 +157,9 @@ async def get_diff_summary(
         raise HTTPException(status_code=500, detail=f"Failed to get diff summary: {str(e)}")
 
 
-@router.get("/{old_book_id}/{new_book_id}/review", response_model=ResponseModel[List[MatchItemResponse]])
+@router.get(
+    "/{old_book_id}/{new_book_id}/review", response_model=ResponseModel[List[MatchItemResponse]]
+)
 async def get_review_queue(
     old_book_id: str,
     new_book_id: str,
@@ -169,50 +169,54 @@ async def get_review_queue(
     match_method: Optional[str] = Query(None, description="Filter by match method"),
     limit: int = Query(50, description="Maximum number of items to return"),
     offset: int = Query(0, description="Number of items to skip"),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Get filtered review queue for manual review."""
     try:
         filters = {}
         if confidence_level:
-            filters['confidence_level'] = confidence_level
+            filters["confidence_level"] = confidence_level
         if min_confidence is not None:
-            filters['min_confidence'] = min_confidence
+            filters["min_confidence"] = min_confidence
         if max_confidence is not None:
-            filters['max_confidence'] = max_confidence
+            filters["max_confidence"] = max_confidence
         if match_method:
-            filters['match_method'] = match_method
+            filters["match_method"] = match_method
 
         review_queue = diff_service.get_review_queue(old_book_id, new_book_id, filters)
 
         # Apply pagination
-        paginated_queue = review_queue[offset:offset + limit]
+        paginated_queue = review_queue[offset : offset + limit]
 
         # Convert to response format
         response_items = []
         for match in paginated_queue:
-            response_items.append(MatchItemResponse(
-                match_key=match.match_key,
-                confidence=match.confidence,
-                confidence_level=match.confidence_level.value,
-                match_method=match.match_method,
-                old_item=match.old_item,
-                new_item=match.new_item,
-                match_reasons=match.match_reasons,
-                fuzzy_score=match.fuzzy_score
-            ))
+            response_items.append(
+                MatchItemResponse(
+                    match_key=match.match_key,
+                    confidence=match.confidence,
+                    confidence_level=match.confidence_level.value,
+                    match_method=match.match_method,
+                    old_item=match.old_item,
+                    new_item=match.new_item,
+                    match_reasons=match.match_reasons,
+                    fuzzy_score=match.fuzzy_score,
+                )
+            )
 
         return ResponseModel(
             success=True,
             data=response_items,
-            message=f"Retrieved {len(response_items)} items from review queue"
+            message=f"Retrieved {len(response_items)} items from review queue",
         )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get review queue: {str(e)}")
 
 
-@router.get("/{old_book_id}/{new_book_id}/changes", response_model=ResponseModel[List[ChangeItemResponse]])
+@router.get(
+    "/{old_book_id}/{new_book_id}/changes", response_model=ResponseModel[List[ChangeItemResponse]]
+)
 async def get_changes(
     old_book_id: str,
     new_book_id: str,
@@ -220,17 +224,17 @@ async def get_changes(
     min_confidence: Optional[float] = Query(None, description="Minimum confidence threshold"),
     limit: int = Query(100, description="Maximum number of changes to return"),
     offset: int = Query(0, description="Number of changes to skip"),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Get filtered list of changes."""
     try:
         filters = {}
         if change_types:
-            filters['change_types'] = change_types
+            filters["change_types"] = change_types
         if min_confidence is not None:
-            filters['min_confidence'] = min_confidence
+            filters["min_confidence"] = min_confidence
 
-        summary = diff_service.get_changes_summary(old_book_id, new_book_id, filters)
+        diff_service.get_changes_summary(old_book_id, new_book_id, filters)
         diff_result = diff_service.get_diff_result(old_book_id, new_book_id)
 
         if not diff_result:
@@ -239,35 +243,35 @@ async def get_changes(
         # Apply filters to changes
         changes = diff_result.changes
         if filters:
-            if 'change_types' in filters:
-                target_types = [ChangeType(ct) for ct in filters['change_types']]
+            if "change_types" in filters:
+                target_types = [ChangeType(ct) for ct in filters["change_types"]]
                 changes = [c for c in changes if c.change_type in target_types]
-            if 'min_confidence' in filters:
-                min_conf = filters['min_confidence']
+            if "min_confidence" in filters:
+                min_conf = filters["min_confidence"]
                 changes = [c for c in changes if c.confidence >= min_conf]
 
         # Apply pagination
-        paginated_changes = changes[offset:offset + limit]
+        paginated_changes = changes[offset : offset + limit]
 
         # Convert to response format
         response_items = []
         for change in paginated_changes:
-            response_items.append(ChangeItemResponse(
-                change_type=change.change_type.value,
-                confidence=change.confidence,
-                field_name=change.field_name,
-                old_value=change.old_value,
-                new_value=change.new_value,
-                description=change.description,
-                match_key=change.match_key,
-                old_ref=change.old_ref,
-                new_ref=change.new_ref
-            ))
+            response_items.append(
+                ChangeItemResponse(
+                    change_type=change.change_type.value,
+                    confidence=change.confidence,
+                    field_name=change.field_name,
+                    old_value=change.old_value,
+                    new_value=change.new_value,
+                    description=change.description,
+                    match_key=change.match_key,
+                    old_ref=change.old_ref,
+                    new_ref=change.new_ref,
+                )
+            )
 
         return ResponseModel(
-            success=True,
-            data=response_items,
-            message=f"Retrieved {len(response_items)} changes"
+            success=True, data=response_items, message=f"Retrieved {len(response_items)} changes"
         )
 
     except HTTPException:
@@ -281,7 +285,7 @@ async def review_match(
     old_book_id: str,
     new_book_id: str,
     request: ReviewActionRequest,
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Approve or reject a match in the review queue."""
     try:
@@ -304,7 +308,7 @@ async def review_match(
         return ResponseModel(
             success=True,
             data={"status": action_msg, "match_key": request.match_key},
-            message=f"Match {request.match_key} {action_msg} successfully"
+            message=f"Match {request.match_key} {action_msg} successfully",
         )
 
     except HTTPException:
@@ -318,24 +322,18 @@ async def apply_diff(
     old_book_id: str,
     new_book_id: str,
     request: ApplyDiffRequest,
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Apply approved diff changes to create new version."""
     try:
-        result = diff_service.apply_diff(
-            old_book_id, new_book_id, current_user, request.options
-        )
+        result = diff_service.apply_diff(old_book_id, new_book_id, current_user, request.options)
 
         if request.dry_run:
             message = "Dry run completed - no changes applied"
         else:
             message = f"Applied {result['applied_changes']} changes successfully"
 
-        return ResponseModel(
-            success=True,
-            data=result,
-            message=message
-        )
+        return ResponseModel(success=True, data=result, message=message)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to apply diff: {str(e)}")
@@ -347,34 +345,31 @@ async def get_changes_summary(
     new_book_id: str,
     change_types: Optional[List[str]] = Query(None, description="Filter by change types"),
     min_confidence: Optional[float] = Query(None, description="Minimum confidence threshold"),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """Get detailed summary and statistics of changes."""
     try:
         filters = {}
         if change_types:
-            filters['change_types'] = change_types
+            filters["change_types"] = change_types
         if min_confidence is not None:
-            filters['min_confidence'] = min_confidence
+            filters["min_confidence"] = min_confidence
 
         summary = diff_service.get_changes_summary(old_book_id, new_book_id, filters)
 
-        return ResponseModel(
-            success=True,
-            data=summary,
-            message="Summary retrieved successfully"
-        )
+        return ResponseModel(success=True, data=summary, message="Summary retrieved successfully")
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get summary: {str(e)}")
 
 
 # Background task function
-async def _create_diff_background(old_book_id: str, new_book_id: str,
-                                options: Dict[str, Any], user: str):
+async def _create_diff_background(
+    old_book_id: str, new_book_id: str, options: Dict[str, Any], user: str
+):
     """Background task to create diff."""
     try:
-        diff_result = diff_service.create_diff(old_book_id, new_book_id, options)
+        diff_service.create_diff(old_book_id, new_book_id, options)
         # Could add notification or logging here
     except Exception as e:
         # Log error - in production would want proper error handling/notification
@@ -388,7 +383,7 @@ async def get_confidence_levels():
     return ResponseModel(
         success=True,
         data=[level.value for level in MatchConfidence],
-        message="Confidence levels retrieved"
+        message="Confidence levels retrieved",
     )
 
 
@@ -398,15 +393,13 @@ async def get_change_types():
     return ResponseModel(
         success=True,
         data=[change_type.value for change_type in ChangeType],
-        message="Change types retrieved"
+        message="Change types retrieved",
     )
 
 
 @router.delete("/{old_book_id}/{new_book_id}", response_model=ResponseModel[Dict[str, str]])
 async def delete_diff(
-    old_book_id: str,
-    new_book_id: str,
-    current_user: str = Depends(get_current_user)
+    old_book_id: str, new_book_id: str, current_user: str = Depends(get_current_user)
 ):
     """Delete a diff result (admin only)."""
     try:
@@ -415,7 +408,7 @@ async def delete_diff(
         return ResponseModel(
             success=True,
             data={"status": "deleted"},
-            message=f"Diff between {old_book_id} and {new_book_id} deleted"
+            message=f"Diff between {old_book_id} and {new_book_id} deleted",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete diff: {str(e)}")

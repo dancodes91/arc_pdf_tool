@@ -4,6 +4,7 @@ Database connection and session management utilities.
 Provides a unified interface for database operations across the application
 with proper session management and connection pooling.
 """
+
 import os
 from contextlib import contextmanager
 from database.models import DatabaseManager, Base
@@ -18,7 +19,7 @@ def get_database_manager() -> DatabaseManager:
     global _db_manager
 
     if _db_manager is None:
-        database_url = os.getenv('DATABASE_URL', 'sqlite:///price_books.db')
+        database_url = os.getenv("DATABASE_URL", "sqlite:///price_books.db")
         _db_manager = DatabaseManager(database_url)
 
         # Ensure tables exist
@@ -61,19 +62,25 @@ def init_database():
 
 # Re-export commonly used models for convenience
 from database.models import (
-    Manufacturer, PriceBook, ProductFamily, Product, Finish, ProductOption, ChangeLog
+    Manufacturer,
+    PriceBook,
+    ProductFamily,
+    Product,
+    Finish,
+    ProductOption,
+    ChangeLog,
 )
 
 __all__ = [
-    'get_db_session',
-    'get_database_manager',
-    'init_database',
-    'Base',
-    'Manufacturer',
-    'PriceBook',
-    'ProductFamily',
-    'Product',
-    'Finish',
-    'ProductOption',
-    'ChangeLog'
+    "get_db_session",
+    "get_database_manager",
+    "init_database",
+    "Base",
+    "Manufacturer",
+    "PriceBook",
+    "ProductFamily",
+    "Product",
+    "Finish",
+    "ProductOption",
+    "ChangeLog",
 ]

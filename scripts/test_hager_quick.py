@@ -9,7 +9,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from parsers.hager.parser import HagerParser
-from services.exporters import QuickExporter, DataExporter
+from services.exporters import QuickExporter
+
 
 def main():
     pdf_path = "test_data/pdfs/2025-hager-price-book.pdf"
@@ -50,20 +51,22 @@ def main():
         print("\nQuick validation:")
         items_csv = Path("exports") / f"{base_name}_items.csv"
         if items_csv.exists():
-            with open(items_csv, 'r') as f:
+            with open(items_csv, "r") as f:
                 lines = f.readlines()
                 print(f"  items.csv: {len(lines)-1} data rows (plus header)")
 
         options_csv = Path("exports") / f"{base_name}_options.csv"
         if options_csv.exists():
-            with open(options_csv, 'r') as f:
+            with open(options_csv, "r") as f:
                 lines = f.readlines()
                 print(f"  options.csv: {len(lines)-1} data rows (plus header)")
 
     except Exception as e:
         print(f"Export error: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     main()

@@ -4,29 +4,36 @@ Resilience patterns for reliable operation.
 Implements retries, timeouts, circuit breakers, and other patterns
 for handling transient failures and external service dependencies.
 """
+
 import asyncio
 import time
 import random
 import logging
-from typing import Callable, Any, Optional, Dict, List, Union, Type
+from typing import Callable, Any, Optional, Dict, List, Type
 from functools import wraps
 from dataclasses import dataclass, field
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime
 import threading
 
 try:
     from tenacity import (
-        retry, stop_after_attempt, wait_exponential_jitter,
-        retry_if_exception_type, before_sleep_log
+        retry,
+        stop_after_attempt,
+        wait_exponential_jitter,
+        retry_if_exception_type,
+        before_sleep_log,
     )
+
     TENACITY_AVAILABLE = True
 except ImportError:
     TENACITY_AVAILABLE = False
 
 from .exceptions import (
-    BaseArcException, ExternalServiceError, NetworkTimeoutError,
-    RateLimitError, SystemError, ResourceExhaustedError
+    ExternalServiceError,
+    NetworkTimeoutError,
+    RateLimitError,
+    ResourceExhaustedError,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,33 +41,41 @@ logger = logging.getLogger(__name__)
 
 class CircuitState(Enum):
     """Circuit breaker states."""
-    CLOSED = "closed"        # Normal operation
-    OPEN = "open"           # Failing, requests blocked
-    HALF_OPEN = "half_open" # Testing if service recovered
+
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing, requests blocked
+    HALF_OPEN = "half_open"  # Testing if service recovered
 
 
 @dataclass
 class CircuitBreakerConfig:
     """Configuration for circuit breaker."""
-    failure_threshold: int = 5           # Failures before opening
-    recovery_timeout: int = 60           # Seconds before trying half-open
-    success_threshold: int = 3           # Successes to close from half-open
-    timeout: int = 30                    # Operation timeout in seconds
+
+    failure_threshold: int = 5  # Failures before opening
+    recovery_timeout: int = 60  # Seconds before trying half-open
+    success_threshold: int = 3  # Successes to close from half-open
+    timeout: int = 30  # Operation timeout in seconds
     excluded_exceptions: List[Type[Exception]] = field(default_factory=list)
 
 
 @dataclass
 class RetryConfig:
     """Configuration for retry behavior."""
+
     max_attempts: int = 3
-    base_delay: float = 1.0              # Base delay in seconds
-    max_delay: float = 60.0              # Maximum delay in seconds
-    exponential_base: float = 2.0        # Exponential backoff base
-    jitter: bool = True                  # Add random jitter
-    retryable_exceptions: List[Type[Exception]] = field(default_factory=lambda: [
-        ExternalServiceError, NetworkTimeoutError, ConnectionError,
-        TimeoutError, ResourceExhaustedError
-    ])
+    base_delay: float = 1.0  # Base delay in seconds
+    max_delay: float = 60.0  # Maximum delay in seconds
+    exponential_base: float = 2.0  # Exponential backoff base
+    jitter: bool = True  # Add random jitter
+    retryable_exceptions: List[Type[Exception]] = field(
+        default_factory=lambda: [
+            ExternalServiceError,
+            NetworkTimeoutError,
+            ConnectionError,
+            TimeoutError,
+            ResourceExhaustedError,
+        ]
+    )
 
 
 class CircuitBreaker:
@@ -96,16 +111,13 @@ class CircuitBreaker:
                         service=self.name,
                         message="Circuit breaker is open",
                         error_code="CIRCUIT_BREAKER_OPEN",
-                        retry_after=self._time_until_retry()
+                        retry_after=self._time_until_retry(),
                     )
 
         try:
             # Execute with timeout
             if asyncio.iscoroutinefunction(func):
-                result = asyncio.wait_for(
-                    func(*args, **kwargs),
-                    timeout=self.config.timeout
-                )
+                result = asyncio.wait_for(func(*args, **kwargs), timeout=self.config.timeout)
             else:
                 # For sync functions, we'd need a different timeout mechanism
                 result = func(*args, **kwargs)
@@ -170,13 +182,13 @@ class CircuitBreaker:
     def get_status(self) -> Dict[str, Any]:
         """Get current circuit breaker status."""
         return {
-            'name': self.name,
-            'state': self.state.value,
-            'failure_count': self.failure_count,
-            'success_count': self.success_count,
-            'last_failure_time': self.last_failure_time,
-            'last_success_time': self.last_success_time,
-            'time_until_retry': self._time_until_retry() if self.state == CircuitState.OPEN else 0
+            "name": self.name,
+            "state": self.state.value,
+            "failure_count": self.failure_count,
+            "success_count": self.success_count,
+            "last_failure_time": self.last_failure_time,
+            "last_success_time": self.last_success_time,
+            "time_until_retry": self._time_until_retry() if self.state == CircuitState.OPEN else 0,
         }
 
     def reset(self):
@@ -207,7 +219,9 @@ def circuit_breaker(name: str, config: CircuitBreakerConfig = None):
         @wraps(func)
         def wrapper(*args, **kwargs):
             return breaker.call(func, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -228,14 +242,15 @@ def retry_with_backoff(config: RetryConfig = None):
                     initial=config.base_delay,
                     max=config.max_delay,
                     exp_base=config.exponential_base,
-                    jitter=True if config.jitter else False
+                    jitter=True if config.jitter else False,
                 ),
                 retry=retry_if_exception_type(tuple(config.retryable_exceptions)),
-                before_sleep=before_sleep_log(logger, logging.WARNING)
+                before_sleep=before_sleep_log(logger, logging.WARNING),
             )
             @wraps(func)
             def tenacity_wrapper(*args, **kwargs):
                 return func(*args, **kwargs)
+
             return tenacity_wrapper
 
         else:
@@ -251,7 +266,9 @@ def retry_with_backoff(config: RetryConfig = None):
                         last_exception = e
 
                         # Check if exception is retryable
-                        if not any(isinstance(e, exc_type) for exc_type in config.retryable_exceptions):
+                        if not any(
+                            isinstance(e, exc_type) for exc_type in config.retryable_exceptions
+                        ):
                             raise
 
                         # Don't sleep on last attempt
@@ -272,7 +289,7 @@ def retry_with_backoff(config: RetryConfig = None):
 
 def _calculate_delay(attempt: int, config: RetryConfig) -> float:
     """Calculate delay for retry attempt."""
-    delay = config.base_delay * (config.exponential_base ** attempt)
+    delay = config.base_delay * (config.exponential_base**attempt)
     delay = min(delay, config.max_delay)
 
     if config.jitter:
@@ -293,12 +310,12 @@ class TimeoutManager:
     def __init__(self):
         self.active_operations: Dict[str, datetime] = {}
         self.timeouts: Dict[str, int] = {
-            'pdf_parsing': 300,      # 5 minutes for PDF parsing
-            'ocr_processing': 120,   # 2 minutes for OCR
-            'table_extraction': 60,  # 1 minute for table extraction
-            'diff_creation': 180,    # 3 minutes for diff creation
-            'baserow_sync': 300,     # 5 minutes for Baserow sync
-            'export': 120            # 2 minutes for export
+            "pdf_parsing": 300,  # 5 minutes for PDF parsing
+            "ocr_processing": 120,  # 2 minutes for OCR
+            "table_extraction": 60,  # 1 minute for table extraction
+            "diff_creation": 180,  # 3 minutes for diff creation
+            "baserow_sync": 300,  # 5 minutes for Baserow sync
+            "export": 120,  # 2 minutes for export
         }
 
     def set_timeout(self, operation_type: str, timeout_seconds: int):
@@ -344,10 +361,7 @@ class TimeoutManager:
 
         for op_id, start_time in self.active_operations.items():
             elapsed = (now - start_time).total_seconds()
-            result[op_id] = {
-                'start_time': start_time.isoformat(),
-                'elapsed_seconds': elapsed
-            }
+            result[op_id] = {"start_time": start_time.isoformat(), "elapsed_seconds": elapsed}
 
         return result
 
@@ -358,6 +372,7 @@ timeout_manager = TimeoutManager()
 
 def with_timeout(operation_type: str, operation_id: str = None):
     """Decorator to add timeout tracking to functions."""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -370,7 +385,7 @@ def with_timeout(operation_type: str, operation_id: str = None):
                 if timeout_manager.check_timeout(op_id, operation_type):
                     raise NetworkTimeoutError(
                         operation=operation_type,
-                        timeout=timeout_manager.timeouts.get(operation_type, 60)
+                        timeout=timeout_manager.timeouts.get(operation_type, 60),
                     )
 
                 result = func(*args, **kwargs)
@@ -382,6 +397,7 @@ def with_timeout(operation_type: str, operation_id: str = None):
                 raise
 
         return wrapper
+
     return decorator
 
 
@@ -438,19 +454,19 @@ class RateLimiter:
     def get_status(self) -> Dict[str, Any]:
         """Get current rate limiter status."""
         return {
-            'name': self.name,
-            'rate': self.rate,
-            'burst': self.burst,
-            'available_tokens': self.tokens,
-            'last_update': self.last_update
+            "name": self.name,
+            "rate": self.rate,
+            "burst": self.burst,
+            "available_tokens": self.tokens,
+            "last_update": self.last_update,
         }
 
 
 # Global rate limiters
 _rate_limiters: Dict[str, RateLimiter] = {
-    'baserow_api': RateLimiter(rate=10.0, burst=20, name='baserow_api'),  # 10 req/sec
-    'ocr_processing': RateLimiter(rate=2.0, burst=5, name='ocr_processing'),  # 2 req/sec
-    'export': RateLimiter(rate=5.0, burst=10, name='export')  # 5 req/sec
+    "baserow_api": RateLimiter(rate=10.0, burst=20, name="baserow_api"),  # 10 req/sec
+    "ocr_processing": RateLimiter(rate=2.0, burst=5, name="ocr_processing"),  # 2 req/sec
+    "export": RateLimiter(rate=5.0, burst=10, name="export"),  # 5 req/sec
 }
 
 
@@ -461,6 +477,7 @@ def get_rate_limiter(name: str) -> Optional[RateLimiter]:
 
 def rate_limit(limiter_name: str, tokens: int = 1, timeout: float = None):
     """Decorator to add rate limiting to functions."""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -470,11 +487,13 @@ def rate_limit(limiter_name: str, tokens: int = 1, timeout: float = None):
                     raise RateLimitError(
                         service=limiter_name,
                         limit=int(limiter.rate),
-                        reset_time=int(60 / limiter.rate)  # Approximate reset time
+                        reset_time=int(60 / limiter.rate),  # Approximate reset time
                     )
 
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -485,13 +504,14 @@ def resilient(
     retry_config: RetryConfig = None,
     timeout_operation: str = None,
     rate_limiter_name: str = None,
-    rate_limit_tokens: int = 1
+    rate_limit_tokens: int = 1,
 ):
     """
     Combined decorator for resilience patterns.
 
     Applies circuit breaker, retry, timeout, and rate limiting as specified.
     """
+
     def decorator(func):
         # Apply decorators in order (innermost first)
         decorated_func = func
@@ -520,8 +540,8 @@ def resilient(
 def get_resilience_status() -> Dict[str, Any]:
     """Get status of all resilience components."""
     return {
-        'circuit_breakers': {name: cb.get_status() for name, cb in _circuit_breakers.items()},
-        'rate_limiters': {name: rl.get_status() for name, rl in _rate_limiters.items()},
-        'active_operations': timeout_manager.get_active_operations(),
-        'timeout_config': timeout_manager.timeouts
+        "circuit_breakers": {name: cb.get_status() for name, cb in _circuit_breakers.items()},
+        "rate_limiters": {name: rl.get_status() for name, rl in _rate_limiters.items()},
+        "active_operations": timeout_manager.get_active_operations(),
+        "timeout_config": timeout_manager.timeouts,
     }

@@ -4,6 +4,7 @@ Page classifier for PDF parsing.
 Classifies page types (title/TOC/data, option lists, finish symbols, footnotes)
 and routes to the best extraction method based on content analysis.
 """
+
 import re
 import logging
 from typing import Dict, List, Tuple, Optional, Any
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class PageType(Enum):
     """Page classification types."""
+
     TITLE_PAGE = "title_page"
     TABLE_OF_CONTENTS = "table_of_contents"
     DATA_TABLE = "data_table"
@@ -28,6 +30,7 @@ class PageType(Enum):
 
 class ExtractionMethod(Enum):
     """Available extraction methods."""
+
     PDFPLUMBER = "pdfplumber"
     CAMELOT_LATTICE = "camelot_lattice"
     CAMELOT_STREAM = "camelot_stream"
@@ -38,6 +41,7 @@ class ExtractionMethod(Enum):
 @dataclass
 class PageAnalysis:
     """Analysis results for a page."""
+
     page_number: int
     page_type: PageType
     confidence: float
@@ -70,63 +74,67 @@ class PageClassifier:
 
         # Title page patterns
         self.title_patterns = [
-            r'(?i)price\s+book',
-            r'(?i)catalog',
-            r'(?i)effective\s+\d{1,2}[/\-]\d{1,2}[/\-]\d{4}',
-            r'(?i)door\s+hardware',
-            r'(?i)hager|select',
+            r"(?i)price\s+book",
+            r"(?i)catalog",
+            r"(?i)effective\s+\d{1,2}[/\-]\d{1,2}[/\-]\d{4}",
+            r"(?i)door\s+hardware",
+            r"(?i)hager|select",
         ]
 
         # Table of contents patterns
         self.toc_patterns = [
-            r'(?i)table\s+of\s+contents',
-            r'(?i)contents',
-            r'(?i)index',
-            r'\.{3,}',  # Dot leaders
-            r'\d+\s*$',  # Page numbers at end of line
+            r"(?i)table\s+of\s+contents",
+            r"(?i)contents",
+            r"(?i)index",
+            r"\.{3,}",  # Dot leaders
+            r"\d+\s*$",  # Page numbers at end of line
         ]
 
         # Finish symbols patterns
         self.finish_patterns = [
-            r'(?i)finish\s+symbols?',
-            r'(?i)architectural\s+finish',
-            r'(?i)bhma\s+(?:symbol|code)',
-            r'US\d+[A-Z]?',  # BHMA codes
-            r'(?i)satin\s+(?:chrome|brass|bronze)',
-            r'(?i)oil\s+rubbed\s+bronze',
+            r"(?i)finish\s+symbols?",
+            r"(?i)architectural\s+finish",
+            r"(?i)bhma\s+(?:symbol|code)",
+            r"US\d+[A-Z]?",  # BHMA codes
+            r"(?i)satin\s+(?:chrome|brass|bronze)",
+            r"(?i)oil\s+rubbed\s+bronze",
         ]
 
         # Option list patterns
         self.option_patterns = [
-            r'(?i)(?:CTW|EPT|EMS|TIPIT|HT|FR3)',  # Common option codes
-            r'(?i)preparation\s+add',
-            r'(?i)electromagnetic\s+shielding',
-            r'(?i)electric\s+thru[\-\s]wire',
-            r'(?i)heavy\s+weight',
-            r'add\s+\$\d+',  # "add $25.00"
+            r"(?i)(?:CTW|EPT|EMS|TIPIT|HT|FR3)",  # Common option codes
+            r"(?i)preparation\s+add",
+            r"(?i)electromagnetic\s+shielding",
+            r"(?i)electric\s+thru[\-\s]wire",
+            r"(?i)heavy\s+weight",
+            r"add\s+\$\d+",  # "add $25.00"
         ]
 
         # Price rule patterns
         self.price_rule_patterns = [
-            r'(?i)pricing\s+rules?',
-            r'(?i)use\s+price\s+of',
-            r'\d+%\s+above',
-            r'(?i)same\s+as',
-            r'(?i)see\s+price\s+for',
+            r"(?i)pricing\s+rules?",
+            r"(?i)use\s+price\s+of",
+            r"\d+%\s+above",
+            r"(?i)same\s+as",
+            r"(?i)see\s+price\s+for",
         ]
 
         # Data table indicators
         self.data_table_patterns = [
-            r'\$\d+\.\d{2}',  # Price patterns
-            r'(?i)model\s*(?:number|#)?',
-            r'(?i)description',
-            r'(?i)series',
-            r'(?i)size',
+            r"\$\d+\.\d{2}",  # Price patterns
+            r"(?i)model\s*(?:number|#)?",
+            r"(?i)description",
+            r"(?i)series",
+            r"(?i)size",
         ]
 
-    def classify_page(self, page_text: str, page_number: int,
-                     tables: Optional[List] = None,
-                     page_features: Optional[Dict] = None) -> PageAnalysis:
+    def classify_page(
+        self,
+        page_text: str,
+        page_number: int,
+        tables: Optional[List] = None,
+        page_features: Optional[Dict] = None,
+    ) -> PageAnalysis:
         """
         Classify a page and recommend extraction method.
 
@@ -169,33 +177,33 @@ class PageClassifier:
             text_length=text_length,
             table_count=table_count,
             has_tables=has_tables,
-            needs_ocr=needs_ocr
+            needs_ocr=needs_ocr,
         )
 
     def _extract_features(self, text: str, page_features: Dict) -> Dict[str, Any]:
         """Extract features for classification."""
         if not text:
             return {
-                'line_count': 0,
-                'word_count': 0,
-                'density': 0.0,
-                'has_prices': False,
-                'has_codes': False,
-                'has_tables_markers': False,
-                'pattern_scores': {}
+                "line_count": 0,
+                "word_count": 0,
+                "density": 0.0,
+                "has_prices": False,
+                "has_codes": False,
+                "has_tables_markers": False,
+                "pattern_scores": {},
             }
 
-        lines = text.split('\n')
+        lines = text.split("\n")
         words = text.split()
 
         features = {
-            'line_count': len(lines),
-            'word_count': len(words),
-            'density': len(words) / max(len(lines), 1),
-            'has_prices': bool(re.search(r'\$\d+\.\d{2}', text)),
-            'has_codes': bool(re.search(r'(?:US\d+[A-Z]?|CTW|EPT|EMS)', text)),
-            'has_table_markers': bool(re.search(r'(?i)model|description|price|series', text)),
-            'pattern_scores': self._calculate_pattern_scores(text)
+            "line_count": len(lines),
+            "word_count": len(words),
+            "density": len(words) / max(len(lines), 1),
+            "has_prices": bool(re.search(r"\$\d+\.\d{2}", text)),
+            "has_codes": bool(re.search(r"(?:US\d+[A-Z]?|CTW|EPT|EMS)", text)),
+            "has_table_markers": bool(re.search(r"(?i)model|description|price|series", text)),
+            "pattern_scores": self._calculate_pattern_scores(text),
         }
 
         # Add page-level features if available
@@ -208,12 +216,12 @@ class PageClassifier:
         scores = {}
 
         pattern_sets = {
-            'title': self.title_patterns,
-            'toc': self.toc_patterns,
-            'finish': self.finish_patterns,
-            'options': self.option_patterns,
-            'price_rules': self.price_rule_patterns,
-            'data_table': self.data_table_patterns,
+            "title": self.title_patterns,
+            "toc": self.toc_patterns,
+            "finish": self.finish_patterns,
+            "options": self.option_patterns,
+            "price_rules": self.price_rule_patterns,
+            "data_table": self.data_table_patterns,
         }
 
         for category, patterns in pattern_sets.items():
@@ -227,39 +235,41 @@ class PageClassifier:
 
     def _classify_page_type(self, text: str, features: Dict) -> Tuple[PageType, float]:
         """Classify the page type based on patterns and features."""
-        pattern_scores = features.get('pattern_scores', {})
+        pattern_scores = features.get("pattern_scores", {})
 
         # Priority-based classification
-        if pattern_scores.get('title', 0) > 0.3:
-            return PageType.TITLE_PAGE, pattern_scores['title']
+        if pattern_scores.get("title", 0) > 0.3:
+            return PageType.TITLE_PAGE, pattern_scores["title"]
 
-        if pattern_scores.get('toc', 0) > 0.3:
-            return PageType.TABLE_OF_CONTENTS, pattern_scores['toc']
+        if pattern_scores.get("toc", 0) > 0.3:
+            return PageType.TABLE_OF_CONTENTS, pattern_scores["toc"]
 
-        if pattern_scores.get('finish', 0) > 0.4:
-            return PageType.FINISH_SYMBOLS, pattern_scores['finish']
+        if pattern_scores.get("finish", 0) > 0.4:
+            return PageType.FINISH_SYMBOLS, pattern_scores["finish"]
 
-        if pattern_scores.get('price_rules', 0) > 0.3:
-            return PageType.PRICE_RULES, pattern_scores['price_rules']
+        if pattern_scores.get("price_rules", 0) > 0.3:
+            return PageType.PRICE_RULES, pattern_scores["price_rules"]
 
-        if pattern_scores.get('options', 0) > 0.4:
-            return PageType.OPTION_LIST, pattern_scores['options']
+        if pattern_scores.get("options", 0) > 0.4:
+            return PageType.OPTION_LIST, pattern_scores["options"]
 
         # Data table classification based on multiple indicators
         data_indicators = [
-            pattern_scores.get('data_table', 0) > 0.3,
-            features.get('has_prices', False),
-            features.get('has_table_markers', False),
-            features.get('density', 0) > 3.0,  # Dense content
+            pattern_scores.get("data_table", 0) > 0.3,
+            features.get("has_prices", False),
+            features.get("has_table_markers", False),
+            features.get("density", 0) > 3.0,  # Dense content
         ]
 
         if sum(data_indicators) >= 2:
-            confidence = sum([
-                pattern_scores.get('data_table', 0),
-                0.2 if features.get('has_prices') else 0,
-                0.2 if features.get('has_table_markers') else 0,
-                min(features.get('density', 0) / 10.0, 0.3)
-            ])
+            confidence = sum(
+                [
+                    pattern_scores.get("data_table", 0),
+                    0.2 if features.get("has_prices") else 0,
+                    0.2 if features.get("has_table_markers") else 0,
+                    min(features.get("density", 0) / 10.0, 0.3),
+                ]
+            )
             return PageType.DATA_TABLE, min(confidence, 1.0)
 
         # Mixed content if multiple patterns found
@@ -276,15 +286,18 @@ class PageClassifier:
             return True
 
         # OCR if no tables found but should have them
-        if (features.get('has_table_markers', False) and
-            table_count == 0 and
-            features.get('density', 0) < 2.0):
+        if (
+            features.get("has_table_markers", False)
+            and table_count == 0
+            and features.get("density", 0) < 2.0
+        ):
             return True
 
         return False
 
-    def _recommend_extraction_method(self, page_type: PageType, has_tables: bool,
-                                   needs_ocr: bool, features: Dict) -> ExtractionMethod:
+    def _recommend_extraction_method(
+        self, page_type: PageType, has_tables: bool, needs_ocr: bool, features: Dict
+    ) -> ExtractionMethod:
         """Recommend the best extraction method for this page."""
 
         if needs_ocr:
@@ -300,10 +313,10 @@ class PageClassifier:
 
         if page_type == PageType.DATA_TABLE and has_tables:
             # Choose lattice vs stream based on table structure hints
-            if features.get('density', 0) > 5.0:
+            if features.get("density", 0) > 5.0:
                 return ExtractionMethod.CAMELOT_LATTICE  # Dense, likely gridded
             else:
-                return ExtractionMethod.CAMELOT_STREAM   # Sparse, likely unstructured
+                return ExtractionMethod.CAMELOT_STREAM  # Sparse, likely unstructured
 
         if page_type in [PageType.OPTION_LIST, PageType.PRICE_RULES]:
             # Option lists and rules are often text-based
@@ -332,10 +345,10 @@ class PageClassifier:
 
         for page_data in pages_data:
             analysis = self.classify_page(
-                page_text=page_data.get('text', ''),
-                page_number=page_data.get('page_number', 0),
-                tables=page_data.get('tables', []),
-                page_features=page_data.get('features', {})
+                page_text=page_data.get("text", ""),
+                page_number=page_data.get("page_number", 0),
+                tables=page_data.get("tables", []),
+                page_features=page_data.get("features", {}),
             )
             analyses.append(analysis)
 
@@ -348,7 +361,9 @@ class PageClassifier:
 
         for analysis in analyses:
             type_counts[analysis.page_type.value] = type_counts.get(analysis.page_type.value, 0) + 1
-            method_counts[analysis.recommended_method.value] = method_counts.get(analysis.recommended_method.value, 0) + 1
+            method_counts[analysis.recommended_method.value] = (
+                method_counts.get(analysis.recommended_method.value, 0) + 1
+            )
             if analysis.needs_ocr:
                 ocr_count += 1
 
@@ -371,41 +386,49 @@ def route_extraction(page_analysis: PageAnalysis, page_data: Dict) -> Dict[str, 
         Extraction configuration dict
     """
     config = {
-        'method': page_analysis.recommended_method.value,
-        'page_type': page_analysis.page_type.value,
-        'confidence_threshold': 0.7,  # Default
-        'ocr_fallback': page_analysis.needs_ocr,
+        "method": page_analysis.recommended_method.value,
+        "page_type": page_analysis.page_type.value,
+        "confidence_threshold": 0.7,  # Default
+        "ocr_fallback": page_analysis.needs_ocr,
     }
 
     # Method-specific configuration
     if page_analysis.recommended_method == ExtractionMethod.CAMELOT_LATTICE:
-        config.update({
-            'camelot_flavor': 'lattice',
-            'table_areas': None,  # Auto-detect
-            'edge_tol': 50,
-        })
+        config.update(
+            {
+                "camelot_flavor": "lattice",
+                "table_areas": None,  # Auto-detect
+                "edge_tol": 50,
+            }
+        )
     elif page_analysis.recommended_method == ExtractionMethod.CAMELOT_STREAM:
-        config.update({
-            'camelot_flavor': 'stream',
-            'row_tol': 2,
-            'col_tol': 0,
-        })
+        config.update(
+            {
+                "camelot_flavor": "stream",
+                "row_tol": 2,
+                "col_tol": 0,
+            }
+        )
     elif page_analysis.recommended_method == ExtractionMethod.PDFPLUMBER:
-        config.update({
-            'extract_tables': page_analysis.has_tables,
-            'table_settings': {'vertical_strategy': 'lines', 'horizontal_strategy': 'lines'},
-        })
+        config.update(
+            {
+                "extract_tables": page_analysis.has_tables,
+                "table_settings": {"vertical_strategy": "lines", "horizontal_strategy": "lines"},
+            }
+        )
     elif page_analysis.recommended_method == ExtractionMethod.OCR_FALLBACK:
-        config.update({
-            'ocr_engine': 'tesseract',
-            'ocr_config': '--psm 6',  # Assume uniform block of text
-            'preprocess': True,
-        })
+        config.update(
+            {
+                "ocr_engine": "tesseract",
+                "ocr_config": "--psm 6",  # Assume uniform block of text
+                "preprocess": True,
+            }
+        )
 
     # Page type specific adjustments
     if page_analysis.page_type == PageType.FINISH_SYMBOLS:
-        config['confidence_threshold'] = 0.6  # Lower threshold for finish symbols
+        config["confidence_threshold"] = 0.6  # Lower threshold for finish symbols
     elif page_analysis.page_type == PageType.DATA_TABLE:
-        config['confidence_threshold'] = 0.8  # Higher threshold for product data
+        config["confidence_threshold"] = 0.8  # Higher threshold for product data
 
     return config

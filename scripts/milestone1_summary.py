@@ -31,33 +31,33 @@ def show_milestone1_completion():
             "[DONE] UV Package Manager Migration (faster dependency resolution)",
             "[DONE] Enhanced Database Schema with Alembic Migrations",
             "[DONE] Modern Python Tooling (Ruff, pytest, mypy)",
-            "[DONE] Git Branch Management (alex-feature branch)"
+            "[DONE] Git Branch Management (alex-feature branch)",
         ],
         "Core Parsing Engine": [
             "[DONE] Multi-Method PDF Extraction (PyMuPDF, pdfplumber, Camelot, OCR)",
             "[DONE] 4-Level Confidence Scoring System (High/Medium/Low/Very Low)",
             "[DONE] Data Normalization (Prices, SKUs, Dates, Finishes, UOMs)",
             "[DONE] Complete Provenance Tracking (source file, page, method, confidence)",
-            "[DONE] Shared Parser Utilities Architecture"
+            "[DONE] Shared Parser Utilities Architecture",
         ],
         "Manufacturer Parsers": [
             "[DONE] SELECT Hinges Parser (effective dates, options, model tables)",
             "[DONE] Hager Parser (finish symbols, price rules, hinge additions)",
             "[DONE] Section-based Extraction (modular and extensible)",
-            "[DONE] Golden Test Data Generation and Validation"
+            "[DONE] Golden Test Data Generation and Validation",
         ],
         "Data Pipeline": [
             "[DONE] ETL Loader for Database Integration",
             "[DONE] Normalized Database Loading (manufacturers, price books, products)",
             "[DONE] CSV/XLSX/JSON Export System",
-            "[DONE] Command-line Parsing and Export Tools"
+            "[DONE] Command-line Parsing and Export Tools",
         ],
         "Testing & Quality": [
             "[DONE] Comprehensive Test Suites (59 tests total)",
             "[DONE] 100% Test Pass Rate (59/59 passing)",
             "[DONE] Mock-based Testing for PDF Processing",
-            "[DONE] Integration Test Coverage"
-        ]
+            "[DONE] Integration Test Coverage",
+        ],
     }
 
     for category, features in completed_components.items():
@@ -77,7 +77,7 @@ def show_milestone1_completion():
         "Manufacturers Supported": "2 (SELECT, Hager)",
         "Export Formats": "3 (CSV, XLSX, JSON)",
         "Database Tables": "8 normalized tables",
-        "Shared Utilities": "4 core modules"
+        "Shared Utilities": "4 core modules",
     }
 
     for metric, value in stats.items():
@@ -95,7 +95,7 @@ def show_milestone1_completion():
         "* Export-Ready: Direct parsing export + database-driven export options",
         "* Test-Driven: Comprehensive mocking and validation for all components",
         "* Performance: UV package manager for 10x faster dependency resolution",
-        "* Traceable: Complete data lineage from PDF source to final output"
+        "* Traceable: Complete data lineage from PDF source to final output",
     ]
 
     for feature in architecture_features:
@@ -110,35 +110,35 @@ def show_milestone1_completion():
             "confidence.py (4-level confidence scoring)",
             "pdf_io.py (multi-method PDF extraction)",
             "normalization.py (price, SKU, date normalization)",
-            "provenance.py (complete data lineage tracking)"
+            "provenance.py (complete data lineage tracking)",
         ],
         "parsers/select/": [
             "parser.py (complete SELECT Hinges parser)",
-            "sections.py (effective dates, options, model tables)"
+            "sections.py (effective dates, options, model tables)",
         ],
         "parsers/hager/": [
             "parser.py (complete Hager parser)",
-            "sections.py (finish symbols, price rules, additions)"
+            "sections.py (finish symbols, price rules, additions)",
         ],
         "services/": [
             "etl_loader.py (database loading pipeline)",
-            "exporters.py (CSV/XLSX/JSON export system)"
+            "exporters.py (CSV/XLSX/JSON export system)",
         ],
         "tests/": [
             "test_shared_utilities.py (15/15 tests passing)",
             "test_select_parser.py (13/13 tests passing)",
             "test_hager_parser.py (13/13 tests passing)",
             "test_exporters.py (10/10 tests passing)",
-            "test_etl_loader.py (8/8 tests passing)"
+            "test_etl_loader.py (8/8 tests passing)",
         ],
         "database/": [
             "models.py (enhanced with relationships)",
-            "migrations/ (Alembic database versioning)"
+            "migrations/ (Alembic database versioning)",
         ],
         "scripts/": [
             "parse_and_export.py (CLI demonstration tool)",
-            "demo_milestone1.py (capability demonstration)"
-        ]
+            "demo_milestone1.py (capability demonstration)",
+        ],
     }
 
     for directory, files in file_structure.items():
@@ -162,12 +162,9 @@ def demonstrate_export_capability():
             "parser_version": "2.0",
             "extraction_method": "enhanced_pipeline",
             "total_pages": 45,
-            "overall_confidence": 0.89
+            "overall_confidence": 0.89,
         },
-        "effective_date": {
-            "value": "2025-04-07",
-            "confidence": 0.95
-        },
+        "effective_date": {"value": "2025-04-07", "confidence": 0.95},
         "products": [
             {
                 "value": {
@@ -177,7 +174,7 @@ def demonstrate_export_capability():
                     "description": "Ball Bearing Heavy Duty Hinge",
                     "base_price": 125.50,
                     "manufacturer": "SELECT",
-                    "is_active": True
+                    "is_active": True,
                 }
             },
             {
@@ -188,7 +185,7 @@ def demonstrate_export_capability():
                     "description": "Ball Bearing Heavy Duty Hinge",
                     "base_price": 128.75,
                     "manufacturer": "SELECT",
-                    "is_active": True
+                    "is_active": True,
                 }
             },
             {
@@ -199,9 +196,9 @@ def demonstrate_export_capability():
                     "description": "Ball Bearing Standard Hinge",
                     "base_price": 98.25,
                     "manufacturer": "SELECT",
-                    "is_active": True
+                    "is_active": True,
                 }
-            }
+            },
         ],
         "finish_symbols": [
             {
@@ -210,7 +207,7 @@ def demonstrate_export_capability():
                     "name": "Satin Chrome",
                     "bhma_code": "US3",
                     "description": "Satin Chrome Finish",
-                    "base_price": 12.50
+                    "base_price": 12.50,
                 }
             },
             {
@@ -219,9 +216,9 @@ def demonstrate_export_capability():
                     "name": "Bright Chrome",
                     "bhma_code": "US4",
                     "description": "Bright Chrome Finish",
-                    "base_price": 15.75
+                    "base_price": 15.75,
                 }
-            }
+            },
         ],
         "net_add_options": [
             {
@@ -229,7 +226,7 @@ def demonstrate_export_capability():
                     "option_code": "EPT",
                     "option_name": "Electroplated Preparation",
                     "adder_value": 25.00,
-                    "adder_type": "net_add"
+                    "adder_type": "net_add",
                 }
             },
             {
@@ -237,17 +234,17 @@ def demonstrate_export_capability():
                     "option_code": "EMS",
                     "option_name": "Electromagnetic Shielding",
                     "adder_value": 35.50,
-                    "adder_type": "net_add"
+                    "adder_type": "net_add",
                 }
-            }
+            },
         ],
         "summary": {
             "total_products": 3,
             "total_finishes": 2,
             "total_options": 2,
             "has_effective_date": True,
-            "parsing_success": True
-        }
+            "parsing_success": True,
+        },
     }
 
     # Export to temporary directory
@@ -261,15 +258,17 @@ def demonstrate_export_capability():
                 print(f"  * {export_type}: {Path(file_path).name} ({file_size:,} bytes)")
 
             # Show content summary
-            if 'results_json' in files_created:
-                with open(files_created['results_json'], 'r') as f:
+            if "results_json" in files_created:
+                with open(files_created["results_json"], "r") as f:
                     json_data = json.load(f)
                     print(f"\nExport Content Summary:")
                     print(f"  Manufacturer: {json_data['manufacturer']}")
                     print(f"  Products: {len(json_data.get('products', []))}")
                     print(f"  Finishes: {len(json_data.get('finish_symbols', []))}")
                     print(f"  Options: {len(json_data.get('net_add_options', []))}")
-                    print(f"  Effective Date: {json_data.get('effective_date', {}).get('value', 'Not found')}")
+                    print(
+                        f"  Effective Date: {json_data.get('effective_date', {}).get('value', 'Not found')}"
+                    )
 
             return True
 

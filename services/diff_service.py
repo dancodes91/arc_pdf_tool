@@ -3,13 +3,20 @@ Diff service for managing price book comparisons and review workflows.
 
 Handles diff creation, review queue management, and applying approved changes.
 """
+
 import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 import json
-from pathlib import Path
 
-from core.diff_engine_v2 import DiffEngineV2, DiffResult, MatchResult, Change, ChangeType, MatchConfidence
+from core.diff_engine_v2 import (
+    DiffEngineV2,
+    DiffResult,
+    MatchResult,
+    Change,
+    ChangeType,
+    MatchConfidence,
+)
 from core.database import get_db_session
 from models.price_books import PriceBook
 from models.diff_results import DiffResultModel, DiffChangeModel, DiffMatchModel
@@ -27,11 +34,12 @@ class DiffService:
 
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
-        self.diff_engine = DiffEngineV2(config.get('diff_engine', {}))
+        self.diff_engine = DiffEngineV2(config.get("diff_engine", {}))
         self.logger = logging.getLogger(__name__)
 
-    def create_diff(self, old_book_id: str, new_book_id: str,
-                   options: Dict[str, Any] = None) -> DiffResult:
+    def create_diff(
+        self, old_book_id: str, new_book_id: str, options: Dict[str, Any] = None
+    ) -> DiffResult:
         """
         Create a comprehensive diff between two price books.
 
@@ -65,8 +73,10 @@ class DiffService:
             # Store diff result in database
             self._store_diff_result(session, diff_result)
 
-            self.logger.info(f"Diff created: {len(diff_result.changes)} changes, "
-                           f"{len(diff_result.review_queue)} items need review")
+            self.logger.info(
+                f"Diff created: {len(diff_result.changes)} changes, "
+                f"{len(diff_result.review_queue)} items need review"
+            )
 
             return diff_result
 
@@ -82,18 +92,21 @@ class DiffService:
             DiffResult if found, None otherwise
         """
         with get_db_session() as session:
-            diff_model = session.query(DiffResultModel).filter_by(
-                old_book_id=old_book_id,
-                new_book_id=new_book_id
-            ).order_by(DiffResultModel.created_at.desc()).first()
+            diff_model = (
+                session.query(DiffResultModel)
+                .filter_by(old_book_id=old_book_id, new_book_id=new_book_id)
+                .order_by(DiffResultModel.created_at.desc())
+                .first()
+            )
 
             if not diff_model:
                 return None
 
             return self._model_to_diff_result(diff_model)
 
-    def get_review_queue(self, old_book_id: str, new_book_id: str,
-                        filters: Dict[str, Any] = None) -> List[MatchResult]:
+    def get_review_queue(
+        self, old_book_id: str, new_book_id: str, filters: Dict[str, Any] = None
+    ) -> List[MatchResult]:
         """
         Get filtered review queue for manual review.
 
@@ -113,26 +126,27 @@ class DiffService:
 
         # Apply filters
         if filters:
-            if 'confidence_level' in filters:
-                target_level = MatchConfidence(filters['confidence_level'])
+            if "confidence_level" in filters:
+                target_level = MatchConfidence(filters["confidence_level"])
                 review_queue = [m for m in review_queue if m.confidence_level == target_level]
 
-            if 'min_confidence' in filters:
-                min_conf = float(filters['min_confidence'])
+            if "min_confidence" in filters:
+                min_conf = float(filters["min_confidence"])
                 review_queue = [m for m in review_queue if m.confidence >= min_conf]
 
-            if 'max_confidence' in filters:
-                max_conf = float(filters['max_confidence'])
+            if "max_confidence" in filters:
+                max_conf = float(filters["max_confidence"])
                 review_queue = [m for m in review_queue if m.confidence <= max_conf]
 
-            if 'match_method' in filters:
-                method = filters['match_method']
+            if "match_method" in filters:
+                method = filters["match_method"]
                 review_queue = [m for m in review_queue if m.match_method == method]
 
         return review_queue
 
-    def get_changes_summary(self, old_book_id: str, new_book_id: str,
-                          filters: Dict[str, Any] = None) -> Dict[str, Any]:
+    def get_changes_summary(
+        self, old_book_id: str, new_book_id: str, filters: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         """
         Get summary of changes with optional filtering.
 
@@ -146,37 +160,41 @@ class DiffService:
         """
         diff_result = self.get_diff_result(old_book_id, new_book_id)
         if not diff_result:
-            return {'total_changes': 0}
+            return {"total_changes": 0}
 
         changes = diff_result.changes.copy()
 
         # Apply filters
         if filters:
-            if 'change_types' in filters:
-                target_types = [ChangeType(ct) for ct in filters['change_types']]
+            if "change_types" in filters:
+                target_types = [ChangeType(ct) for ct in filters["change_types"]]
                 changes = [c for c in changes if c.change_type in target_types]
 
-            if 'min_confidence' in filters:
-                min_conf = float(filters['min_confidence'])
+            if "min_confidence" in filters:
+                min_conf = float(filters["min_confidence"])
                 changes = [c for c in changes if c.confidence >= min_conf]
 
         # Calculate summary
         summary = {
-            'total_changes': len(changes),
-            'change_breakdown': {},
-            'confidence_distribution': {},
-            'price_change_stats': {}
+            "total_changes": len(changes),
+            "change_breakdown": {},
+            "confidence_distribution": {},
+            "price_change_stats": {},
         }
 
         # Count by change type
         for change in changes:
             change_type = change.change_type.value
-            summary['change_breakdown'][change_type] = summary['change_breakdown'].get(change_type, 0) + 1
+            summary["change_breakdown"][change_type] = (
+                summary["change_breakdown"].get(change_type, 0) + 1
+            )
 
         # Count by confidence level
         for change in changes:
             conf_bucket = self._confidence_to_bucket(change.confidence)
-            summary['confidence_distribution'][conf_bucket] = summary['confidence_distribution'].get(conf_bucket, 0) + 1
+            summary["confidence_distribution"][conf_bucket] = (
+                summary["confidence_distribution"].get(conf_bucket, 0) + 1
+            )
 
         # Price change statistics
         price_changes = [c for c in changes if c.change_type == ChangeType.PRICE_CHANGED]
@@ -190,19 +208,20 @@ class DiffService:
                     price_deltas.append(percent_change)
 
             if price_deltas:
-                summary['price_change_stats'] = {
-                    'count': len(price_deltas),
-                    'avg_percent_change': sum(price_deltas) / len(price_deltas),
-                    'min_percent_change': min(price_deltas),
-                    'max_percent_change': max(price_deltas),
-                    'increases': len([d for d in price_deltas if d > 0]),
-                    'decreases': len([d for d in price_deltas if d < 0])
+                summary["price_change_stats"] = {
+                    "count": len(price_deltas),
+                    "avg_percent_change": sum(price_deltas) / len(price_deltas),
+                    "min_percent_change": min(price_deltas),
+                    "max_percent_change": max(price_deltas),
+                    "increases": len([d for d in price_deltas if d > 0]),
+                    "decreases": len([d for d in price_deltas if d < 0]),
                 }
 
         return summary
 
-    def approve_match(self, old_book_id: str, new_book_id: str, match_key: str,
-                     reviewer: str, notes: str = "") -> bool:
+    def approve_match(
+        self, old_book_id: str, new_book_id: str, match_key: str, reviewer: str, notes: str = ""
+    ) -> bool:
         """
         Approve a match from the review queue.
 
@@ -218,24 +237,27 @@ class DiffService:
         """
         with get_db_session() as session:
             # Find the match in database
-            diff_model = session.query(DiffResultModel).filter_by(
-                old_book_id=old_book_id,
-                new_book_id=new_book_id
-            ).order_by(DiffResultModel.created_at.desc()).first()
+            diff_model = (
+                session.query(DiffResultModel)
+                .filter_by(old_book_id=old_book_id, new_book_id=new_book_id)
+                .order_by(DiffResultModel.created_at.desc())
+                .first()
+            )
 
             if not diff_model:
                 return False
 
-            match_model = session.query(DiffMatchModel).filter_by(
-                diff_result_id=diff_model.id,
-                match_key=match_key
-            ).first()
+            match_model = (
+                session.query(DiffMatchModel)
+                .filter_by(diff_result_id=diff_model.id, match_key=match_key)
+                .first()
+            )
 
             if not match_model:
                 return False
 
             # Update match status
-            match_model.review_status = 'approved'
+            match_model.review_status = "approved"
             match_model.reviewer = reviewer
             match_model.review_notes = notes
             match_model.reviewed_at = datetime.now()
@@ -244,8 +266,9 @@ class DiffService:
             self.logger.info(f"Match {match_key} approved by {reviewer}")
             return True
 
-    def reject_match(self, old_book_id: str, new_book_id: str, match_key: str,
-                    reviewer: str, reason: str) -> bool:
+    def reject_match(
+        self, old_book_id: str, new_book_id: str, match_key: str, reviewer: str, reason: str
+    ) -> bool:
         """
         Reject a match from the review queue.
 
@@ -261,24 +284,27 @@ class DiffService:
         """
         with get_db_session() as session:
             # Find the match in database
-            diff_model = session.query(DiffResultModel).filter_by(
-                old_book_id=old_book_id,
-                new_book_id=new_book_id
-            ).order_by(DiffResultModel.created_at.desc()).first()
+            diff_model = (
+                session.query(DiffResultModel)
+                .filter_by(old_book_id=old_book_id, new_book_id=new_book_id)
+                .order_by(DiffResultModel.created_at.desc())
+                .first()
+            )
 
             if not diff_model:
                 return False
 
-            match_model = session.query(DiffMatchModel).filter_by(
-                diff_result_id=diff_model.id,
-                match_key=match_key
-            ).first()
+            match_model = (
+                session.query(DiffMatchModel)
+                .filter_by(diff_result_id=diff_model.id, match_key=match_key)
+                .first()
+            )
 
             if not match_model:
                 return False
 
             # Update match status
-            match_model.review_status = 'rejected'
+            match_model.review_status = "rejected"
             match_model.reviewer = reviewer
             match_model.review_notes = reason
             match_model.reviewed_at = datetime.now()
@@ -287,8 +313,9 @@ class DiffService:
             self.logger.info(f"Match {match_key} rejected by {reviewer}: {reason}")
             return True
 
-    def apply_diff(self, old_book_id: str, new_book_id: str, reviewer: str,
-                  options: Dict[str, Any] = None) -> Dict[str, Any]:
+    def apply_diff(
+        self, old_book_id: str, new_book_id: str, reviewer: str, options: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
         """
         Apply approved diff changes to create new version.
 
@@ -302,7 +329,7 @@ class DiffService:
             Summary of applied changes
         """
         options = options or {}
-        dry_run = options.get('dry_run', False)
+        dry_run = options.get("dry_run", False)
 
         diff_result = self.get_diff_result(old_book_id, new_book_id)
         if not diff_result:
@@ -319,9 +346,9 @@ class DiffService:
 
             if dry_run:
                 return {
-                    'dry_run': True,
-                    'changes_to_apply': len(approved_changes),
-                    'changes': [self._change_to_dict(c) for c in approved_changes[:10]]  # Preview
+                    "dry_run": True,
+                    "changes_to_apply": len(approved_changes),
+                    "changes": [self._change_to_dict(c) for c in approved_changes[:10]],  # Preview
                 }
 
             # Apply changes
@@ -344,11 +371,11 @@ class DiffService:
             session.commit()
 
             result = {
-                'applied_changes': applied_count,
-                'errors': errors,
-                'new_version': target_book.version,
-                'applied_by': reviewer,
-                'applied_at': datetime.now().isoformat()
+                "applied_changes": applied_count,
+                "errors": errors,
+                "new_version": target_book.version,
+                "applied_by": reviewer,
+                "applied_at": datetime.now().isoformat(),
             }
 
             self.logger.info(f"Applied {applied_count} changes to book {new_book_id}")
@@ -359,12 +386,12 @@ class DiffService:
         # This would need to be implemented based on your actual PriceBook model
         # For now, return a structure that matches what the diff engine expects
         return {
-            'id': book.id,
-            'manufacturer': book.manufacturer,
-            'effective_date': book.effective_date,
-            'products': [],  # Would extract from book.products or related tables
-            'price_rules': [],  # Would extract from book.price_rules
-            'hinge_additions': []  # Would extract from book.options
+            "id": book.id,
+            "manufacturer": book.manufacturer,
+            "effective_date": book.effective_date,
+            "products": [],  # Would extract from book.products or related tables
+            "price_rules": [],  # Would extract from book.price_rules
+            "hinge_additions": [],  # Would extract from book.options
         }
 
     def _store_diff_result(self, session, diff_result: DiffResult):
@@ -375,7 +402,7 @@ class DiffService:
             new_book_id=diff_result.new_book_id,
             created_at=diff_result.timestamp,
             summary=json.dumps(diff_result.summary),
-            metadata=json.dumps(diff_result.metadata)
+            metadata=json.dumps(diff_result.metadata),
         )
         session.add(diff_model)
         session.flush()  # Get ID
@@ -392,7 +419,11 @@ class DiffService:
                 new_item_data=json.dumps(match.new_item) if match.new_item else None,
                 match_reasons=json.dumps(match.match_reasons),
                 fuzzy_score=match.fuzzy_score,
-                review_status='pending' if match.confidence < self.diff_engine.review_threshold else 'auto_approved'
+                review_status=(
+                    "pending"
+                    if match.confidence < self.diff_engine.review_threshold
+                    else "auto_approved"
+                ),
             )
             session.add(match_model)
 
@@ -409,7 +440,7 @@ class DiffService:
                 match_key=change.match_key,
                 old_ref=change.old_ref,
                 new_ref=change.new_ref,
-                metadata=json.dumps(change.metadata)
+                metadata=json.dumps(change.metadata),
             )
             session.add(change_model)
 
@@ -421,14 +452,20 @@ class DiffService:
         matches = []
         for match_model in diff_model.matches:
             match = MatchResult(
-                old_item=json.loads(match_model.old_item_data) if match_model.old_item_data else None,
-                new_item=json.loads(match_model.new_item_data) if match_model.new_item_data else None,
+                old_item=(
+                    json.loads(match_model.old_item_data) if match_model.old_item_data else None
+                ),
+                new_item=(
+                    json.loads(match_model.new_item_data) if match_model.new_item_data else None
+                ),
                 confidence=match_model.confidence,
                 confidence_level=MatchConfidence(match_model.confidence_level),
                 match_key=match_model.match_key,
                 match_method=match_model.match_method,
-                match_reasons=json.loads(match_model.match_reasons) if match_model.match_reasons else [],
-                fuzzy_score=match_model.fuzzy_score
+                match_reasons=(
+                    json.loads(match_model.match_reasons) if match_model.match_reasons else []
+                ),
+                fuzzy_score=match_model.fuzzy_score,
             )
             matches.append(match)
 
@@ -445,7 +482,7 @@ class DiffService:
                 match_key=change_model.match_key,
                 old_ref=change_model.old_ref,
                 new_ref=change_model.new_ref,
-                metadata=json.loads(change_model.metadata) if change_model.metadata else {}
+                metadata=json.loads(change_model.metadata) if change_model.metadata else {},
             )
             changes.append(change)
 
@@ -460,21 +497,21 @@ class DiffService:
             changes=changes,
             summary=json.loads(diff_model.summary) if diff_model.summary else {},
             review_queue=review_queue,
-            metadata=json.loads(diff_model.metadata) if diff_model.metadata else {}
+            metadata=json.loads(diff_model.metadata) if diff_model.metadata else {},
         )
 
     def _confidence_to_bucket(self, confidence: float) -> str:
         """Convert confidence score to bucket name."""
         if confidence >= 0.9:
-            return 'very_high'
+            return "very_high"
         elif confidence >= 0.7:
-            return 'high'
+            return "high"
         elif confidence >= 0.5:
-            return 'medium'
+            return "medium"
         elif confidence >= 0.3:
-            return 'low'
+            return "low"
         else:
-            return 'very_low'
+            return "very_low"
 
     def _get_approved_changes(self, session, diff_result: DiffResult) -> List[Change]:
         """Get only approved changes from diff result."""
@@ -498,12 +535,12 @@ class DiffService:
     def _change_to_dict(self, change: Change) -> Dict[str, Any]:
         """Convert Change object to dictionary."""
         return {
-            'change_type': change.change_type.value,
-            'confidence': change.confidence,
-            'field_name': change.field_name,
-            'old_value': change.old_value,
-            'new_value': change.new_value,
-            'description': change.description,
-            'match_key': change.match_key,
-            'metadata': change.metadata
+            "change_type": change.change_type.value,
+            "confidence": change.confidence,
+            "field_name": change.field_name,
+            "old_value": change.old_value,
+            "new_value": change.new_value,
+            "description": change.description,
+            "match_key": change.match_key,
+            "metadata": change.metadata,
         }

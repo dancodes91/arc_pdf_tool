@@ -1,4 +1,5 @@
 """Parallel PDF table extraction utilities."""
+
 import os
 from typing import List, Dict
 from concurrent.futures import ProcessPoolExecutor
@@ -8,10 +9,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def extract_page_batch(pdf_path: str, page_numbers: List[int], flavor: str = "lattice") -> Dict[int, List]:
+def extract_page_batch(
+    pdf_path: str, page_numbers: List[int], flavor: str = "lattice"
+) -> Dict[int, List]:
     """Extract tables from a batch of pages in a worker process."""
     import camelot
-    import pandas as pd
 
     results = {}
     for page_num in page_numbers:
@@ -21,7 +23,7 @@ def extract_page_batch(pdf_path: str, page_numbers: List[int], flavor: str = "la
                 pages=str(page_num),
                 flavor=flavor,
                 suppress_stdout=True,
-                backend='pdfium'  # Faster than ghostscript
+                backend="pdfium",  # Faster than ghostscript
             )
             # Convert to DataFrames immediately
             results[page_num] = [t.df for t in tables] if tables.n else []
@@ -31,9 +33,13 @@ def extract_page_batch(pdf_path: str, page_numbers: List[int], flavor: str = "la
     return results
 
 
-def parallel_table_extraction(pdf_path: str, page_numbers: List[int],
-                              max_workers: int = None, batch_size: int = 25,
-                              flavor: str = "lattice") -> Dict[int, List]:
+def parallel_table_extraction(
+    pdf_path: str,
+    page_numbers: List[int],
+    max_workers: int = None,
+    batch_size: int = 25,
+    flavor: str = "lattice",
+) -> Dict[int, List]:
     """
     Extract tables from PDF pages in parallel.
 
@@ -51,11 +57,14 @@ def parallel_table_extraction(pdf_path: str, page_numbers: List[int],
         max_workers = min(os.cpu_count() or 4, 8)
 
     # Split pages into batches for workers
-    page_batches = [page_numbers[i:i+batch_size]
-                   for i in range(0, len(page_numbers), batch_size)]
+    page_batches = [
+        page_numbers[i : i + batch_size] for i in range(0, len(page_numbers), batch_size)
+    ]
 
-    logger.info(f"Processing {len(page_numbers)} pages in {len(page_batches)} batches "
-               f"with {max_workers} workers (flavor={flavor})")
+    logger.info(
+        f"Processing {len(page_numbers)} pages in {len(page_batches)} batches "
+        f"with {max_workers} workers (flavor={flavor})"
+    )
 
     all_results = {}
     extract_func = partial(extract_page_batch, pdf_path, flavor=flavor)

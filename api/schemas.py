@@ -3,11 +3,12 @@ Common API schemas and response models.
 
 Provides standardized request/response structures for the FastAPI application.
 """
+
 from typing import TypeVar, Generic, Optional, Any
 from pydantic import BaseModel, Field
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class ResponseModel(BaseModel, Generic[T]):
@@ -17,6 +18,7 @@ class ResponseModel(BaseModel, Generic[T]):
     Provides consistent response structure across all API endpoints
     with success status, data payload, and optional message.
     """
+
     success: bool = Field(..., description="Whether the operation was successful")
     data: Optional[T] = Field(None, description="Response data payload")
     message: Optional[str] = Field(None, description="Optional response message")
@@ -24,6 +26,7 @@ class ResponseModel(BaseModel, Generic[T]):
 
     class Config:
         """Pydantic configuration."""
+
         # Allow arbitrary types for generic data field
         arbitrary_types_allowed = True
 
@@ -35,6 +38,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     Provides consistent pagination structure with data, page info,
     and metadata about the total dataset.
     """
+
     items: list[T] = Field(..., description="List of items for current page")
     total: int = Field(..., description="Total number of items")
     page: int = Field(..., description="Current page number (1-based)")
@@ -45,6 +49,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
 
     class Config:
         """Pydantic configuration."""
+
         arbitrary_types_allowed = True
 
 
@@ -55,6 +60,7 @@ class ErrorResponse(BaseModel):
     Provides detailed error information including error code,
     message, and optional additional context.
     """
+
     success: bool = Field(False, description="Always false for error responses")
     error_code: str = Field(..., description="Machine-readable error code")
     message: str = Field(..., description="Human-readable error message")
@@ -63,6 +69,7 @@ class ErrorResponse(BaseModel):
 
     class Config:
         """Pydantic configuration."""
+
         arbitrary_types_allowed = True
 
 
@@ -73,6 +80,7 @@ class HealthResponse(BaseModel):
     Provides system health status with optional detailed
     information about system components.
     """
+
     status: str = Field(..., description="Overall system status: healthy, degraded, unhealthy")
     timestamp: str = Field(..., description="ISO timestamp of health check")
     version: Optional[str] = Field(None, description="Application version")
@@ -80,4 +88,5 @@ class HealthResponse(BaseModel):
 
     class Config:
         """Pydantic configuration."""
+
         arbitrary_types_allowed = True

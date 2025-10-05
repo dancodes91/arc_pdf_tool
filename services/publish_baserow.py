@@ -4,14 +4,14 @@ Baserow publishing service for synchronized data management.
 Handles conversion of normalized price book data to Baserow format,
 orchestrates table creation and data upserts, and tracks sync status.
 """
-import asyncio
+
 import json
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from dataclasses import dataclass
 
 from core.database import get_db_session, PriceBook
-from core.exceptions import BaserowError, ProcessingError
+from core.exceptions import ProcessingError
 from core.observability import get_logger, track_performance, metrics_collector
 from integrations.baserow_client import BaserowClient, BaserowConfig, ARC_SCHEMA_DEFINITIONS
 from models.baserow_syncs import BaserowSync  # We'll need to create this model
@@ -22,6 +22,7 @@ logger = get_logger("publish_baserow")
 @dataclass
 class PublishOptions:
     """Options for publishing to Baserow."""
+
     dry_run: bool = False
     tables_to_sync: Optional[List[str]] = None  # None = all tables
     force_full_sync: bool = False  # Re-sync all data even if unchanged
@@ -32,6 +33,7 @@ class PublishOptions:
 @dataclass
 class PublishResult:
     """Result of publishing operation."""
+
     success: bool
     sync_id: Optional[str]
     tables_synced: List[str]
@@ -57,10 +59,7 @@ class BaserowPublisher:
         self.logger = get_logger("baserow_publisher")
 
     async def publish_price_book(
-        self,
-        price_book_id: str,
-        options: PublishOptions = None,
-        user_id: str = None
+        self, price_book_id: str, options: PublishOptions = None, user_id: str = None
     ) -> PublishResult:
         """
         Publish a complete price book to Baserow.
@@ -80,7 +79,7 @@ class BaserowPublisher:
             f"Starting Baserow publish",
             price_book_id=price_book_id,
             dry_run=options.dry_run,
-            user_id=user_id
+            user_id=user_id,
         )
 
         with track_performance("baserow_publish") as perf:
@@ -114,7 +113,7 @@ class BaserowPublisher:
                     price_book_id=price_book_id,
                     success=result.success,
                     duration_seconds=duration,
-                    rows_processed=result.total_rows_processed
+                    rows_processed=result.total_rows_processed,
                 )
 
                 # Track metrics
@@ -127,9 +126,7 @@ class BaserowPublisher:
 
             except Exception as e:
                 self.logger.error(
-                    f"Baserow publish failed",
-                    price_book_id=price_book_id,
-                    exception=e
+                    f"Baserow publish failed", price_book_id=price_book_id, exception=e
                 )
 
                 # Create error result
@@ -144,7 +141,7 @@ class BaserowPublisher:
                     errors=[str(e)],
                     warnings=[],
                     duration_seconds=duration,
-                    sync_summary={"error": str(e)}
+                    sync_summary={"error": str(e)},
                 )
 
     async def _load_price_book_data(self, price_book_id: str) -> Dict[str, Any]:
@@ -158,26 +155,22 @@ class BaserowPublisher:
             # This would need to be implemented based on your actual database schema
             data = {
                 "price_book": price_book,
-                "items": [],      # Extract from related tables
-                "prices": [],     # Extract price data
-                "options": [],    # Extract options/additions
-                "rules": [],      # Extract pricing rules
+                "items": [],  # Extract from related tables
+                "prices": [],  # Extract price data
+                "options": [],  # Extract options/additions
+                "rules": [],  # Extract pricing rules
                 "metadata": {
                     "id": price_book_id,
                     "manufacturer": price_book.manufacturer,
                     "effective_date": price_book.effective_date,
-                    "extracted_at": datetime.utcnow().isoformat()
-                }
+                    "extracted_at": datetime.utcnow().isoformat(),
+                },
             }
 
             return data
 
     async def _create_sync_record(
-        self,
-        price_book_id: str,
-        options: PublishOptions,
-        user_id: str,
-        start_time: datetime
+        self, price_book_id: str, options: PublishOptions, user_id: str, start_time: datetime
     ) -> Optional[Any]:
         """Create a sync tracking record."""
         if options.dry_run:
@@ -190,11 +183,13 @@ class BaserowPublisher:
                     initiated_by=user_id,
                     started_at=start_time,
                     status="running",
-                    options=json.dumps({
-                        "tables_to_sync": options.tables_to_sync,
-                        "force_full_sync": options.force_full_sync,
-                        "chunk_size": options.chunk_size
-                    })
+                    options=json.dumps(
+                        {
+                            "tables_to_sync": options.tables_to_sync,
+                            "force_full_sync": options.force_full_sync,
+                            "chunk_size": options.chunk_size,
+                        }
+                    ),
                 )
                 session.add(sync_record)
                 session.commit()
@@ -205,9 +200,7 @@ class BaserowPublisher:
             return None
 
     async def _perform_dry_run(
-        self,
-        price_book_data: Dict[str, Any],
-        options: PublishOptions
+        self, price_book_data: Dict[str, Any], options: PublishOptions
     ) -> PublishResult:
         """Perform a dry run validation without actual sync."""
         self.logger.info("Performing dry run validation")
@@ -249,15 +242,12 @@ class BaserowPublisher:
             sync_summary={
                 "dry_run": True,
                 "validation_passed": len(validation_errors) == 0,
-                "total_rows_validated": total_rows
-            }
+                "total_rows_validated": total_rows,
+            },
         )
 
     async def _perform_sync(
-        self,
-        price_book_data: Dict[str, Any],
-        options: PublishOptions,
-        sync_record: Any
+        self, price_book_data: Dict[str, Any], options: PublishOptions, sync_record: Any
     ) -> PublishResult:
         """Perform actual synchronization to Baserow."""
         self.logger.info("Performing actual sync to Baserow")
@@ -276,7 +266,7 @@ class BaserowPublisher:
             errors=[],
             warnings=[],
             duration_seconds=0,
-            sync_summary={}
+            sync_summary={},
         )
 
         async with BaserowClient(self.baserow_config) as client:
@@ -322,7 +312,7 @@ class BaserowPublisher:
         client: BaserowClient,
         table_name: str,
         rows: List[Dict[str, Any]],
-        options: PublishOptions
+        options: PublishOptions,
     ) -> Dict[str, Any]:
         """Sync a single table to Baserow."""
         self.logger.info(f"Syncing table {table_name} with {len(rows)} rows")
@@ -334,7 +324,7 @@ class BaserowPublisher:
                 "rows_created": 0,
                 "rows_updated": 0,
                 "errors": [],
-                "skipped": "No data to sync"
+                "skipped": "No data to sync",
             }
 
         try:
@@ -350,9 +340,7 @@ class BaserowPublisher:
 
             # Perform upsert
             upsert_result = await client.upsert_rows(
-                table_info["id"],
-                rows,
-                chunk_size=options.chunk_size
+                table_info["id"], rows, chunk_size=options.chunk_size
             )
 
             return {
@@ -362,7 +350,7 @@ class BaserowPublisher:
                 "rows_created": upsert_result["rows_created"],
                 "rows_updated": upsert_result["rows_updated"],
                 "chunks_processed": upsert_result["chunks_processed"],
-                "errors": upsert_result["errors"]
+                "errors": upsert_result["errors"],
             }
 
         except Exception as e:
@@ -372,10 +360,12 @@ class BaserowPublisher:
                 "total_rows": len(rows),
                 "rows_created": 0,
                 "rows_updated": 0,
-                "errors": [str(e)]
+                "errors": [str(e)],
             }
 
-    async def _transform_data_for_baserow(self, price_book_data: Dict[str, Any]) -> Dict[str, List[Dict]]:
+    async def _transform_data_for_baserow(
+        self, price_book_data: Dict[str, Any]
+    ) -> Dict[str, List[Dict]]:
         """Transform price book data to Baserow table format."""
         self.logger.info("Transforming data for Baserow format")
 
@@ -501,17 +491,15 @@ class BaserowPublisher:
             item_data.get("family", ""),
             item_data.get("model", ""),
             item_data.get("finish", ""),
-            item_data.get("size", "")
+            item_data.get("size", ""),
         ]
         key_string = "|".join(str(part).strip().lower() for part in key_parts)
         import hashlib
-        return hashlib.sha256(key_string.encode('utf-8')).hexdigest()
+
+        return hashlib.sha256(key_string.encode("utf-8")).hexdigest()
 
     def _validate_row_against_schema(
-        self,
-        row: Dict[str, Any],
-        schema: Any,
-        row_identifier: str
+        self, row: Dict[str, Any], schema: Any, row_identifier: str
     ) -> List[str]:
         """Validate a row against the table schema."""
         errors = []
@@ -528,13 +516,17 @@ class BaserowPublisher:
                     try:
                         float(value)
                     except (ValueError, TypeError):
-                        errors.append(f"{row_identifier}: Invalid number for field '{field_def.name}': {value}")
+                        errors.append(
+                            f"{row_identifier}: Invalid number for field '{field_def.name}': {value}"
+                        )
 
                 # Length validation for text fields
                 if field_def.field_type == "text" and "max_length" in field_def.type_config:
                     max_length = field_def.type_config["max_length"]
                     if value and len(str(value)) > max_length:
-                        errors.append(f"{row_identifier}: Field '{field_def.name}' exceeds max length {max_length}")
+                        errors.append(
+                            f"{row_identifier}: Field '{field_def.name}' exceeds max length {max_length}"
+                        )
 
         return errors
 
@@ -567,13 +559,17 @@ class BaserowPublisher:
                     "id": sync_record.id,
                     "price_book_id": sync_record.price_book_id,
                     "status": sync_record.status,
-                    "started_at": sync_record.started_at.isoformat() if sync_record.started_at else None,
-                    "completed_at": sync_record.completed_at.isoformat() if sync_record.completed_at else None,
+                    "started_at": (
+                        sync_record.started_at.isoformat() if sync_record.started_at else None
+                    ),
+                    "completed_at": (
+                        sync_record.completed_at.isoformat() if sync_record.completed_at else None
+                    ),
                     "rows_processed": sync_record.rows_processed,
                     "rows_created": sync_record.rows_created,
                     "rows_updated": sync_record.rows_updated,
                     "errors": json.loads(sync_record.errors) if sync_record.errors else [],
-                    "summary": json.loads(sync_record.summary) if sync_record.summary else {}
+                    "summary": json.loads(sync_record.summary) if sync_record.summary else {},
                 }
 
         except Exception as e:
@@ -586,7 +582,7 @@ async def publish_price_book_to_baserow(
     price_book_id: str,
     baserow_config: BaserowConfig,
     options: PublishOptions = None,
-    user_id: str = None
+    user_id: str = None,
 ) -> PublishResult:
     """
     Convenience function to publish a price book to Baserow.

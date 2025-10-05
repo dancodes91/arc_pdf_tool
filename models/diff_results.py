@@ -4,18 +4,19 @@ Database models for storing diff results and review workflows.
 Stores diff comparisons, matches, changes, and review status for
 price book difference analysis and approval workflows.
 """
+
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime, JSON, ForeignKey, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime
 
 Base = declarative_base()
 
 
 class DiffResultModel(Base):
     """Main diff result between two price books."""
-    __tablename__ = 'diff_results'
+
+    __tablename__ = "diff_results"
 
     id = Column(Integer, primary_key=True)
     old_book_id = Column(String(100), nullable=False, index=True)
@@ -30,7 +31,7 @@ class DiffResultModel(Base):
     metadata = Column(JSON)
 
     # Review and approval status
-    review_status = Column(String(50), default='pending')  # pending, in_review, approved, rejected
+    review_status = Column(String(50), default="pending")  # pending, in_review, approved, rejected
     reviewed_by = Column(String(100))
     reviewed_at = Column(DateTime)
     review_notes = Column(Text)
@@ -41,8 +42,12 @@ class DiffResultModel(Base):
     applied_at = Column(DateTime)
 
     # Relationships
-    matches = relationship("DiffMatchModel", back_populates="diff_result", cascade="all, delete-orphan")
-    changes = relationship("DiffChangeModel", back_populates="diff_result", cascade="all, delete-orphan")
+    matches = relationship(
+        "DiffMatchModel", back_populates="diff_result", cascade="all, delete-orphan"
+    )
+    changes = relationship(
+        "DiffChangeModel", back_populates="diff_result", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<DiffResult({self.old_book_id} -> {self.new_book_id})>"
@@ -50,10 +55,11 @@ class DiffResultModel(Base):
 
 class DiffMatchModel(Base):
     """Individual item match between old and new books."""
-    __tablename__ = 'diff_matches'
+
+    __tablename__ = "diff_matches"
 
     id = Column(Integer, primary_key=True)
-    diff_result_id = Column(Integer, ForeignKey('diff_results.id'), nullable=False)
+    diff_result_id = Column(Integer, ForeignKey("diff_results.id"), nullable=False)
 
     # Match identification
     match_key = Column(String(255), nullable=False, index=True)
@@ -70,7 +76,9 @@ class DiffMatchModel(Base):
     new_item_data = Column(JSON)
 
     # Review status
-    review_status = Column(String(50), default='pending')  # pending, approved, rejected, auto_approved
+    review_status = Column(
+        String(50), default="pending"
+    )  # pending, approved, rejected, auto_approved
     reviewer = Column(String(100))
     reviewed_at = Column(DateTime)
     review_notes = Column(Text)
@@ -87,10 +95,11 @@ class DiffMatchModel(Base):
 
 class DiffChangeModel(Base):
     """Individual change detected in diff."""
-    __tablename__ = 'diff_changes'
+
+    __tablename__ = "diff_changes"
 
     id = Column(Integer, primary_key=True)
-    diff_result_id = Column(Integer, ForeignKey('diff_results.id'), nullable=False)
+    diff_result_id = Column(Integer, ForeignKey("diff_results.id"), nullable=False)
 
     # Change identification
     change_type = Column(String(50), nullable=False)  # added, removed, price_changed, etc.
@@ -127,10 +136,11 @@ class DiffChangeModel(Base):
 
 class DiffReviewSession(Base):
     """Review session for managing diff approval workflows."""
-    __tablename__ = 'diff_review_sessions'
+
+    __tablename__ = "diff_review_sessions"
 
     id = Column(Integer, primary_key=True)
-    diff_result_id = Column(Integer, ForeignKey('diff_results.id'), nullable=False)
+    diff_result_id = Column(Integer, ForeignKey("diff_results.id"), nullable=False)
 
     # Session details
     reviewer = Column(String(100), nullable=False)
@@ -144,7 +154,7 @@ class DiffReviewSession(Base):
     rejected_items = Column(Integer, default=0)
 
     # Session status
-    status = Column(String(50), default='active')  # active, completed, abandoned
+    status = Column(String(50), default="active")  # active, completed, abandoned
     notes = Column(Text)
 
     # Configuration
@@ -156,10 +166,11 @@ class DiffReviewSession(Base):
 
 class DiffApprovalLog(Base):
     """Log of diff applications and their results."""
-    __tablename__ = 'diff_approval_log'
+
+    __tablename__ = "diff_approval_log"
 
     id = Column(Integer, primary_key=True)
-    diff_result_id = Column(Integer, ForeignKey('diff_results.id'), nullable=False)
+    diff_result_id = Column(Integer, ForeignKey("diff_results.id"), nullable=False)
 
     # Application details
     applied_by = Column(String(100), nullable=False)
@@ -184,7 +195,8 @@ class DiffApprovalLog(Base):
 
 class DiffMetrics(Base):
     """Metrics and statistics about diff operations."""
-    __tablename__ = 'diff_metrics'
+
+    __tablename__ = "diff_metrics"
 
     id = Column(Integer, primary_key=True)
 

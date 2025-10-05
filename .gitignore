@@ -339,3 +339,12 @@ frontend/.next/
 frontend/node_modules/
 frontend/next-env.d.ts
 frontend/package-lock.json
+
+# Temporary analysis files
+samples/extracted/*.json
+SELECT_FINAL_EXTRACTION_REPORT.md
+MILESTONE_2_STATUS.md
+
+# OS files
+.DS_Store
+Thumbs.db

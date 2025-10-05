@@ -6,20 +6,20 @@ Demonstrates the complete parsing and export pipeline.
 import argparse
 import sys
 import logging
-import warnings
-import atexit
 import shutil
 from pathlib import Path
-from datetime import datetime
+
 
 # Suppress Windows temp file cleanup errors from Camelot
 # See: https://github.com/camelot-dev/camelot/issues/174
 def ignore_cleanup_errors():
     """Suppress harmless Windows PermissionError during temp file cleanup."""
-    pass
+
 
 # Replace shutil.rmtree with error-ignoring version for atexit cleanup
 original_rmtree = shutil.rmtree
+
+
 def rmtree_ignore_errors(path, *args, **kwargs):
     """Wrapper for rmtree that ignores Windows permission errors."""
     try:
@@ -27,6 +27,8 @@ def rmtree_ignore_errors(path, *args, **kwargs):
     except PermissionError:
         # Ignore Windows file locking errors - temp files will be cleaned by OS
         pass
+
+
 shutil.rmtree = rmtree_ignore_errors
 
 # Add project root to path
@@ -43,8 +45,8 @@ def setup_logging(verbose: bool = False):
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
 
@@ -52,14 +54,14 @@ def detect_manufacturer(pdf_path: str) -> str:
     """Detect manufacturer from PDF filename."""
     filename = Path(pdf_path).name.lower()
 
-    if 'select' in filename or 'hinges' in filename:
-        return 'select'
-    elif 'hager' in filename:
-        return 'hager'
+    if "select" in filename or "hinges" in filename:
+        return "select"
+    elif "hager" in filename:
+        return "hager"
     else:
         # Default to select for now
         print(f"Warning: Could not detect manufacturer from '{filename}', defaulting to SELECT")
-        return 'select'
+        return "select"
 
 
 def parse_pdf(pdf_path: str, manufacturer: str = None) -> dict:
@@ -69,9 +71,9 @@ def parse_pdf(pdf_path: str, manufacturer: str = None) -> dict:
 
     print(f"Parsing {pdf_path} as {manufacturer.upper()} manufacturer...")
 
-    if manufacturer.lower() == 'select':
+    if manufacturer.lower() == "select":
         parser = SelectHingesParser(pdf_path)
-    elif manufacturer.lower() == 'hager':
+    elif manufacturer.lower() == "hager":
         parser = HagerParser(pdf_path)
     else:
         raise ValueError(f"Unknown manufacturer: {manufacturer}")
@@ -113,9 +115,9 @@ def load_to_database(results: dict, database_url: str):
         print(f"  Options Loaded: {load_summary['options_loaded']}")
         print(f"  Rules Loaded: {load_summary['rules_loaded']}")
 
-        if load_summary['errors']:
+        if load_summary["errors"]:
             print("  Errors:")
-            for error in load_summary['errors']:
+            for error in load_summary["errors"]:
                 print(f"    - {error}")
 
         return load_summary
@@ -137,9 +139,7 @@ def export_from_database(price_book_id: int, database_url: str, output_dir: str,
 
     try:
         files_created = exporter.export_price_book_data(
-            price_book_id=price_book_id,
-            output_dir=output_dir,
-            formats=formats
+            price_book_id=price_book_id, output_dir=output_dir, formats=formats
         )
 
         print("Database export files created:")
@@ -170,31 +170,43 @@ Examples:
 
   # Full pipeline: parse, load to DB, then export from DB
   python parse_and_export.py input.pdf --database sqlite:///test.db --output ./exports --formats xlsx json
-        """
+        """,
     )
 
     # Input options
-    parser.add_argument('pdf_path', nargs='?', help='Path to PDF file to parse')
-    parser.add_argument('--manufacturer', choices=['select', 'hager'],
-                       help='Manufacturer type (auto-detected if not specified)')
+    parser.add_argument("pdf_path", nargs="?", help="Path to PDF file to parse")
+    parser.add_argument(
+        "--manufacturer",
+        choices=["select", "hager"],
+        help="Manufacturer type (auto-detected if not specified)",
+    )
 
     # Output options
-    parser.add_argument('--output', '-o', default='./exports',
-                       help='Output directory for exports (default: ./exports)')
-    parser.add_argument('--formats', nargs='+', choices=['json', 'csv', 'xlsx'],
-                       default=['json', 'csv'], help='Export formats (default: json csv)')
+    parser.add_argument(
+        "--output",
+        "-o",
+        default="./exports",
+        help="Output directory for exports (default: ./exports)",
+    )
+    parser.add_argument(
+        "--formats",
+        nargs="+",
+        choices=["json", "csv", "xlsx"],
+        default=["json", "csv"],
+        help="Export formats (default: json csv)",
+    )
 
     # Database options
-    parser.add_argument('--database', '--db',
-                       help='Database URL (e.g., sqlite:///test.db)')
-    parser.add_argument('--load-only', action='store_true',
-                       help='Only load to database, don\'t export files')
-    parser.add_argument('--export-db-id', type=int,
-                       help='Export existing price book from database by ID')
+    parser.add_argument("--database", "--db", help="Database URL (e.g., sqlite:///test.db)")
+    parser.add_argument(
+        "--load-only", action="store_true", help="Only load to database, don't export files"
+    )
+    parser.add_argument(
+        "--export-db-id", type=int, help="Export existing price book from database by ID"
+    )
 
     # Other options
-    parser.add_argument('--verbose', '-v', action='store_true',
-                       help='Enable verbose logging')
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 
@@ -220,21 +232,23 @@ Examples:
         results = parse_pdf(args.pdf_path, args.manufacturer)
 
         # Print parsing summary
-        summary = results.get('summary', {})
-        validation = results.get('validation', {})
+        summary = results.get("summary", {})
+        validation = results.get("validation", {})
 
         print(f"\nParsing Summary:")
         print(f"  Manufacturer: {results.get('manufacturer', 'Unknown')}")
         print(f"  Total Products: {summary.get('total_products', 0)}")
         print(f"  Total Finishes: {summary.get('total_finishes', 0)}")
         print(f"  Total Rules: {summary.get('total_rules', 0)}")
-        print(f"  Total Options: {summary.get('total_additions', 0) + summary.get('total_options', 0)}")
+        print(
+            f"  Total Options: {summary.get('total_additions', 0) + summary.get('total_options', 0)}"
+        )
         print(f"  Has Effective Date: {summary.get('has_effective_date', False)}")
         print(f"  Validation: {'[VALID]' if validation.get('is_valid', False) else '[INVALID]'}")
 
-        if validation.get('errors'):
+        if validation.get("errors"):
             print(f"  Validation Errors:")
-            for error in validation['errors']:
+            for error in validation["errors"]:
                 print(f"    - {error}")
 
         # Load to database if requested
@@ -244,13 +258,10 @@ Examples:
 
         # Export results
         if not args.load_only:
-            if args.database and load_summary and load_summary['price_book_id']:
+            if args.database and load_summary and load_summary["price_book_id"]:
                 # Export from database for better formatting
                 export_from_database(
-                    load_summary['price_book_id'],
-                    args.database,
-                    args.output,
-                    args.formats
+                    load_summary["price_book_id"], args.database, args.output, args.formats
                 )
             else:
                 # Export parsing results directly
@@ -262,6 +273,7 @@ Examples:
         print(f"Error: {e}")
         if args.verbose:
             import traceback
+
             traceback.print_exc()
         sys.exit(1)
 

@@ -4,32 +4,34 @@ Observability framework for structured logging and metrics.
 Provides JSON logging, metrics collection, and integration with
 external monitoring systems like Sentry and Prometheus.
 """
+
 import logging
 import json
 import time
 import threading
-from typing import Dict, Any, Optional, List, Callable
+from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from functools import wraps
-from collections import defaultdict, Counter
+from collections import defaultdict
 import sys
 import traceback
-import os
 
 try:
     import sentry_sdk
     from sentry_sdk.integrations.logging import LoggingIntegration
+
     SENTRY_AVAILABLE = True
 except ImportError:
     SENTRY_AVAILABLE = False
 
-from .exceptions import BaseArcException, ErrorCategory, categorize_exception
+from .exceptions import BaseArcException, categorize_exception
 
 
 class LogLevel(Enum):
     """Log levels for structured logging."""
+
     DEBUG = "debug"
     INFO = "info"
     WARNING = "warning"
@@ -39,15 +41,17 @@ class LogLevel(Enum):
 
 class MetricType(Enum):
     """Types of metrics to collect."""
-    COUNTER = "counter"           # Monotonic counter
-    GAUGE = "gauge"              # Current value
-    HISTOGRAM = "histogram"       # Distribution of values
-    TIMING = "timing"            # Duration measurements
+
+    COUNTER = "counter"  # Monotonic counter
+    GAUGE = "gauge"  # Current value
+    HISTOGRAM = "histogram"  # Distribution of values
+    TIMING = "timing"  # Duration measurements
 
 
 @dataclass
 class LogEntry:
     """Structured log entry."""
+
     timestamp: str
     level: str
     message: str
@@ -86,8 +90,8 @@ class LogEntry:
         result = asdict(self)
         # Remove None values and empty extra_fields
         result = {k: v for k, v in result.items() if v is not None}
-        if not result.get('extra_fields'):
-            result.pop('extra_fields', None)
+        if not result.get("extra_fields"):
+            result.pop("extra_fields", None)
         return result
 
     def to_json(self) -> str:
@@ -98,6 +102,7 @@ class LogEntry:
 @dataclass
 class MetricEntry:
     """Metric data point."""
+
     name: str
     metric_type: MetricType
     value: float
@@ -150,20 +155,31 @@ class StructuredLogger:
         all_context = {**self.context, **kwargs}
 
         entry = LogEntry(
-            timestamp=datetime.utcnow().isoformat() + 'Z',
+            timestamp=datetime.utcnow().isoformat() + "Z",
             level=level.value,
             message=message,
             logger_name=self.name,
-            module=frame.f_globals.get('__name__', ''),
+            module=frame.f_globals.get("__name__", ""),
             function=frame.f_code.co_name,
             line_number=frame.f_lineno,
         )
 
         # Map known context fields
-        for field_name in ['user_id', 'session_id', 'request_id', 'operation_id',
-                          'file_path', 'page_number', 'table_index', 'extractor',
-                          'error_code', 'error_category', 'exception_type',
-                          'duration_ms', 'memory_usage_mb']:
+        for field_name in [
+            "user_id",
+            "session_id",
+            "request_id",
+            "operation_id",
+            "file_path",
+            "page_number",
+            "table_index",
+            "extractor",
+            "error_code",
+            "error_category",
+            "exception_type",
+            "duration_ms",
+            "memory_usage_mb",
+        ]:
             if field_name in all_context:
                 setattr(entry, field_name, all_context.pop(field_name))
 
@@ -175,7 +191,7 @@ class StructuredLogger:
 
     def debug(self, message: str, **kwargs):
         """Log debug message."""
-        if self.level.value != 'debug':
+        if self.level.value != "debug":
             return
         entry = self._create_log_entry(LogLevel.DEBUG, message, **kwargs)
         self.logger.debug(entry.to_json())
@@ -194,16 +210,20 @@ class StructuredLogger:
         """Log error message with optional exception details."""
         if exception:
             if isinstance(exception, BaseArcException):
-                kwargs.update({
-                    'error_code': exception.error_code,
-                    'error_category': exception.category.value,
-                    'exception_type': type(exception).__name__
-                })
+                kwargs.update(
+                    {
+                        "error_code": exception.error_code,
+                        "error_category": exception.category.value,
+                        "exception_type": type(exception).__name__,
+                    }
+                )
             else:
                 exc_info = categorize_exception(exception)
+                # Remove 'message' from exc_info to avoid duplicate argument error
+                exc_info.pop("message", None)
                 kwargs.update(exc_info)
 
-            kwargs['stack_trace'] = traceback.format_exc()
+            kwargs["stack_trace"] = traceback.format_exc()
 
         entry = self._create_log_entry(LogLevel.ERROR, message, **kwargs)
         self.logger.error(entry.to_json())
@@ -211,7 +231,7 @@ class StructuredLogger:
     def critical(self, message: str, exception: Exception = None, **kwargs):
         """Log critical message."""
         if exception:
-            kwargs['stack_trace'] = traceback.format_exc()
+            kwargs["stack_trace"] = traceback.format_exc()
 
         entry = self._create_log_entry(LogLevel.CRITICAL, message, **kwargs)
         self.logger.critical(entry.to_json())
@@ -223,7 +243,7 @@ class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON."""
         # If message is already JSON (from StructuredLogger), return as-is
-        if hasattr(record, 'getMessage'):
+        if hasattr(record, "getMessage"):
             message = record.getMessage()
             try:
                 json.loads(message)  # Test if already JSON
@@ -233,17 +253,17 @@ class JSONFormatter(logging.Formatter):
 
         # Create basic JSON structure for non-structured logs
         log_data = {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-            'level': record.levelname.lower(),
-            'message': record.getMessage(),
-            'logger_name': record.name,
-            'module': record.module if hasattr(record, 'module') else '',
-            'function': record.funcName,
-            'line_number': record.lineno
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "level": record.levelname.lower(),
+            "message": record.getMessage(),
+            "logger_name": record.name,
+            "module": record.module if hasattr(record, "module") else "",
+            "function": record.funcName,
+            "line_number": record.lineno,
         }
 
         if record.exc_info:
-            log_data['stack_trace'] = self.formatException(record.exc_info)
+            log_data["stack_trace"] = self.formatException(record.exc_info)
 
         return json.dumps(log_data, default=str)
 
@@ -267,50 +287,58 @@ class MetricsCollector:
         with self._lock:
             self.counters[name] += value
 
-        self._add_metric(MetricEntry(
-            name=name,
-            metric_type=MetricType.COUNTER,
-            value=value,
-            timestamp=datetime.utcnow(),
-            tags=tags or {}
-        ))
+        self._add_metric(
+            MetricEntry(
+                name=name,
+                metric_type=MetricType.COUNTER,
+                value=value,
+                timestamp=datetime.utcnow(),
+                tags=tags or {},
+            )
+        )
 
     def set_gauge(self, name: str, value: float, tags: Dict[str, str] = None):
         """Set a gauge metric value."""
         with self._lock:
             self.gauges[name] = value
 
-        self._add_metric(MetricEntry(
-            name=name,
-            metric_type=MetricType.GAUGE,
-            value=value,
-            timestamp=datetime.utcnow(),
-            tags=tags or {}
-        ))
+        self._add_metric(
+            MetricEntry(
+                name=name,
+                metric_type=MetricType.GAUGE,
+                value=value,
+                timestamp=datetime.utcnow(),
+                tags=tags or {},
+            )
+        )
 
     def record_histogram(self, name: str, value: float, tags: Dict[str, str] = None):
         """Record a value in a histogram."""
         with self._lock:
             self.histograms[name].append(value)
 
-        self._add_metric(MetricEntry(
-            name=name,
-            metric_type=MetricType.HISTOGRAM,
-            value=value,
-            timestamp=datetime.utcnow(),
-            tags=tags or {}
-        ))
+        self._add_metric(
+            MetricEntry(
+                name=name,
+                metric_type=MetricType.HISTOGRAM,
+                value=value,
+                timestamp=datetime.utcnow(),
+                tags=tags or {},
+            )
+        )
 
     def record_timing(self, name: str, duration_ms: float, tags: Dict[str, str] = None):
         """Record a timing measurement."""
-        self._add_metric(MetricEntry(
-            name=name,
-            metric_type=MetricType.TIMING,
-            value=duration_ms,
-            timestamp=datetime.utcnow(),
-            tags=tags or {},
-            unit="ms"
-        ))
+        self._add_metric(
+            MetricEntry(
+                name=name,
+                metric_type=MetricType.TIMING,
+                value=duration_ms,
+                timestamp=datetime.utcnow(),
+                tags=tags or {},
+                unit="ms",
+            )
+        )
 
     def _add_metric(self, metric: MetricEntry):
         """Add metric to collection."""
@@ -325,20 +353,20 @@ class MetricsCollector:
         """Get summary of all metrics."""
         with self._lock:
             summary = {
-                'counters': dict(self.counters),
-                'gauges': dict(self.gauges),
-                'histograms': {}
+                "counters": dict(self.counters),
+                "gauges": dict(self.gauges),
+                "histograms": {},
             }
 
             # Calculate histogram statistics
             for name, values in self.histograms.items():
                 if values:
-                    summary['histograms'][name] = {
-                        'count': len(values),
-                        'sum': sum(values),
-                        'avg': sum(values) / len(values),
-                        'min': min(values),
-                        'max': max(values)
+                    summary["histograms"][name] = {
+                        "count": len(values),
+                        "sum": sum(values),
+                        "avg": sum(values) / len(values),
+                        "min": min(values),
+                        "max": max(values),
                     }
 
             return summary
@@ -353,13 +381,14 @@ class MetricsCollector:
             for name, metrics in self.metrics.items():
                 recent = [
                     {
-                        'timestamp': m.timestamp.isoformat(),
-                        'value': m.value,
-                        'type': m.metric_type.value,
-                        'tags': m.tags,
-                        'unit': m.unit
+                        "timestamp": m.timestamp.isoformat(),
+                        "value": m.value,
+                        "type": m.metric_type.value,
+                        "tags": m.tags,
+                        "unit": m.unit,
                     }
-                    for m in metrics if m.timestamp >= since
+                    for m in metrics
+                    if m.timestamp >= since
                 ]
                 if recent:
                     result[name] = recent
@@ -389,6 +418,7 @@ def get_logger(name: str = None) -> StructuredLogger:
 
 def log_operation(operation_name: str, include_timing: bool = True):
     """Decorator to log operation start/end with timing."""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -405,11 +435,10 @@ def log_operation(operation_name: str, include_timing: bool = True):
                     logger.info(
                         f"Completed {operation_name}",
                         operation=operation_name,
-                        duration_ms=duration_ms
+                        duration_ms=duration_ms,
                     )
                     metrics_collector.record_timing(
-                        f"operation_{operation_name}_duration",
-                        duration_ms
+                        f"operation_{operation_name}_duration", duration_ms
                     )
                 else:
                     logger.info(f"Completed {operation_name}", operation=operation_name)
@@ -423,12 +452,13 @@ def log_operation(operation_name: str, include_timing: bool = True):
                     f"Failed {operation_name}",
                     exception=e,
                     operation=operation_name,
-                    duration_ms=duration_ms
+                    duration_ms=duration_ms,
                 )
                 metrics_collector.increment_counter(f"operation_{operation_name}_error")
                 raise
 
         return wrapper
+
     return decorator
 
 
@@ -439,8 +469,8 @@ def setup_sentry(dsn: str, environment: str = "production", release: str = None)
         return
 
     sentry_logging = LoggingIntegration(
-        level=logging.INFO,        # Capture info and above as breadcrumbs
-        event_level=logging.ERROR  # Send errors as events
+        level=logging.INFO,  # Capture info and above as breadcrumbs
+        event_level=logging.ERROR,  # Send errors as events
     )
 
     sentry_sdk.init(
@@ -450,7 +480,7 @@ def setup_sentry(dsn: str, environment: str = "production", release: str = None)
         integrations=[sentry_logging],
         traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
         attach_stacktrace=True,
-        send_default_pii=False   # Don't send personally identifiable information
+        send_default_pii=False,  # Don't send personally identifiable information
     )
 
     structured_logger.info("Sentry error reporting initialized")
@@ -494,7 +524,7 @@ class PerformanceTracker:
                 f"Performance: {self.operation_name} completed",
                 operation=self.operation_name,
                 duration_ms=duration_ms,
-                **self.metrics
+                **self.metrics,
             )
         else:
             metrics_collector.increment_counter(f"{self.operation_name}_failed")
@@ -503,7 +533,7 @@ class PerformanceTracker:
                 operation=self.operation_name,
                 duration_ms=duration_ms,
                 exception=exc_val,
-                **self.metrics
+                **self.metrics,
             )
 
         metrics_collector.record_timing(f"{self.operation_name}_duration", duration_ms)
@@ -525,11 +555,7 @@ def track_pdf_processing(file_path: str, page_count: int = None):
     if page_count:
         metrics_collector.record_histogram("pdf_page_count", float(page_count))
 
-    get_logger().info(
-        "PDF processing started",
-        file_path=file_path,
-        page_count=page_count
-    )
+    get_logger().info("PDF processing started", file_path=file_path, page_count=page_count)
 
 
 def track_extraction_results(extractor: str, items_extracted: int, confidence: float):
@@ -548,16 +574,16 @@ def track_diff_operation(old_book_id: str, new_book_id: str, changes_count: int)
         "Diff operation completed",
         old_book_id=old_book_id,
         new_book_id=new_book_id,
-        changes_count=changes_count
+        changes_count=changes_count,
     )
 
 
 def get_observability_status() -> Dict[str, Any]:
     """Get current observability status and metrics."""
     return {
-        'metrics_summary': metrics_collector.get_metrics_summary(),
-        'recent_metrics': metrics_collector.get_recent_metrics(),
-        'sentry_enabled': SENTRY_AVAILABLE,
-        'log_level': structured_logger.level.value,
-        'context': structured_logger.context
+        "metrics_summary": metrics_collector.get_metrics_summary(),
+        "recent_metrics": metrics_collector.get_recent_metrics(),
+        "sentry_enabled": SENTRY_AVAILABLE,
+        "log_level": structured_logger.level.value,
+        "context": structured_logger.context,
     }

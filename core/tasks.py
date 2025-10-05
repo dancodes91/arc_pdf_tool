@@ -4,12 +4,14 @@ Celery tasks for asynchronous PDF processing.
 This module defines all background tasks that can be executed
 by Celery workers for processing PDF files and other long-running operations.
 """
+
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 
 try:
     from celery import Celery
+
     CELERY_AVAILABLE = True
 except ImportError:
     CELERY_AVAILABLE = False
@@ -20,16 +22,16 @@ logger = get_logger("core.tasks")
 
 # Initialize Celery app
 if CELERY_AVAILABLE:
-    celery_app = Celery('arc_pdf_tool')
+    celery_app = Celery("arc_pdf_tool")
 
     # Configure Celery
     celery_app.conf.update(
-        broker_url=os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0'),
-        result_backend=os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'),
-        task_serializer='json',
-        accept_content=['json'],
-        result_serializer='json',
-        timezone='UTC',
+        broker_url=os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0"),
+        result_backend=os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0"),
+        task_serializer="json",
+        accept_content=["json"],
+        result_serializer="json",
+        timezone="UTC",
         enable_utc=True,
         task_track_started=True,
         task_time_limit=30 * 60,  # 30 minutes
@@ -38,7 +40,7 @@ if CELERY_AVAILABLE:
         worker_max_tasks_per_child=1000,
     )
 
-    @celery_app.task(bind=True, name='core.tasks.process_pdf')
+    @celery_app.task(bind=True, name="core.tasks.process_pdf")
     def process_pdf_task(self, file_path: str, options: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Process PDF file asynchronously.
@@ -55,8 +57,8 @@ if CELERY_AVAILABLE:
         try:
             # Update task state
             self.update_state(
-                state='PROGRESS',
-                meta={'current': 0, 'total': 100, 'status': 'Starting processing...'}
+                state="PROGRESS",
+                meta={"current": 0, "total": 100, "status": "Starting processing..."},
             )
 
             # TODO: Import and use actual PDF processing logic
@@ -66,21 +68,22 @@ if CELERY_AVAILABLE:
 
             # Placeholder processing logic
             import time
+
             for i in range(1, 11):
                 time.sleep(1)  # Simulate processing
                 self.update_state(
-                    state='PROGRESS',
-                    meta={'current': i * 10, 'total': 100, 'status': f'Processing step {i}/10...'}
+                    state="PROGRESS",
+                    meta={"current": i * 10, "total": 100, "status": f"Processing step {i}/10..."},
                 )
 
             result = {
-                'success': True,
-                'file_path': file_path,
-                'processed_at': datetime.utcnow().isoformat(),
-                'items_extracted': 150,
-                'options_extracted': 25,
-                'rules_extracted': 8,
-                'processing_time_seconds': 10.0
+                "success": True,
+                "file_path": file_path,
+                "processed_at": datetime.utcnow().isoformat(),
+                "items_extracted": 150,
+                "options_extracted": 25,
+                "rules_extracted": 8,
+                "processing_time_seconds": 10.0,
             }
 
             logger.info(f"PDF processing completed for: {file_path}")
@@ -88,18 +91,12 @@ if CELERY_AVAILABLE:
 
         except Exception as exc:
             logger.error(f"PDF processing failed for {file_path}: {exc}")
-            self.update_state(
-                state='FAILURE',
-                meta={'error': str(exc), 'traceback': None}
-            )
+            self.update_state(state="FAILURE", meta={"error": str(exc), "traceback": None})
             raise
 
-
-    @celery_app.task(bind=True, name='core.tasks.publish_to_baserow')
+    @celery_app.task(bind=True, name="core.tasks.publish_to_baserow")
     def publish_to_baserow_task(
-        self,
-        price_book_id: str,
-        options: Dict[str, Any] = None
+        self, price_book_id: str, options: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
         Publish price book data to Baserow asynchronously.
@@ -116,8 +113,8 @@ if CELERY_AVAILABLE:
         try:
             # Update task state
             self.update_state(
-                state='PROGRESS',
-                meta={'current': 0, 'total': 100, 'status': 'Initializing Baserow client...'}
+                state="PROGRESS",
+                meta={"current": 0, "total": 100, "status": "Initializing Baserow client..."},
             )
 
             # TODO: Import and use actual Baserow publishing logic
@@ -128,33 +125,33 @@ if CELERY_AVAILABLE:
 
             # Placeholder publishing logic
             import time
+
             steps = [
-                'Loading price book data...',
-                'Transforming data for Baserow...',
-                'Creating/updating tables...',
-                'Uploading items...',
-                'Uploading options...',
-                'Uploading rules...',
-                'Finalizing sync...'
+                "Loading price book data...",
+                "Transforming data for Baserow...",
+                "Creating/updating tables...",
+                "Uploading items...",
+                "Uploading options...",
+                "Uploading rules...",
+                "Finalizing sync...",
             ]
 
             for i, step in enumerate(steps):
                 time.sleep(2)  # Simulate processing
                 progress = int((i + 1) / len(steps) * 100)
                 self.update_state(
-                    state='PROGRESS',
-                    meta={'current': progress, 'total': 100, 'status': step}
+                    state="PROGRESS", meta={"current": progress, "total": 100, "status": step}
                 )
 
             result = {
-                'success': True,
-                'price_book_id': price_book_id,
-                'sync_id': f"sync_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
-                'tables_synced': ['Items', 'Options', 'Rules'],
-                'rows_processed': 183,
-                'rows_created': 120,
-                'rows_updated': 63,
-                'sync_time_seconds': 14.0
+                "success": True,
+                "price_book_id": price_book_id,
+                "sync_id": f"sync_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                "tables_synced": ["Items", "Options", "Rules"],
+                "rows_processed": 183,
+                "rows_created": 120,
+                "rows_updated": 63,
+                "sync_time_seconds": 14.0,
             }
 
             logger.info(f"Baserow publish completed for price book: {price_book_id}")
@@ -162,14 +159,10 @@ if CELERY_AVAILABLE:
 
         except Exception as exc:
             logger.error(f"Baserow publish failed for {price_book_id}: {exc}")
-            self.update_state(
-                state='FAILURE',
-                meta={'error': str(exc), 'traceback': None}
-            )
+            self.update_state(state="FAILURE", meta={"error": str(exc), "traceback": None})
             raise
 
-
-    @celery_app.task(name='core.tasks.health_check')
+    @celery_app.task(name="core.tasks.health_check")
     def health_check_task() -> Dict[str, Any]:
         """
         Health check task for worker monitoring.
@@ -178,14 +171,13 @@ if CELERY_AVAILABLE:
             Dict containing worker health information
         """
         return {
-            'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
-            'worker_id': os.getenv('HOSTNAME', 'unknown'),
-            'celery_version': celery_app.version if hasattr(celery_app, 'version') else 'unknown'
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "worker_id": os.getenv("HOSTNAME", "unknown"),
+            "celery_version": celery_app.version if hasattr(celery_app, "version") else "unknown",
         }
 
-
-    @celery_app.task(name='core.tasks.cleanup_old_files')
+    @celery_app.task(name="core.tasks.cleanup_old_files")
     def cleanup_old_files_task(days: int = 7) -> Dict[str, Any]:
         """
         Clean up old processed files.
@@ -201,13 +193,8 @@ if CELERY_AVAILABLE:
         try:
             import os
             import time
-            from pathlib import Path
 
-            cleanup_paths = [
-                '/app/data/processed',
-                '/app/data/exports',
-                '/app/logs'
-            ]
+            cleanup_paths = ["/app/data/processed", "/app/data/exports", "/app/logs"]
 
             deleted_count = 0
             deleted_size = 0
@@ -229,11 +216,11 @@ if CELERY_AVAILABLE:
                                     logger.warning(f"Failed to delete {file_path}: {e}")
 
             result = {
-                'success': True,
-                'deleted_files': deleted_count,
-                'deleted_size_bytes': deleted_size,
-                'deleted_size_mb': round(deleted_size / (1024 * 1024), 2),
-                'cleanup_days': days
+                "success": True,
+                "deleted_files": deleted_count,
+                "deleted_size_bytes": deleted_size,
+                "deleted_size_mb": round(deleted_size / (1024 * 1024), 2),
+                "cleanup_days": days,
             }
 
             logger.info(f"Cleanup completed: {deleted_count} files, {result['deleted_size_mb']} MB")
@@ -262,9 +249,9 @@ else:
 
 # Export functions for use by the API
 __all__ = [
-    'celery_app',
-    'process_pdf_task',
-    'publish_to_baserow_task',
-    'health_check_task',
-    'cleanup_old_files_task'
+    "celery_app",
+    "process_pdf_task",
+    "publish_to_baserow_task",
+    "health_check_task",
+    "cleanup_old_files_task",
 ]

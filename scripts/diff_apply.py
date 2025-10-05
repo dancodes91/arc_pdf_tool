@@ -20,18 +20,16 @@ import sys
 import json
 import logging
 from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from database.models import DatabaseManager, PriceBook, Product
 from core.diff_engine_v2 import DiffEngineV2, ChangeType
-from sqlalchemy import desc
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
 def get_price_book_data(session, book_id: int) -> Dict[str, Any]:
@@ -46,24 +44,28 @@ def get_price_book_data(session, book_id: int) -> Dict[str, Any]:
 
     product_data = []
     for product in products:
-        product_data.append({
-            'id': product.id,
-            'model': product.model,
-            'sku': product.sku,
-            'description': product.description,
-            'manufacturer': price_book.manufacturer.name if price_book.manufacturer else 'unknown',
-            'family': product.family.name if product.family else '',
-            'price': float(product.base_price) if product.base_price else 0.0,
-            'effective_date': product.effective_date,
-            'is_active': product.is_active
-        })
+        product_data.append(
+            {
+                "id": product.id,
+                "model": product.model,
+                "sku": product.sku,
+                "description": product.description,
+                "manufacturer": (
+                    price_book.manufacturer.name if price_book.manufacturer else "unknown"
+                ),
+                "family": product.family.name if product.family else "",
+                "price": float(product.base_price) if product.base_price else 0.0,
+                "effective_date": product.effective_date,
+                "is_active": product.is_active,
+            }
+        )
 
     return {
-        'id': price_book.id,
-        'edition': price_book.edition,
-        'manufacturer': price_book.manufacturer.name if price_book.manufacturer else 'unknown',
-        'effective_date': price_book.effective_date,
-        'products': product_data
+        "id": price_book.id,
+        "edition": price_book.edition,
+        "manufacturer": price_book.manufacturer.name if price_book.manufacturer else "unknown",
+        "effective_date": price_book.effective_date,
+        "products": product_data,
     }
 
 
@@ -137,8 +139,8 @@ def print_diff_summary(diff_result):
     if diff_result.review_queue:
         print(f"⚠️  Low confidence matches requiring review ({len(diff_result.review_queue)}):")
         for match in diff_result.review_queue[:10]:
-            old_model = match.old_item.get('model', 'N/A') if match.old_item else 'N/A'
-            new_model = match.new_item.get('model', 'N/A') if match.new_item else 'N/A'
+            old_model = match.old_item.get("model", "N/A") if match.old_item else "N/A"
+            new_model = match.new_item.get("model", "N/A") if match.new_item else "N/A"
             print(f"  {old_model:20s} → {new_model:20s} ({match.confidence * 100:.1f}% confidence)")
         print()
 
@@ -147,37 +149,37 @@ def export_diff_report(diff_result, output_path: str):
     """Export diff result to JSON file."""
     # Convert diff result to serializable format
     report = {
-        'old_book_id': diff_result.old_book_id,
-        'new_book_id': diff_result.new_book_id,
-        'timestamp': diff_result.timestamp.isoformat(),
-        'summary': diff_result.summary,
-        'changes': [
+        "old_book_id": diff_result.old_book_id,
+        "new_book_id": diff_result.new_book_id,
+        "timestamp": diff_result.timestamp.isoformat(),
+        "summary": diff_result.summary,
+        "changes": [
             {
-                'change_type': change.change_type.value,
-                'confidence': change.confidence,
-                'old_value': str(change.old_value) if change.old_value else None,
-                'new_value': str(change.new_value) if change.new_value else None,
-                'field_name': change.field_name,
-                'description': change.description,
-                'match_key': change.match_key
+                "change_type": change.change_type.value,
+                "confidence": change.confidence,
+                "old_value": str(change.old_value) if change.old_value else None,
+                "new_value": str(change.new_value) if change.new_value else None,
+                "field_name": change.field_name,
+                "description": change.description,
+                "match_key": change.match_key,
             }
             for change in diff_result.changes
         ],
-        'review_queue': [
+        "review_queue": [
             {
-                'old_model': match.old_item.get('model') if match.old_item else None,
-                'new_model': match.new_item.get('model') if match.new_item else None,
-                'confidence': match.confidence,
-                'confidence_level': match.confidence_level.value,
-                'match_method': match.match_method,
-                'reasons': match.match_reasons
+                "old_model": match.old_item.get("model") if match.old_item else None,
+                "new_model": match.new_item.get("model") if match.new_item else None,
+                "confidence": match.confidence,
+                "confidence_level": match.confidence_level.value,
+                "match_method": match.match_method,
+                "reasons": match.match_reasons,
             }
             for match in diff_result.review_queue
         ],
-        'metadata': diff_result.metadata
+        "metadata": diff_result.metadata,
     }
 
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         json.dump(report, f, indent=2, default=str)
 
     logger.info(f"✓ Exported diff report to {output_path}")
@@ -193,11 +195,11 @@ def apply_diff(session, diff_result) -> Dict[str, int]:
     logger.info("Applying diff changes to database...")
 
     counts = {
-        'prices_updated': 0,
-        'items_added': 0,
-        'items_retired': 0,
-        'options_modified': 0,
-        'skipped': 0
+        "prices_updated": 0,
+        "items_added": 0,
+        "items_retired": 0,
+        "options_modified": 0,
+        "skipped": 0,
     }
 
     for change in diff_result.changes:
@@ -206,22 +208,26 @@ def apply_diff(session, diff_result) -> Dict[str, int]:
         if change_type == ChangeType.PRICE_CHANGED:
             # Update price
             # In a real implementation, would update Product table
-            counts['prices_updated'] += 1
+            counts["prices_updated"] += 1
 
         elif change_type == ChangeType.ADDED:
             # Mark new item
-            counts['items_added'] += 1
+            counts["items_added"] += 1
 
         elif change_type == ChangeType.REMOVED:
             # Mark item as retired
-            counts['items_retired'] += 1
+            counts["items_retired"] += 1
 
-        elif change_type in [ChangeType.OPTION_ADDED, ChangeType.OPTION_REMOVED, ChangeType.OPTION_AMOUNT_CHANGED]:
+        elif change_type in [
+            ChangeType.OPTION_ADDED,
+            ChangeType.OPTION_REMOVED,
+            ChangeType.OPTION_AMOUNT_CHANGED,
+        ]:
             # Update options
-            counts['options_modified'] += 1
+            counts["options_modified"] += 1
 
         else:
-            counts['skipped'] += 1
+            counts["skipped"] += 1
 
     # In dry-run or real mode, we don't commit changes here
     # This is a placeholder for actual database updates
@@ -234,13 +240,13 @@ def apply_diff(session, diff_result) -> Dict[str, int]:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate and apply diffs between price books')
-    parser.add_argument('--old', type=int, required=True, help='Old price book ID')
-    parser.add_argument('--new', type=int, required=True, help='New price book ID')
-    parser.add_argument('--dry-run', action='store_true', help='Preview changes without applying')
-    parser.add_argument('--apply', action='store_true', help='Apply changes to database')
-    parser.add_argument('--export', type=str, help='Export diff report to JSON file')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose logging')
+    parser = argparse.ArgumentParser(description="Generate and apply diffs between price books")
+    parser.add_argument("--old", type=int, required=True, help="Old price book ID")
+    parser.add_argument("--new", type=int, required=True, help="New price book ID")
+    parser.add_argument("--dry-run", action="store_true", help="Preview changes without applying")
+    parser.add_argument("--apply", action="store_true", help="Apply changes to database")
+    parser.add_argument("--export", type=str, help="Export diff report to JSON file")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
 
     args = parser.parse_args()
 
@@ -270,10 +276,7 @@ def main():
         logger.info(f"Running diff engine...")
 
         # Create diff
-        diff_engine = DiffEngineV2({
-            'enable_fuzzy_matching': True,
-            'fuzzy_threshold': 70
-        })
+        diff_engine = DiffEngineV2({"enable_fuzzy_matching": True, "fuzzy_threshold": 70})
 
         diff_result = diff_engine.create_diff(old_book, new_book)
 
@@ -287,7 +290,7 @@ def main():
         # Apply if requested
         if args.apply:
             logger.info("Applying changes...")
-            counts = apply_diff(session, diff_result)
+            apply_diff(session, diff_result)
             session.commit()
             logger.info("✓ Changes applied successfully")
 
@@ -304,5 +307,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

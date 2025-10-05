@@ -45,7 +45,7 @@ def create_baserow_config_from_env() -> BaserowConfig:
         database_id=database_id,
         timeout_seconds=int(os.getenv("BASEROW_TIMEOUT", "300")),
         max_retries=int(os.getenv("BASEROW_MAX_RETRIES", "3")),
-        rate_limit_requests_per_minute=int(os.getenv("BASEROW_RATE_LIMIT", "60"))
+        rate_limit_requests_per_minute=int(os.getenv("BASEROW_RATE_LIMIT", "60")),
     )
 
 
@@ -56,16 +56,16 @@ def setup_logging(verbose: bool = False) -> None:
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
         level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
 
 def print_result_summary(result: PublishResult) -> None:
     """Print a formatted summary of the publish operation."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("BASEROW PUBLISH SUMMARY")
-    print("="*60)
+    print("=" * 60)
 
     status_emoji = "✅" if result.success else "❌"
     print(f"{status_emoji} Status: {'SUCCESS' if result.success else 'FAILED'}")
@@ -101,9 +101,11 @@ def print_result_summary(result: PublishResult) -> None:
                 total = table_summary.get("total_rows", 0)
                 created = table_summary.get("rows_created", 0)
                 updated = table_summary.get("rows_updated", 0)
-                print(f"   {table_name}: {total:,} processed ({created:,} created, {updated:,} updated)")
+                print(
+                    f"   {table_name}: {total:,} processed ({created:,} created, {updated:,} updated)"
+                )
 
-    print("="*60)
+    print("=" * 60)
 
 
 def list_price_books() -> List[dict]:
@@ -114,14 +116,18 @@ def list_price_books() -> List[dict]:
 
         book_list = []
         for book in books:
-            book_list.append({
-                "id": book.id,
-                "manufacturer": book.manufacturer.name if book.manufacturer else "Unknown",
-                "effective_date": book.effective_date.isoformat() if book.effective_date else None,
-                "filename": book.file_path.split('/')[-1] if book.file_path else 'Unknown',
-                "created_at": book.upload_date.isoformat() if book.upload_date else None,
-                "status": book.status
-            })
+            book_list.append(
+                {
+                    "id": book.id,
+                    "manufacturer": book.manufacturer.name if book.manufacturer else "Unknown",
+                    "effective_date": (
+                        book.effective_date.isoformat() if book.effective_date else None
+                    ),
+                    "filename": book.file_path.split("/")[-1] if book.file_path else "Unknown",
+                    "created_at": book.upload_date.isoformat() if book.upload_date else None,
+                    "status": book.status,
+                }
+            )
 
         return book_list
 
@@ -130,9 +136,7 @@ def list_recent_syncs(price_book_id: str = None, limit: int = 10) -> List[dict]:
     """List recent Baserow sync operations."""
     with get_db_session() as session:
         syncs = BaserowSync.get_recent_syncs(
-            session=session,
-            price_book_id=price_book_id,
-            limit=limit
+            session=session, price_book_id=price_book_id, limit=limit
         )
 
         return [sync.to_dict(include_details=False) for sync in syncs]
@@ -184,80 +188,44 @@ Environment Variables:
   BASEROW_TIMEOUT         - Optional: Request timeout in seconds (default: 300)
   BASEROW_MAX_RETRIES     - Optional: Max retry attempts (default: 3)
   BASEROW_RATE_LIMIT      - Optional: Requests per minute (default: 60)
-        """
+        """,
     )
 
     # Main operation group
     operation_group = parser.add_mutually_exclusive_group(required=True)
+    operation_group.add_argument("--book", "-b", help="Price book ID to publish")
     operation_group.add_argument(
-        "--book", "-b",
-        help="Price book ID to publish"
+        "--list-books", action="store_true", help="List available price books"
     )
     operation_group.add_argument(
-        "--list-books",
-        action="store_true",
-        help="List available price books"
+        "--list-syncs", action="store_true", help="List recent sync operations"
     )
     operation_group.add_argument(
-        "--list-syncs",
-        action="store_true",
-        help="List recent sync operations"
-    )
-    operation_group.add_argument(
-        "--sync-status",
-        help="Get status of a specific sync operation (provide sync ID)"
+        "--sync-status", help="Get status of a specific sync operation (provide sync ID)"
     )
 
     # Publishing options
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Perform validation without actual sync"
+        "--dry-run", action="store_true", help="Perform validation without actual sync"
     )
+    parser.add_argument("--tables", help="Comma-separated list of tables to sync (default: all)")
     parser.add_argument(
-        "--tables",
-        help="Comma-separated list of tables to sync (default: all)"
+        "--force-full-sync", action="store_true", help="Re-sync all data even if unchanged"
     )
+    parser.add_argument("--chunk-size", type=int, help="Number of rows to process per batch")
     parser.add_argument(
-        "--force-full-sync",
-        action="store_true",
-        help="Re-sync all data even if unchanged"
-    )
-    parser.add_argument(
-        "--chunk-size",
-        type=int,
-        help="Number of rows to process per batch"
-    )
-    parser.add_argument(
-        "--max-retries",
-        type=int,
-        default=3,
-        help="Maximum retry attempts for failed operations"
+        "--max-retries", type=int, default=3, help="Maximum retry attempts for failed operations"
     )
 
     # Query options
     parser.add_argument(
-        "--limit",
-        type=int,
-        default=10,
-        help="Limit number of results for list operations"
+        "--limit", type=int, default=10, help="Limit number of results for list operations"
     )
-    parser.add_argument(
-        "--book-filter",
-        help="Filter syncs by price book ID (for --list-syncs)"
-    )
+    parser.add_argument("--book-filter", help="Filter syncs by price book ID (for --list-syncs)")
 
     # Output options
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output results in JSON format"
-    )
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Enable verbose logging"
-    )
+    parser.add_argument("--json", action="store_true", help="Output results in JSON format")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
 
@@ -273,13 +241,21 @@ Environment Variables:
                 print(json.dumps(books, indent=2))
             else:
                 print("\nAvailable Price Books:")
-                print("="*80)
-                print(f"{'ID':<38} {'Manufacturer':<15} {'Effective Date':<12} {'Status':<10} {'Created'}")
-                print("-"*80)
+                print("=" * 80)
+                print(
+                    f"{'ID':<38} {'Manufacturer':<15} {'Effective Date':<12} {'Status':<10} {'Created'}"
+                )
+                print("-" * 80)
                 for book in books:
-                    created = datetime.fromisoformat(book['created_at']).strftime('%Y-%m-%d') if book['created_at'] else 'Unknown'
-                    eff_date = book['effective_date'][:10] if book['effective_date'] else 'N/A'
-                    print(f"{book['id']:<38} {book['manufacturer']:<15} {eff_date:<12} {book['status']:<10} {created}")
+                    created = (
+                        datetime.fromisoformat(book["created_at"]).strftime("%Y-%m-%d")
+                        if book["created_at"]
+                        else "Unknown"
+                    )
+                    eff_date = book["effective_date"][:10] if book["effective_date"] else "N/A"
+                    print(
+                        f"{book['id']:<38} {book['manufacturer']:<15} {eff_date:<12} {book['status']:<10} {created}"
+                    )
             return
 
         if args.list_syncs:
@@ -288,13 +264,23 @@ Environment Variables:
                 print(json.dumps(syncs, indent=2))
             else:
                 print("\nRecent Sync Operations:")
-                print("="*100)
-                print(f"{'Sync ID':<38} {'Price Book':<38} {'Status':<10} {'Started':<12} {'Duration'}")
-                print("-"*100)
+                print("=" * 100)
+                print(
+                    f"{'Sync ID':<38} {'Price Book':<38} {'Status':<10} {'Started':<12} {'Duration'}"
+                )
+                print("-" * 100)
                 for sync in syncs:
-                    started = datetime.fromisoformat(sync['started_at']).strftime('%Y-%m-%d %H:%M') if sync['started_at'] else 'N/A'
-                    duration = f"{sync['duration_seconds']:.1f}s" if sync['duration_seconds'] else 'N/A'
-                    print(f"{sync['id']:<38} {sync['price_book_id']:<38} {sync['status']:<10} {started:<12} {duration}")
+                    started = (
+                        datetime.fromisoformat(sync["started_at"]).strftime("%Y-%m-%d %H:%M")
+                        if sync["started_at"]
+                        else "N/A"
+                    )
+                    duration = (
+                        f"{sync['duration_seconds']:.1f}s" if sync["duration_seconds"] else "N/A"
+                    )
+                    print(
+                        f"{sync['id']:<38} {sync['price_book_id']:<38} {sync['status']:<10} {started:<12} {duration}"
+                    )
             return
 
         if args.sync_status:
@@ -307,25 +293,25 @@ Environment Variables:
                 print(json.dumps(sync_status, indent=2))
             else:
                 print(f"\nSync Operation Status: {args.sync_status}")
-                print("="*60)
+                print("=" * 60)
                 print(f"Status: {sync_status['status']}")
                 print(f"Price Book: {sync_status['price_book_id']}")
                 print(f"Started: {sync_status['started_at']}")
                 print(f"Completed: {sync_status['completed_at'] or 'In Progress'}")
-                if sync_status['duration_seconds']:
+                if sync_status["duration_seconds"]:
                     print(f"Duration: {sync_status['duration_seconds']:.2f} seconds")
                 print(f"Rows Processed: {sync_status['rows_processed'] or 0:,}")
                 print(f"Rows Created: {sync_status['rows_created'] or 0:,}")
                 print(f"Rows Updated: {sync_status['rows_updated'] or 0:,}")
 
-                if sync_status['errors']:
+                if sync_status["errors"]:
                     print("\nErrors:")
-                    for error in sync_status['errors']:
+                    for error in sync_status["errors"]:
                         print(f"  • {error}")
 
-                if sync_status['warnings']:
+                if sync_status["warnings"]:
                     print("\nWarnings:")
-                    for warning in sync_status['warnings']:
+                    for warning in sync_status["warnings"]:
                         print(f"  • {warning}")
             return
 
@@ -353,7 +339,7 @@ Environment Variables:
                 tables_to_sync=tables_to_sync,
                 force_full_sync=args.force_full_sync,
                 chunk_size=args.chunk_size,
-                max_retries=args.max_retries
+                max_retries=args.max_retries,
             )
 
             # Create publisher and run
@@ -364,9 +350,7 @@ Environment Variables:
                 print("🔍 DRY RUN MODE - No data will be modified")
 
             result = await publisher.publish_price_book(
-                price_book_id=args.book,
-                options=options,
-                user_id="cli_user"
+                price_book_id=args.book, options=options, user_id="cli_user"
             )
 
             if args.json:
@@ -381,7 +365,7 @@ Environment Variables:
                     "errors": result.errors,
                     "warnings": result.warnings,
                     "duration_seconds": result.duration_seconds,
-                    "sync_summary": result.sync_summary
+                    "sync_summary": result.sync_summary,
                 }
                 print(json.dumps(result_dict, indent=2))
             else:
@@ -398,6 +382,7 @@ Environment Variables:
         print(f"❌ Unexpected error: {e}")
         if args.verbose:
             import traceback
+
             traceback.print_exc()
         sys.exit(1)
 

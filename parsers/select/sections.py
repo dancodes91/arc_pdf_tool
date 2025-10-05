@@ -1,13 +1,12 @@
 """
 SELECT Hinges section extraction utilities.
 """
+
 import re
 import logging
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import date
+from typing import List, Dict, Any, Optional
 import pandas as pd
 
-from ..shared.confidence import confidence_scorer, ConfidenceScore
 from ..shared.normalization import data_normalizer
 from ..shared.provenance import ProvenanceTracker, ParsedItem
 
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def safe_confidence_score(confidence_obj, default=0.7):
     """Safely extract confidence score from various types."""
-    if hasattr(confidence_obj, 'score'):
+    if hasattr(confidence_obj, "score"):
         return confidence_obj.score
     elif isinstance(confidence_obj, (int, float)):
         return float(confidence_obj)
@@ -34,41 +33,41 @@ class SelectSectionExtractor:
 
         # Finish code mappings for SELECT
         self.finish_codes = {
-            'CL': {'code': 'CL', 'label': 'Clear Anodized', 'bhma': None},
-            'BR': {'code': 'BR', 'label': 'Bronze Anodized', 'bhma': None},
-            'BK': {'code': 'BK', 'label': 'Black Anodized', 'bhma': None},
+            "CL": {"code": "CL", "label": "Clear Anodized", "bhma": None},
+            "BR": {"code": "BR", "label": "Bronze Anodized", "bhma": None},
+            "BK": {"code": "BK", "label": "Black Anodized", "bhma": None},
         }
 
         # SELECT-specific patterns
         self.effective_date_patterns = [
-            r'EFFECTIVE\s+([A-Z]+\s+\d{1,2},?\s+\d{4})',
-            r'PRICES\s+EFFECTIVE\s+([A-Z]+\s+\d{1,2},?\s+\d{4})',
-            r'EFFECTIVE\s+DATE:?\s*([A-Z]+\s+\d{1,2},?\s+\d{4})',
+            r"EFFECTIVE\s+([A-Z]+\s+\d{1,2},?\s+\d{4})",
+            r"PRICES\s+EFFECTIVE\s+([A-Z]+\s+\d{1,2},?\s+\d{4})",
+            r"EFFECTIVE\s+DATE:?\s*([A-Z]+\s+\d{1,2},?\s+\d{4})",
         ]
 
         # Net add option patterns with pricing - updated to match actual PDF format
         self.net_add_patterns = {
-            'CTW-4': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-4'],
-            'CTW-5': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-5'],
-            'CTW-8': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-8'],
-            'CTW-10': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-10'],
-            'CTW-12': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-12'],
-            'EPT': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep'],
-            'EMS': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+EMS'],
-            'ATW-4': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-4'],
-            'ATW-8': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-8'],
-            'ATW-12': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-12'],
-            'CMG': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CMG'],
-            'AP': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep'],
-            'RP': [r'\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep'],
+            "CTW-4": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-4"],
+            "CTW-5": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-5"],
+            "CTW-8": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-8"],
+            "CTW-10": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-10"],
+            "CTW-12": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-12"],
+            "EPT": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep"],
+            "EMS": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+EMS"],
+            "ATW-4": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-4"],
+            "ATW-8": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-8"],
+            "ATW-12": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-12"],
+            "CMG": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CMG"],
+            "AP": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep"],
+            "RP": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep"],
         }
 
         # Model table patterns for SL series
         self.model_patterns = {
-            'SL11': r'SL\s*11.*?(?=SL\s*\d{2}|$)',
-            'SL14': r'SL\s*14.*?(?=SL\s*\d{2}|$)',
-            'SL24': r'SL\s*24.*?(?=SL\s*\d{2}|$)',
-            'SL41': r'SL\s*41.*?(?=SL\s*\d{2}|$)',
+            "SL11": r"SL\s*11.*?(?=SL\s*\d{2}|$)",
+            "SL14": r"SL\s*14.*?(?=SL\s*\d{2}|$)",
+            "SL24": r"SL\s*24.*?(?=SL\s*\d{2}|$)",
+            "SL41": r"SL\s*41.*?(?=SL\s*\d{2}|$)",
         }
 
     @staticmethod
@@ -76,6 +75,7 @@ class SelectSectionExtractor:
         """Extract tables from specific page using Camelot."""
         import camelot
         import gc
+
         page_str = str(page_number)
         try:
             tables = camelot.read_pdf(pdf_path, pages=page_str, flavor=flavor)
@@ -95,26 +95,26 @@ class SelectSectionExtractor:
 
         # Look for finish abbreviations in text
         # Pattern: "Clear [CL], Dark Bronze [BR] or Black [BK]"
-        finish_pattern = r'(Clear|Dark\s+Bronze|Black)\s*\[([A-Z]{2})\]'
+        finish_pattern = r"(Clear|Dark\s+Bronze|Black)\s*\[([A-Z]{2})\]"
         matches = re.finditer(finish_pattern, text, re.IGNORECASE)
 
         for match in matches:
-            finish_name = match.group(1).strip()
+            match.group(1).strip()
             finish_code = match.group(2).upper()
 
             if finish_code in self.finish_codes:
                 finish_data = {
-                    'code': finish_code,
-                    'label': self.finish_codes[finish_code]['label'],
-                    'bhma': self.finish_codes[finish_code]['bhma'],
-                    'manufacturer': 'SELECT'
+                    "code": finish_code,
+                    "label": self.finish_codes[finish_code]["label"],
+                    "bhma": self.finish_codes[finish_code]["bhma"],
+                    "manufacturer": "SELECT",
                 }
 
                 item = self.tracker.create_parsed_item(
                     value=finish_data,
                     data_type="finish_symbol",
                     raw_text=match.group(0),
-                    confidence=0.9
+                    confidence=0.9,
                 )
                 finishes.append(item)
 
@@ -133,12 +133,12 @@ class SelectSectionExtractor:
                 # Normalize the date
                 normalized = data_normalizer.normalize_date(f"EFFECTIVE {date_str}")
 
-                if normalized['value']:
+                if normalized["value"]:
                     return self.tracker.create_parsed_item(
-                        value=normalized['value'],
+                        value=normalized["value"],
                         data_type="effective_date",
                         raw_text=date_str,
-                        confidence=safe_confidence_score(normalized['confidence'], 0.8)
+                        confidence=safe_confidence_score(normalized["confidence"], 0.8),
                     )
 
         self.logger.warning("No effective date found in SELECT PDF")
@@ -166,22 +166,22 @@ class SelectSectionExtractor:
                         # Normalize price
                         price_normalized = data_normalizer.normalize_price(price_str)
 
-                        if price_normalized['value']:
+                        if price_normalized["value"]:
                             option_data = {
-                                'option_code': option_code,
-                                'option_name': self._get_option_name(option_code),
-                                'size_variant': size_variant,
-                                'adder_type': 'net_add',
-                                'adder_value': float(price_normalized['value']),
-                                'constraints': self._get_option_constraints(option_code),
-                                'availability': self._get_option_availability(option_code)
+                                "option_code": option_code,
+                                "option_name": self._get_option_name(option_code),
+                                "size_variant": size_variant,
+                                "adder_type": "net_add",
+                                "adder_value": float(price_normalized["value"]),
+                                "constraints": self._get_option_constraints(option_code),
+                                "availability": self._get_option_availability(option_code),
                             }
 
                             item = self.tracker.create_parsed_item(
                                 value=option_data,
                                 data_type="net_add_option",
                                 raw_text=match.group(0),
-                                confidence=safe_confidence_score(price_normalized['confidence'])
+                                confidence=safe_confidence_score(price_normalized["confidence"]),
                             )
                             options.append(item)
 
@@ -192,9 +192,13 @@ class SelectSectionExtractor:
         self.logger.info(f"Extracted {len(options)} net add options")
         return options
 
-    def extract_model_tables(self, text: str, tables: List[pd.DataFrame], page_number: int = None) -> List[ParsedItem]:
+    def extract_model_tables(
+        self, text: str, tables: List[pd.DataFrame], page_number: int = None
+    ) -> List[ParsedItem]:
         """Extract product model tables using table normalization and melting for finish columns."""
-        self.tracker.set_context(section="Model Tables", method="table_extraction", page_number=page_number)
+        self.tracker.set_context(
+            section="Model Tables", method="table_extraction", page_number=page_number
+        )
         products = []
         seen_skus = set()  # Track SKUs across all extraction methods
 
@@ -215,27 +219,31 @@ class SelectSectionExtractor:
             structured_products = self._extract_products_structured(df, table_idx, page_number)
             if structured_products:
                 for p in structured_products:
-                    sku = p.value.get('sku')
+                    sku = p.value.get("sku")
                     if sku and sku not in seen_skus:
                         products.append(p)
                         seen_skus.add(sku)
 
             # If structured didn't work, try pattern-based extraction for complex layouts
             if not structured_products:
-                pattern_products = self._extract_products_from_table_simple(df, table_idx, page_number)
+                pattern_products = self._extract_products_from_table_simple(
+                    df, table_idx, page_number
+                )
                 if pattern_products:
                     for p in pattern_products:
-                        sku = p.value.get('sku')
+                        sku = p.value.get("sku")
                         if sku and sku not in seen_skus:
                             products.append(p)
                             seen_skus.add(sku)
 
             # ENHANCEMENT: ALWAYS run grid extraction to catch any missed price cells
             # This adds products that structured/pattern methods may have missed
-            grid_products = self._extract_all_price_cells(df, table_idx, page_number, existing_skus=seen_skus)
+            grid_products = self._extract_all_price_cells(
+                df, table_idx, page_number, existing_skus=seen_skus
+            )
             if grid_products:
                 for p in grid_products:
-                    sku = p.value.get('sku')
+                    sku = p.value.get("sku")
                     if sku and sku not in seen_skus:
                         products.append(p)
                         seen_skus.add(sku)
@@ -243,7 +251,9 @@ class SelectSectionExtractor:
         self.logger.info(f"Extracted {len(products)} products from model tables")
         return products
 
-    def _extract_products_structured(self, df: pd.DataFrame, table_idx: int, page_number: int = None) -> List[ParsedItem]:
+    def _extract_products_structured(
+        self, df: pd.DataFrame, table_idx: int, page_number: int = None
+    ) -> List[ParsedItem]:
         """Extract products using comprehensive table melting - extracts ALL row×finish combinations."""
         products = []
 
@@ -254,20 +264,20 @@ class SelectSectionExtractor:
             df = df.iloc[1:]  # Remove header row
 
             # Drop completely empty rows
-            df = df.dropna(how='all')
+            df = df.dropna(how="all")
 
             if df.empty:
                 return []
 
             # Identify all columns
-            header_upper = [h.upper() for h in header]
+            [h.upper() for h in header]
 
             # Find model column (first column with model codes)
             model_col = None
             for idx, col in enumerate(df.columns):
                 # Check if column contains SL## patterns
                 sample = df[col].dropna().head(10)
-                if any(re.match(r'SL\s*\d{2}', str(val), re.IGNORECASE) for val in sample):
+                if any(re.match(r"SL\s*\d{2}", str(val), re.IGNORECASE) for val in sample):
                     model_col = col
                     break
 
@@ -278,7 +288,7 @@ class SelectSectionExtractor:
             finish_cols = []
             for col in header:
                 col_upper = col.upper().strip()
-                if col_upper in ['CL', 'BR', 'BK']:
+                if col_upper in ["CL", "BR", "BK"]:
                     finish_cols.append(col)
 
             if not finish_cols:
@@ -294,28 +304,25 @@ class SelectSectionExtractor:
                 col_upper = col.upper()
                 if col in finish_cols or col == model_col:
                     continue
-                if 'DESC' in col_upper or 'NAME' in col_upper:
+                if "DESC" in col_upper or "NAME" in col_upper:
                     desc_col = col
                     id_vars.append(col)
-                elif 'LENGTH' in col_upper or 'SIZE' in col_upper or '"' in col_upper:
+                elif "LENGTH" in col_upper or "SIZE" in col_upper or '"' in col_upper:
                     length_col = col
                     id_vars.append(col)
-                elif 'DUTY' in col_upper or 'WEIGHT' in col_upper or 'TYPE' in col_upper:
+                elif "DUTY" in col_upper or "WEIGHT" in col_upper or "TYPE" in col_upper:
                     duty_col = col
                     id_vars.append(col)
 
             # Melt finish columns to create one row per (model × finish) combination
             long_df = df.melt(
-                id_vars=id_vars,
-                value_vars=finish_cols,
-                var_name="Finish",
-                value_name="Price"
+                id_vars=id_vars, value_vars=finish_cols, var_name="Finish", value_name="Price"
             )
 
             # Keep only rows with prices
             long_df = long_df.dropna(subset=["Price"])
-            long_df = long_df[long_df["Price"].astype(str).str.strip() != '']
-            long_df = long_df[long_df["Price"].astype(str).str.upper() != 'NAN']
+            long_df = long_df[long_df["Price"].astype(str).str.strip() != ""]
+            long_df = long_df[long_df["Price"].astype(str).str.upper() != "NAN"]
 
             # Extract products from melted table
             for _, row in long_df.iterrows():
@@ -324,15 +331,15 @@ class SelectSectionExtractor:
                 price_str = str(row["Price"]).strip()
 
                 # Skip invalid models
-                if not model or model.lower() in ['nan', 'none', 'model', '']:
+                if not model or model.lower() in ["nan", "none", "model", ""]:
                     continue
 
                 # Extract clean model code (remove any suffixes)
-                model_match = re.match(r'(SL\s*\d{2})', model, re.IGNORECASE)
+                model_match = re.match(r"(SL\s*\d{2})", model, re.IGNORECASE)
                 if not model_match:
                     continue
 
-                base_model = model_match.group(1).replace(' ', '')
+                base_model = model_match.group(1).replace(" ", "")
 
                 # Build comprehensive SKU with all attributes
                 sku_parts = [base_model, finish]
@@ -340,29 +347,29 @@ class SelectSectionExtractor:
 
                 if length_col and pd.notna(row.get(length_col)):
                     length_val = str(row[length_col]).strip()
-                    if length_val and length_val.upper() not in ['NAN', 'NONE', '']:
+                    if length_val and length_val.upper() not in ["NAN", "NONE", ""]:
                         # Clean length value
-                        length_clean = re.sub(r'[^\d\-/]', '', length_val)
+                        length_clean = re.sub(r"[^\d\-/]", "", length_val)
                         if length_clean:
                             sku_parts.append(length_clean)
-                            specs['length'] = length_val
+                            specs["length"] = length_val
 
                 if duty_col and pd.notna(row.get(duty_col)):
                     duty_val = str(row[duty_col]).strip()
-                    if duty_val and duty_val.upper() not in ['NAN', 'NONE', '']:
-                        duty_clean = re.sub(r'[^\w\d]', '', duty_val)
+                    if duty_val and duty_val.upper() not in ["NAN", "NONE", ""]:
+                        duty_clean = re.sub(r"[^\w\d]", "", duty_val)
                         if duty_clean:
                             sku_parts.append(duty_clean)
-                            specs['duty'] = duty_val
+                            specs["duty"] = duty_val
 
-                sku = '-'.join(sku_parts).replace(' ', '')
+                sku = "-".join(sku_parts).replace(" ", "")
 
                 # Normalize price
                 price_normalized = data_normalizer.normalize_price(price_str)
-                if not price_normalized['value']:
+                if not price_normalized["value"]:
                     continue
 
-                price_val = float(price_normalized['value'])
+                price_val = float(price_normalized["value"])
 
                 # Sanity check price
                 if price_val < 1 or price_val > 10000:
@@ -373,21 +380,21 @@ class SelectSectionExtractor:
                 if desc_col and pd.notna(row.get(desc_col)):
                     desc_parts.append(str(row[desc_col]).strip())
                 elif specs:
-                    if 'length' in specs:
-                        desc_parts.append(specs['length'])
-                    if 'duty' in specs:
-                        desc_parts.append(specs['duty'])
+                    if "length" in specs:
+                        desc_parts.append(specs["length"])
+                    if "duty" in specs:
+                        desc_parts.append(specs["duty"])
 
                 product_data = {
-                    'sku': sku,
-                    'model': base_model,
-                    'series': base_model[:2] if len(base_model) >= 2 else base_model,
-                    'description': ' '.join(desc_parts),
-                    'base_price': price_val,
-                    'finish_code': finish if finish in ['CL', 'BR', 'BK'] else None,
-                    'specifications': specs,
-                    'is_active': True,
-                    'manufacturer': 'SELECT'
+                    "sku": sku,
+                    "model": base_model,
+                    "series": base_model[:2] if len(base_model) >= 2 else base_model,
+                    "description": " ".join(desc_parts),
+                    "base_price": price_val,
+                    "finish_code": finish if finish in ["CL", "BR", "BK"] else None,
+                    "specifications": specs,
+                    "is_active": True,
+                    "manufacturer": "SELECT",
                 }
 
                 item = self.tracker.create_parsed_item(
@@ -395,9 +402,9 @@ class SelectSectionExtractor:
                     data_type="product",
                     raw_text=f"{model} {finish} ${price_str}",
                     row_index=None,
-                    confidence=safe_confidence_score(price_normalized['confidence'], 0.9),
+                    confidence=safe_confidence_score(price_normalized["confidence"], 0.9),
                     page_number=page_number,
-                    table_index=table_idx
+                    table_index=table_idx,
                 )
                 products.append(item)
 
@@ -413,26 +420,37 @@ class SelectSectionExtractor:
             return False
 
         # Convert table to text for analysis
-        table_text = ' '.join(table.astype(str).values.flatten()).lower()
+        table_text = " ".join(table.astype(str).values.flatten()).lower()
 
         # Look for SELECT-specific indicators
         indicators = [
-            'sl11', 'sl14', 'sl24', 'sl41',  # Model codes
-            'length', 'duty', 'finish',      # Column headers
-            'cl', 'br', 'bk',                # Finish codes
-            'light', 'medium', 'heavy',      # Duty ratings
+            "sl11",
+            "sl14",
+            "sl24",
+            "sl41",  # Model codes
+            "length",
+            "duty",
+            "finish",  # Column headers
+            "cl",
+            "br",
+            "bk",  # Finish codes
+            "light",
+            "medium",
+            "heavy",  # Duty ratings
         ]
 
         return sum(1 for indicator in indicators if indicator in table_text) >= 3
 
-    def _extract_products_from_model_table(self, table: pd.DataFrame, table_idx: int) -> List[ParsedItem]:
+    def _extract_products_from_model_table(
+        self, table: pd.DataFrame, table_idx: int
+    ) -> List[ParsedItem]:
         """Extract products from a structured model table."""
         products = []
 
         # Identify columns
         columns = self._identify_table_columns(table)
 
-        if columns.get('model') is None or columns.get('price') is None:
+        if columns.get("model") is None or columns.get("price") is None:
             self.logger.warning(f"Table {table_idx} missing essential columns: {columns}")
             self.logger.debug(f"Table columns: {list(table.columns)}")
             return products
@@ -440,32 +458,32 @@ class SelectSectionExtractor:
         for row_idx, row in table.iterrows():
             try:
                 # Extract basic product data
-                model_code = str(row.iloc[columns['model']]).strip()
-                price_str = str(row.iloc[columns['price']]).strip()
+                model_code = str(row.iloc[columns["model"]]).strip()
+                price_str = str(row.iloc[columns["price"]]).strip()
 
                 # Skip header/empty rows
-                if not model_code or model_code.lower() in ['nan', 'model', 'code']:
+                if not model_code or model_code.lower() in ["nan", "model", "code"]:
                     continue
 
                 # Normalize the data
                 sku_normalized = data_normalizer.normalize_sku(model_code, "select_hinges")
                 price_normalized = data_normalizer.normalize_price(price_str)
 
-                if sku_normalized['value'] and price_normalized['value']:
+                if sku_normalized["value"] and price_normalized["value"]:
                     product_data = {
-                        'sku': sku_normalized['value'],
-                        'model': self._extract_base_model(sku_normalized['value']),
-                        'description': self._build_description(row, columns),
-                        'base_price': float(price_normalized['value']),
-                        'specifications': self._extract_specifications(row, columns),
-                        'finish_code': self._extract_finish_code(row, columns),
-                        'is_active': True
+                        "sku": sku_normalized["value"],
+                        "model": self._extract_base_model(sku_normalized["value"]),
+                        "description": self._build_description(row, columns),
+                        "base_price": float(price_normalized["value"]),
+                        "specifications": self._extract_specifications(row, columns),
+                        "finish_code": self._extract_finish_code(row, columns),
+                        "is_active": True,
                     }
 
                     # Calculate combined confidence
                     confidence = min(
-                        safe_confidence_score(sku_normalized['confidence']),
-                        safe_confidence_score(price_normalized['confidence'])
+                        safe_confidence_score(sku_normalized["confidence"]),
+                        safe_confidence_score(price_normalized["confidence"]),
                     )
 
                     item = self.tracker.create_parsed_item(
@@ -473,7 +491,7 @@ class SelectSectionExtractor:
                         data_type="product",
                         raw_text=f"{model_code} - {price_str}",
                         row_index=row_idx,
-                        confidence=confidence
+                        confidence=confidence,
                     )
                     products.append(item)
 
@@ -483,7 +501,9 @@ class SelectSectionExtractor:
 
         return products
 
-    def _extract_products_from_table_simple(self, df: pd.DataFrame, table_idx: int, page_number: int = None) -> List[ParsedItem]:
+    def _extract_products_from_table_simple(
+        self, df: pd.DataFrame, table_idx: int, page_number: int = None
+    ) -> List[ParsedItem]:
         """Simple robust extraction from SELECT tables - handles complex table formats with embedded SKUs."""
         products = []
         seen_entries = set()  # Track (sku, price) tuples to allow same SKU with different prices
@@ -498,18 +518,24 @@ class SelectSectionExtractor:
             for col_idx in range(len(row)):
                 cell_value = str(row.iloc[col_idx]).strip()
 
-                if cell_value.lower() in ['nan', 'none', '', '-']:
+                if cell_value.lower() in ["nan", "none", "", "-"]:
                     continue
 
                 # Look for SELECT SKU pattern: SL## optionally followed by finish code and variant
                 # Examples: "SL21 CL HD300", "SL11 BR HD600", "SL14CL", or just "SL21"
-                sku_match = re.search(r'(SL\s*\d{2})(?:\s+([A-Z]{2}))?(?:\s+(HD\d+|LD\d+|LL|\d+"?))?', cell_value, re.IGNORECASE)
+                sku_match = re.search(
+                    r'(SL\s*\d{2})(?:\s+([A-Z]{2}))?(?:\s+(HD\d+|LD\d+|LL|\d+"?))?',
+                    cell_value,
+                    re.IGNORECASE,
+                )
 
                 if not sku_match:
                     continue
 
-                base_model = sku_match.group(1).replace(' ', '')  # SL21
-                finish_code = sku_match.group(2).upper() if sku_match.group(2) else None  # CL, BR, BK or None
+                base_model = sku_match.group(1).replace(" ", "")  # SL21
+                finish_code = (
+                    sku_match.group(2).upper() if sku_match.group(2) else None
+                )  # CL, BR, BK or None
                 variant = sku_match.group(3).upper() if sku_match.group(3) else ""  # HD300, etc
 
                 # If finish code missing, check adjacent cells
@@ -518,26 +544,32 @@ class SelectSectionExtractor:
                         adj_col = col_idx + offset
                         if 0 <= adj_col < len(row):
                             adj_text = str(row.iloc[adj_col]).strip().upper()
-                            if adj_text in ['CL', 'BR', 'BK']:
+                            if adj_text in ["CL", "BR", "BK"]:
                                 finish_code = adj_text
                                 break
                     # If still no finish, try to infer from column header
                     if not finish_code and col_idx < len(df.columns):
                         header_text = str(df.iloc[0, col_idx]).strip().upper()
-                        if any(f in header_text for f in ['CL', 'BR', 'BK']):
-                            finish_code = next((f for f in ['CL', 'BR', 'BK'] if f in header_text), None)
+                        if any(f in header_text for f in ["CL", "BR", "BK"]):
+                            finish_code = next(
+                                (f for f in ["CL", "BR", "BK"] if f in header_text), None
+                            )
                     # SKIP products without valid finish codes - no position-based fallback
                     if not finish_code:
                         continue  # Skip this product entirely
 
                 # Build full SKU with position to make unique
-                sku = f"{base_model}-{finish_code}-{variant}".replace(' ', '') if variant else f"{base_model}-{finish_code}"
+                sku = (
+                    f"{base_model}-{finish_code}-{variant}".replace(" ", "")
+                    if variant
+                    else f"{base_model}-{finish_code}"
+                )
 
                 # Now find price in the same cell or adjacent cells
                 price_val = None
 
                 # First try same cell
-                price_matches = re.findall(r'(\d+\.?\d{0,2})', cell_value)
+                price_matches = re.findall(r"(\d+\.?\d{0,2})", cell_value)
                 for price_str in price_matches:
                     try:
                         pval = float(price_str)
@@ -554,7 +586,9 @@ class SelectSectionExtractor:
                         adj_col = col_idx + offset
                         if 0 <= adj_col < len(row):
                             adj_cell = str(row.iloc[adj_col]).strip()
-                            price_matches = re.findall(r'(\d+\.?\d{0,2})', adj_cell.replace(',', ''))
+                            price_matches = re.findall(
+                                r"(\d+\.?\d{0,2})", adj_cell.replace(",", "")
+                            )
                             for price_str in price_matches:
                                 try:
                                     pval = float(price_str)
@@ -578,19 +612,21 @@ class SelectSectionExtractor:
                 seen_entries.add(entry_key)
 
                 # Clean up finish code for display
-                display_finish = finish_code if finish_code in ['CL', 'BR', 'BK'] else None
+                display_finish = finish_code if finish_code in ["CL", "BR", "BK"] else None
 
                 # Create product
                 product_data = {
-                    'sku': sku,
-                    'model': base_model,
-                    'series': base_model[:2] if len(base_model) >= 2 else base_model,
-                    'description': f"{base_model} {finish_code} {variant}".strip(),
-                    'base_price': price_val,
-                    'finish_code': display_finish,
-                    'specifications': {'duty': variant, 'column': col_idx} if variant else {'column': col_idx},
-                    'is_active': True,
-                    'manufacturer': 'SELECT'
+                    "sku": sku,
+                    "model": base_model,
+                    "series": base_model[:2] if len(base_model) >= 2 else base_model,
+                    "description": f"{base_model} {finish_code} {variant}".strip(),
+                    "base_price": price_val,
+                    "finish_code": display_finish,
+                    "specifications": (
+                        {"duty": variant, "column": col_idx} if variant else {"column": col_idx}
+                    ),
+                    "is_active": True,
+                    "manufacturer": "SELECT",
                 }
 
                 item = self.tracker.create_parsed_item(
@@ -600,18 +636,20 @@ class SelectSectionExtractor:
                     row_index=row_idx,
                     confidence=0.9,  # Higher confidence since we have both SKU and price
                     page_number=page_number,
-                    table_index=table_idx
+                    table_index=table_idx,
                 )
                 products.append(item)
 
         return products
 
-    def _extract_products_from_text_section(self, text_section: str, model_code: str) -> List[ParsedItem]:
+    def _extract_products_from_text_section(
+        self, text_section: str, model_code: str
+    ) -> List[ParsedItem]:
         """Extract products from a text section for specific model."""
         products = []
 
         # Look for price patterns in the text
-        price_pattern = r'(\w+(?:-\w+)*)\s+\$?(\d+(?:\.\d{2})?)'
+        price_pattern = r"(\w+(?:-\w+)*)\s+\$?(\d+(?:\.\d{2})?)"
         matches = re.finditer(price_pattern, text_section)
 
         for match in matches:
@@ -625,26 +663,26 @@ class SelectSectionExtractor:
             sku_normalized = data_normalizer.normalize_sku(full_sku, "select_hinges")
             price_normalized = data_normalizer.normalize_price(price_str)
 
-            if sku_normalized['value'] and price_normalized['value']:
+            if sku_normalized["value"] and price_normalized["value"]:
                 product_data = {
-                    'sku': sku_normalized['value'],
-                    'model': model_code,
-                    'description': f"{model_code} Series {variant}".strip(),
-                    'base_price': float(price_normalized['value']),
-                    'specifications': {'variant': variant},
-                    'is_active': True
+                    "sku": sku_normalized["value"],
+                    "model": model_code,
+                    "description": f"{model_code} Series {variant}".strip(),
+                    "base_price": float(price_normalized["value"]),
+                    "specifications": {"variant": variant},
+                    "is_active": True,
                 }
 
-                confidence = min(
-                    sku_normalized['confidence'].score,
-                    price_normalized['confidence'].score
-                ) * 0.8  # Lower confidence for text extraction
+                confidence = (
+                    min(sku_normalized["confidence"].score, price_normalized["confidence"].score)
+                    * 0.8
+                )  # Lower confidence for text extraction
 
                 item = self.tracker.create_parsed_item(
                     value=product_data,
                     data_type="product",
                     raw_text=match.group(0),
-                    confidence=confidence
+                    confidence=confidence,
                 )
                 products.append(item)
 
@@ -653,110 +691,113 @@ class SelectSectionExtractor:
     def _identify_table_columns(self, table: pd.DataFrame) -> Dict[str, Optional[int]]:
         """Identify column purposes in a model table."""
         columns = {
-            'model': None,
-            'price': None,
-            'description': None,
-            'length': None,
-            'duty': None,
-            'finish': None
+            "model": None,
+            "price": None,
+            "description": None,
+            "length": None,
+            "duty": None,
+            "finish": None,
         }
 
         # Check header row for column identification
         for col_idx, col_name in enumerate(table.columns):
             col_text = str(col_name).lower()
 
-            if any(keyword in col_text for keyword in ['model', 'sku', 'part', 'item']):
-                columns['model'] = col_idx
-            elif any(keyword in col_text for keyword in ['price', 'cost', 'each', 'list']):
-                columns['price'] = col_idx
-            elif any(keyword in col_text for keyword in ['desc', 'description', 'name']):
-                columns['description'] = col_idx
-            elif any(keyword in col_text for keyword in ['length', 'size']):
-                columns['length'] = col_idx
-            elif any(keyword in col_text for keyword in ['duty', 'weight']):
-                columns['duty'] = col_idx
-            elif any(keyword in col_text for keyword in ['finish', 'color']):
-                columns['finish'] = col_idx
+            if any(keyword in col_text for keyword in ["model", "sku", "part", "item"]):
+                columns["model"] = col_idx
+            elif any(keyword in col_text for keyword in ["price", "cost", "each", "list"]):
+                columns["price"] = col_idx
+            elif any(keyword in col_text for keyword in ["desc", "description", "name"]):
+                columns["description"] = col_idx
+            elif any(keyword in col_text for keyword in ["length", "size"]):
+                columns["length"] = col_idx
+            elif any(keyword in col_text for keyword in ["duty", "weight"]):
+                columns["duty"] = col_idx
+            elif any(keyword in col_text for keyword in ["finish", "color"]):
+                columns["finish"] = col_idx
 
         # If using exact column names, get their positions
-        if columns['model'] is None and 'Model' in table.columns:
-            columns['model'] = list(table.columns).index('Model')
-        if columns['price'] is None and 'Price' in table.columns:
-            columns['price'] = list(table.columns).index('Price')
-        if columns['description'] is None and 'Description' in table.columns:
-            columns['description'] = list(table.columns).index('Description')
+        if columns["model"] is None and "Model" in table.columns:
+            columns["model"] = list(table.columns).index("Model")
+        if columns["price"] is None and "Price" in table.columns:
+            columns["price"] = list(table.columns).index("Price")
+        if columns["description"] is None and "Description" in table.columns:
+            columns["description"] = list(table.columns).index("Description")
 
         # If headers aren't clear, analyze content patterns
-        if columns['model'] is None:
-            columns['model'] = self._find_column_by_pattern(table, r'^[A-Z]{2}\d+')
+        if columns["model"] is None:
+            columns["model"] = self._find_column_by_pattern(table, r"^[A-Z]{2}\d+")
 
-        if columns['price'] is None:
-            columns['price'] = self._find_column_by_pattern(table, r'\$?\d+\.\d{2}')
+        if columns["price"] is None:
+            columns["price"] = self._find_column_by_pattern(table, r"\$?\d+\.\d{2}")
 
         return columns
 
     def _find_column_by_pattern(self, table: pd.DataFrame, pattern: str) -> Optional[int]:
         """Find column index by content pattern."""
         for col_idx, col in enumerate(table.columns):
-            if table[col].dtype == 'object':
+            if table[col].dtype == "object":
                 sample_values = table[col].dropna().head(5)
-                matches = sum(1 for val in sample_values
-                            if re.search(pattern, str(val)))
+                matches = sum(1 for val in sample_values if re.search(pattern, str(val)))
                 if matches >= 2:  # At least 2 matches
                     return col_idx
         return None
 
     def _extract_base_model(self, sku: str) -> str:
         """Extract base model from SKU (e.g., SL11 from SL11CL24)."""
-        match = re.match(r'^(SL\d+)', sku.upper())
+        match = re.match(r"^(SL\d+)", sku.upper())
         return match.group(1) if match else sku[:4]
 
     def _build_description(self, row: pd.Series, columns: Dict[str, Optional[int]]) -> str:
         """Build product description from row data."""
         parts = []
 
-        if columns.get('description') is not None:
-            desc = str(row.iloc[columns['description']]).strip()
-            if desc and desc.lower() != 'nan':
+        if columns.get("description") is not None:
+            desc = str(row.iloc[columns["description"]]).strip()
+            if desc and desc.lower() != "nan":
                 parts.append(desc)
 
-        if columns.get('length') is not None:
-            length = str(row.iloc[columns['length']]).strip()
-            if length and length.lower() != 'nan':
+        if columns.get("length") is not None:
+            length = str(row.iloc[columns["length"]]).strip()
+            if length and length.lower() != "nan":
                 parts.append(f"Length: {length}")
 
-        if columns.get('duty') is not None:
-            duty = str(row.iloc[columns['duty']]).strip()
-            if duty and duty.lower() != 'nan':
+        if columns.get("duty") is not None:
+            duty = str(row.iloc[columns["duty"]]).strip()
+            if duty and duty.lower() != "nan":
                 parts.append(f"Duty: {duty}")
 
         return " - ".join(parts) if parts else "SELECT Hinge"
 
-    def _extract_specifications(self, row: pd.Series, columns: Dict[str, Optional[int]]) -> Dict[str, Any]:
+    def _extract_specifications(
+        self, row: pd.Series, columns: Dict[str, Optional[int]]
+    ) -> Dict[str, Any]:
         """Extract specifications from row data."""
         specs = {}
 
-        if columns.get('length') is not None:
-            length = str(row.iloc[columns['length']]).strip()
-            if length and length.lower() != 'nan':
-                specs['length'] = length
+        if columns.get("length") is not None:
+            length = str(row.iloc[columns["length"]]).strip()
+            if length and length.lower() != "nan":
+                specs["length"] = length
 
-        if columns.get('duty') is not None:
-            duty = str(row.iloc[columns['duty']]).strip()
-            if duty and duty.lower() != 'nan':
-                specs['duty'] = duty
+        if columns.get("duty") is not None:
+            duty = str(row.iloc[columns["duty"]]).strip()
+            if duty and duty.lower() != "nan":
+                specs["duty"] = duty
 
         return specs
 
-    def _extract_finish_code(self, row: pd.Series, columns: Dict[str, Optional[int]]) -> Optional[str]:
+    def _extract_finish_code(
+        self, row: pd.Series, columns: Dict[str, Optional[int]]
+    ) -> Optional[str]:
         """Extract finish code from row data."""
-        if columns.get('finish') is not None:
-            finish = str(row.iloc[columns['finish']]).strip().upper()
+        if columns.get("finish") is not None:
+            finish = str(row.iloc[columns["finish"]]).strip().upper()
             if finish in self.finish_codes:
                 return finish
 
         # Try to extract from SKU
-        sku = str(row.iloc[columns.get('model', 0)]).strip().upper()
+        sku = str(row.iloc[columns.get("model", 0)]).strip().upper()
         for code in self.finish_codes:
             if code in sku:
                 return code
@@ -766,17 +807,19 @@ class SelectSectionExtractor:
     def _get_option_name(self, option_code: str) -> str:
         """Get full name for option code."""
         names = {
-            'CTW': 'Continuous Weld',
-            'EPT': 'Electroplated Prep',
-            'EMS': 'Electromagnetic Shielding',
-            'ATW': 'Arc Weld',
-            'TIPIT': 'Tip It',
-            'HT': 'Hospital Tip',
-            'FR3': 'Fire Rating 3 Hour'
+            "CTW": "Continuous Weld",
+            "EPT": "Electroplated Prep",
+            "EMS": "Electromagnetic Shielding",
+            "ATW": "Arc Weld",
+            "TIPIT": "Tip It",
+            "HT": "Hospital Tip",
+            "FR3": "Fire Rating 3 Hour",
         }
         return names.get(option_code, option_code)
 
-    def _extract_all_price_cells(self, df: pd.DataFrame, table_idx: int, page_number: int = None, existing_skus: set = None) -> List[ParsedItem]:
+    def _extract_all_price_cells(
+        self, df: pd.DataFrame, table_idx: int, page_number: int = None, existing_skus: set = None
+    ) -> List[ParsedItem]:
         """
         ENHANCED: Extract ALL price cells as products with inference.
         This aggressive mode extracts every valid price and infers model/finish/specs from context.
@@ -802,11 +845,13 @@ class SelectSectionExtractor:
 
             # Extract full model info from row header (handle 2 or 3 digit models)
             # Pattern: SL## [FINISH] [DUTY]
-            model_match = re.search(r'(SL\s*\d{2,3})\s*([A-Z]{2})?\s*([A-Z]+\d*)?', row_header, re.IGNORECASE)
+            model_match = re.search(
+                r"(SL\s*\d{2,3})\s*([A-Z]{2})?\s*([A-Z]+\d*)?", row_header, re.IGNORECASE
+            )
             if not model_match:
                 continue
 
-            base_model = model_match.group(1).replace(' ', '').upper()
+            base_model = model_match.group(1).replace(" ", "").upper()
             finish_from_row = model_match.group(2).upper() if model_match.group(2) else None
             duty_from_row = model_match.group(3).upper() if model_match.group(3) else None
 
@@ -815,18 +860,18 @@ class SelectSectionExtractor:
             if not length_duty:
                 length_match = re.search(r'(HD\d+|LD\d+|LL|\d+\s*")', row_header)
                 if length_match:
-                    length_duty = length_match.group(1).replace(' ', '')
+                    length_duty = length_match.group(1).replace(" ", "")
 
             # Scan all cells in this row for prices
             for col_idx, cell_value in enumerate(row):
                 cell_str = str(cell_value).strip()
 
-                if cell_str.lower() in ['nan', 'none', '', '-', 'n/a']:
+                if cell_str.lower() in ["nan", "none", "", "-", "n/a"]:
                     continue
 
                 # Extract price
                 price = None
-                price_matches = re.findall(r'\$?\s*(\d+\.?\d{0,2})', cell_str.replace(',', ''))
+                price_matches = re.findall(r"\$?\s*(\d+\.?\d{0,2})", cell_str.replace(",", ""))
                 for price_str in price_matches:
                     try:
                         pval = float(price_str)
@@ -844,24 +889,24 @@ class SelectSectionExtractor:
                 col_header = headers[col_idx] if col_idx < len(headers) else ""
 
                 # Check column header for finish code (override row finish if found)
-                if col_header in ['CL', 'BR', 'BK']:
+                if col_header in ["CL", "BR", "BK"]:
                     finish_code = col_header
-                elif 'CL' in col_header or 'CLEAR' in col_header:
-                    finish_code = 'CL'
-                elif 'BR' in col_header or 'BRONZE' in col_header:
-                    finish_code = 'BR'
-                elif 'BK' in col_header or 'BLACK' in col_header:
-                    finish_code = 'BK'
+                elif "CL" in col_header or "CLEAR" in col_header:
+                    finish_code = "CL"
+                elif "BR" in col_header or "BRONZE" in col_header:
+                    finish_code = "BR"
+                elif "BK" in col_header or "BLACK" in col_header:
+                    finish_code = "BK"
                 elif not finish_code:  # Check cell text if no finish found yet
-                    if re.search(r'\bCL\b', cell_str, re.IGNORECASE):
-                        finish_code = 'CL'
-                    elif re.search(r'\bBR\b', cell_str, re.IGNORECASE):
-                        finish_code = 'BR'
-                    elif re.search(r'\bBK\b', cell_str, re.IGNORECASE):
-                        finish_code = 'BK'
+                    if re.search(r"\bCL\b", cell_str, re.IGNORECASE):
+                        finish_code = "CL"
+                    elif re.search(r"\bBR\b", cell_str, re.IGNORECASE):
+                        finish_code = "BR"
+                    elif re.search(r"\bBK\b", cell_str, re.IGNORECASE):
+                        finish_code = "BK"
 
                 # Extract length from column header
-                length_from_col = ''
+                length_from_col = ""
                 length_col_match = re.search(r'(\d+)\s*"', col_header)
                 if length_col_match:
                     length_from_col = length_col_match.group(1)
@@ -870,7 +915,7 @@ class SelectSectionExtractor:
                 if not length_duty:
                     length_match = re.search(r'(HD\d+|LD\d+|LL|\d+\s*")', cell_str)
                     if length_match:
-                        length_duty = length_match.group(1).replace(' ', '')
+                        length_duty = length_match.group(1).replace(" ", "")
 
                 # Build SKU with proper format: {BASE}_{FINISH}_{DUTY}_{LENGTH}
                 sku_parts = [base_model]
@@ -881,7 +926,7 @@ class SelectSectionExtractor:
                 if length_from_col:
                     sku_parts.append(length_from_col)
 
-                sku = '_'.join(sku_parts)
+                sku = "_".join(sku_parts)
 
                 # Skip duplicates (check both local and existing SKUs)
                 if sku in existing_skus:
@@ -889,16 +934,16 @@ class SelectSectionExtractor:
 
                 # Create product
                 product_data = {
-                    'sku': sku,
-                    'model': base_model,
-                    'series': 'SL',
-                    'finish': finish_code,
-                    'length_duty': length_duty or 'Standard',
-                    'base_price': price,
-                    'currency': 'USD',
-                    'manufacturer': 'SELECT Hinges',
-                    'is_active': True,
-                    'description': f"{base_model} {finish_code} {length_duty or ''}".strip()
+                    "sku": sku,
+                    "model": base_model,
+                    "series": "SL",
+                    "finish": finish_code,
+                    "length_duty": length_duty or "Standard",
+                    "base_price": price,
+                    "currency": "USD",
+                    "manufacturer": "SELECT Hinges",
+                    "is_active": True,
+                    "description": f"{base_model} {finish_code} {length_duty or ''}".strip(),
                 }
 
                 # Confidence based on inference level
@@ -913,7 +958,7 @@ class SelectSectionExtractor:
                     data_type="product",
                     raw_text=f"{base_model} {finish_code} ${price}",
                     row_index=row_idx,
-                    confidence=confidence
+                    confidence=confidence,
                 )
                 products.append(item)
 
@@ -922,25 +967,25 @@ class SelectSectionExtractor:
     def _get_option_constraints(self, option_code: str) -> Dict[str, Any]:
         """Get constraints for option."""
         constraints = {
-            'CTW': {'requires_handing': True},
-            'EPT': {'excludes': ['CTW']},
-            'EMS': {'excludes': ['CTW', 'EPT']},
-            'ATW': {'requires_handing': True},
-            'TIPIT': {'excludes': ['HT']},
-            'HT': {'excludes': ['TIPIT']},
-            'FR3': {}
+            "CTW": {"requires_handing": True},
+            "EPT": {"excludes": ["CTW"]},
+            "EMS": {"excludes": ["CTW", "EPT"]},
+            "ATW": {"requires_handing": True},
+            "TIPIT": {"excludes": ["HT"]},
+            "HT": {"excludes": ["TIPIT"]},
+            "FR3": {},
         }
         return constraints.get(option_code, {})
 
     def _get_option_availability(self, option_code: str) -> str:
         """Get availability note for option."""
         availability = {
-            'CTW': 'Available on most models',
-            'EPT': 'Standard electroplated preparation',
-            'EMS': 'Electromagnetic shielding option',
-            'ATW': 'Arc weld option with handing',
-            'TIPIT': 'Tip adjustment mechanism',
-            'HT': 'Hospital tip configuration',
-            'FR3': 'UL Fire Rated 3-hour option'
+            "CTW": "Available on most models",
+            "EPT": "Standard electroplated preparation",
+            "EMS": "Electromagnetic shielding option",
+            "ATW": "Arc weld option with handing",
+            "TIPIT": "Tip adjustment mechanism",
+            "HT": "Hospital tip configuration",
+            "FR3": "UL Fire Rated 3-hour option",
         }
-        return availability.get(option_code, 'Contact for availability')
+        return availability.get(option_code, "Contact for availability")

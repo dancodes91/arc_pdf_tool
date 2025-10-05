@@ -1,13 +1,13 @@
 """
 Enhanced PDF I/O utilities with multiple extraction methods.
 """
+
 import os
 import re
 import io
 import logging
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import List, Dict, Any
 from dataclasses import dataclass
-from pathlib import Path
 
 import fitz  # PyMuPDF
 import pdfplumber
@@ -26,17 +26,17 @@ logger = logging.getLogger(__name__)
 
 
 def _confidence_value(conf) -> float:
-    if hasattr(conf, 'score'):
+    if hasattr(conf, "score"):
         return float(conf.score)
     if isinstance(conf, (int, float)):
         return float(conf)
     return 0.0
 
 
-
 @dataclass
 class PDFPage:
     """Container for PDF page data."""
+
     page_number: int
     text: str
     tables: List[pd.DataFrame]
@@ -49,6 +49,7 @@ class PDFPage:
 @dataclass
 class PDFDocument:
     """Container for entire PDF document."""
+
     file_path: str
     pages: List[PDFPage]
     metadata: Dict[str, Any]
@@ -65,11 +66,11 @@ class EnhancedPDFExtractor:
 
         # Extraction method preferences
         self.method_priority = [
-            'pymupdf_digital',
-            'pdfplumber_digital',
-            'camelot_lattice',
-            'camelot_stream',
-            'ocr_tesseract'
+            "pymupdf_digital",
+            "pdfplumber_digital",
+            "camelot_lattice",
+            "camelot_stream",
+            "ocr_tesseract",
         ]
 
         # Validate file exists
@@ -85,7 +86,7 @@ class EnhancedPDFExtractor:
 
         # Determine total pages
         total_pages = self._get_page_count()
-        max_pages = self.config.get('max_pages_to_process', 1000)
+        max_pages = self.config.get("max_pages_to_process", 1000)
         pages_to_process = min(total_pages, max_pages)
 
         self.logger.info(f"Processing {pages_to_process} of {total_pages} pages")
@@ -108,7 +109,7 @@ class EnhancedPDFExtractor:
                     images=[],
                     bbox_info={},
                     extraction_method="failed",
-                    confidence=confidence_scorer.score_extraction_method("failed")
+                    confidence=confidence_scorer.score_extraction_method("failed"),
                 )
                 pages.append(empty_page)
 
@@ -116,8 +117,7 @@ class EnhancedPDFExtractor:
         if pages:
             avg_confidence = sum(_confidence_value(p.confidence) for p in pages) / len(pages)
             total_confidence = confidence_scorer.score_extraction_method(
-                "document_average",
-                avg_confidence
+                "document_average", avg_confidence
             )
         else:
             total_confidence = confidence_scorer.score_extraction_method("failed")
@@ -126,30 +126,32 @@ class EnhancedPDFExtractor:
             file_path=self.pdf_path,
             pages=pages,
             metadata=document_metadata,
-            total_confidence=total_confidence
+            total_confidence=total_confidence,
         )
 
     def _get_document_metadata(self) -> Dict[str, Any]:
         """Extract document metadata."""
         metadata = {
-            'file_size': os.path.getsize(self.pdf_path),
-            'file_name': os.path.basename(self.pdf_path)
+            "file_size": os.path.getsize(self.pdf_path),
+            "file_name": os.path.basename(self.pdf_path),
         }
 
         try:
             # Try PyMuPDF for metadata
             doc = fitz.open(self.pdf_path)
             fitz_metadata = doc.metadata
-            metadata.update({
-                'title': fitz_metadata.get('title', ''),
-                'author': fitz_metadata.get('author', ''),
-                'creator': fitz_metadata.get('creator', ''),
-                'producer': fitz_metadata.get('producer', ''),
-                'creation_date': fitz_metadata.get('creationDate', ''),
-                'modification_date': fitz_metadata.get('modDate', ''),
-                'is_encrypted': doc.is_encrypted,
-                'page_count': doc.page_count
-            })
+            metadata.update(
+                {
+                    "title": fitz_metadata.get("title", ""),
+                    "author": fitz_metadata.get("author", ""),
+                    "creator": fitz_metadata.get("creator", ""),
+                    "producer": fitz_metadata.get("producer", ""),
+                    "creation_date": fitz_metadata.get("creationDate", ""),
+                    "modification_date": fitz_metadata.get("modDate", ""),
+                    "is_encrypted": doc.is_encrypted,
+                    "page_count": doc.page_count,
+                }
+            )
             doc.close()
         except Exception as e:
             self.logger.warning(f"Could not extract metadata with PyMuPDF: {e}")
@@ -175,15 +177,15 @@ class EnhancedPDFExtractor:
 
         for method in self.method_priority:
             try:
-                if method == 'pymupdf_digital':
+                if method == "pymupdf_digital":
                     return self._extract_page_pymupdf(page_num)
-                elif method == 'pdfplumber_digital':
+                elif method == "pdfplumber_digital":
                     return self._extract_page_pdfplumber(page_num)
-                elif method == 'camelot_lattice':
-                    return self._extract_page_camelot(page_num, flavor='lattice')
-                elif method == 'camelot_stream':
-                    return self._extract_page_camelot(page_num, flavor='stream')
-                elif method == 'ocr_tesseract':
+                elif method == "camelot_lattice":
+                    return self._extract_page_camelot(page_num, flavor="lattice")
+                elif method == "camelot_stream":
+                    return self._extract_page_camelot(page_num, flavor="stream")
+                elif method == "ocr_tesseract":
                     return self._extract_page_ocr(page_num)
 
             except Exception as e:
@@ -198,7 +200,7 @@ class EnhancedPDFExtractor:
             images=[],
             bbox_info={},
             extraction_method="failed",
-            confidence=confidence_scorer.score_extraction_method("failed")
+            confidence=confidence_scorer.score_extraction_method("failed"),
         )
 
     def _extract_page_pymupdf(self, page_num: int) -> PDFPage:
@@ -211,7 +213,7 @@ class EnhancedPDFExtractor:
 
         # Extract text with bounding boxes
         bbox_info = {}
-        text_dict = page.get_text("dict")
+        page.get_text("dict")
 
         # Extract images
         images = []
@@ -242,8 +244,7 @@ class EnhancedPDFExtractor:
 
         # Calculate confidence
         confidence = confidence_scorer.score_extraction_method(
-            'pymupdf_digital',
-            self._calculate_text_quality(text)
+            "pymupdf_digital", self._calculate_text_quality(text)
         )
 
         return PDFPage(
@@ -252,8 +253,8 @@ class EnhancedPDFExtractor:
             tables=tables,
             images=images,
             bbox_info=bbox_info,
-            extraction_method='pymupdf_digital',
-            confidence=confidence
+            extraction_method="pymupdf_digital",
+            confidence=confidence,
         )
 
     def _extract_page_pdfplumber(self, page_num: int) -> PDFPage:
@@ -273,11 +274,15 @@ class EnhancedPDFExtractor:
                     if table_data and len(table_data) > 1:
                         try:
                             # Create DataFrame with first row as headers
-                            headers = table_data[0] if table_data[0] else [f"col_{i}" for i in range(len(table_data[0]))]
+                            headers = (
+                                table_data[0]
+                                if table_data[0]
+                                else [f"col_{i}" for i in range(len(table_data[0]))]
+                            )
                             df = pd.DataFrame(table_data[1:], columns=headers)
 
                             # Clean empty rows/columns
-                            df = df.dropna(how='all').reset_index(drop=True)
+                            df = df.dropna(how="all").reset_index(drop=True)
                             df = df.loc[:, df.notna().any()]
 
                             if not df.empty:
@@ -287,15 +292,11 @@ class EnhancedPDFExtractor:
                             self.logger.warning(f"Could not create DataFrame from table: {e}")
 
             # Extract bounding box info
-            bbox_info = {
-                'chars': page.chars,
-                'words': page.extract_words(),
-                'page_bbox': page.bbox
-            }
+            bbox_info = {"chars": page.chars, "words": page.extract_words(), "page_bbox": page.bbox}
 
         # Calculate confidence based on table extraction success
         table_quality = len(tables) / max(1, len(page_tables or []))
-        confidence = confidence_scorer.score_extraction_method('pdfplumber_digital', table_quality)
+        confidence = confidence_scorer.score_extraction_method("pdfplumber_digital", table_quality)
 
         return PDFPage(
             page_number=page_num + 1,
@@ -303,11 +304,11 @@ class EnhancedPDFExtractor:
             tables=tables,
             images=[],
             bbox_info=bbox_info,
-            extraction_method='pdfplumber_digital',
-            confidence=confidence
+            extraction_method="pdfplumber_digital",
+            confidence=confidence,
         )
 
-    def _extract_page_camelot(self, page_num: int, flavor: str = 'lattice') -> PDFPage:
+    def _extract_page_camelot(self, page_num: int, flavor: str = "lattice") -> PDFPage:
         """Extract page using Camelot (specialized for tables)."""
         page_str = str(page_num + 1)
 
@@ -316,18 +317,14 @@ class EnhancedPDFExtractor:
         table_quality = 0.0
 
         try:
-            camelot_tables = camelot.read_pdf(
-                self.pdf_path,
-                pages=page_str,
-                flavor=flavor
-            )
+            camelot_tables = camelot.read_pdf(self.pdf_path, pages=page_str, flavor=flavor)
 
             quality_scores = []
             for table in camelot_tables:
-                if table.accuracy > self.config.get('min_table_confidence', 0.7):
+                if table.accuracy > self.config.get("min_table_confidence", 0.7):
                     df = table.df
                     # Clean the table
-                    df = df.replace('', pd.NA).dropna(how='all')
+                    df = df.replace("", pd.NA).dropna(how="all")
                     df = df.loc[:, df.notna().any()]
 
                     if not df.empty:
@@ -348,7 +345,7 @@ class EnhancedPDFExtractor:
         except Exception:
             pass
 
-        method_name = f'camelot_{flavor}'
+        method_name = f"camelot_{flavor}"
         confidence = confidence_scorer.score_extraction_method(method_name, table_quality)
 
         return PDFPage(
@@ -358,7 +355,7 @@ class EnhancedPDFExtractor:
             images=[],
             bbox_info={},
             extraction_method=method_name,
-            confidence=confidence
+            confidence=confidence,
         )
 
     def _extract_page_ocr(self, page_num: int) -> PDFPage:
@@ -366,10 +363,7 @@ class EnhancedPDFExtractor:
         try:
             # Convert PDF page to image
             images = convert_from_path(
-                self.pdf_path,
-                first_page=page_num + 1,
-                last_page=page_num + 1,
-                dpi=300
+                self.pdf_path, first_page=page_num + 1, last_page=page_num + 1, dpi=300
             )
 
             if not images:
@@ -388,7 +382,7 @@ class EnhancedPDFExtractor:
 
             # OCR confidence based on text quality
             ocr_quality = self._calculate_text_quality(text)
-            confidence = confidence_scorer.score_extraction_method('ocr_tesseract', ocr_quality)
+            confidence = confidence_scorer.score_extraction_method("ocr_tesseract", ocr_quality)
 
             return PDFPage(
                 page_number=page_num + 1,
@@ -396,8 +390,8 @@ class EnhancedPDFExtractor:
                 tables=tables,
                 images=[image],
                 bbox_info={},
-                extraction_method='ocr_tesseract',
-                confidence=confidence
+                extraction_method="ocr_tesseract",
+                confidence=confidence,
             )
 
         except Exception as e:
@@ -436,7 +430,7 @@ class EnhancedPDFExtractor:
         if not text:
             return tables
 
-        lines = text.split('\n')
+        lines = text.split("\n")
 
         # Look for lines that might be table rows (contain multiple fields)
         potential_rows = []
@@ -446,10 +440,10 @@ class EnhancedPDFExtractor:
                 continue
 
             # Look for lines with multiple "fields" (separated by whitespace or tabs)
-            fields = [f.strip() for f in re.split(r'\s{2,}|\t', line) if f.strip()]
+            fields = [f.strip() for f in re.split(r"\s{2,}|\t", line) if f.strip()]
 
             # Heuristic: likely table row if has 3+ fields with at least one number
-            if len(fields) >= 3 and any(re.search(r'\d', field) for field in fields):
+            if len(fields) >= 3 and any(re.search(r"\d", field) for field in fields):
                 potential_rows.append(fields)
 
         # If we found potential rows, try to create a table
@@ -461,7 +455,7 @@ class EnhancedPDFExtractor:
                 # Pad rows to same length
                 normalized_rows = []
                 for row in potential_rows:
-                    padded_row = row + [''] * (max_cols - len(row))
+                    padded_row = row + [""] * (max_cols - len(row))
                     normalized_rows.append(padded_row[:max_cols])
 
                 if len(normalized_rows) > 1:
@@ -469,7 +463,7 @@ class EnhancedPDFExtractor:
                     data = normalized_rows[1:]
 
                     df = pd.DataFrame(data, columns=headers)
-                    df = df.dropna(how='all').reset_index(drop=True)
+                    df = df.dropna(how="all").reset_index(drop=True)
 
                     if not df.empty:
                         tables.append(df)
@@ -491,15 +485,15 @@ class EnhancedPDFExtractor:
 
         # Count recognizable words vs garbage characters
         words = text.split()
-        recognizable_words = sum(1 for word in words if re.match(r'^[A-Za-z0-9$.,%-]+$', word))
+        recognizable_words = sum(1 for word in words if re.match(r"^[A-Za-z0-9$.,%-]+$", word))
         word_quality = recognizable_words / max(1, len(words))
 
         # Check for common OCR errors
-        error_chars = sum(1 for char in text if char in '|§¦¨©«»°±²³')
+        error_chars = sum(1 for char in text if char in "|§¦¨©«»°±²³")
         error_penalty = min(0.3, error_chars / total_chars)
 
         # Check for reasonable line structure
-        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
         avg_line_length = sum(len(line) for line in lines) / max(1, len(lines))
         structure_score = min(1.0, avg_line_length / 50) if avg_line_length > 0 else 0
 

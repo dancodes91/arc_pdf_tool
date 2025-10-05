@@ -3,6 +3,7 @@ Simple authentication module for API endpoints.
 
 Provides basic authentication utilities for the FastAPI application.
 """
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
@@ -12,7 +13,7 @@ security = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> str:
     """
     Extract current user from authentication credentials.
@@ -47,14 +48,14 @@ def require_admin(current_user: str = Depends(get_current_user)) -> str:
     if current_user == "anonymous":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required for admin operations"
+            detail="Authentication required for admin operations",
         )
 
     return current_user
 
 
 def get_optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> Optional[str]:
     """
     Get current user if authenticated, otherwise None.

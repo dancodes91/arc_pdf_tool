@@ -4,10 +4,11 @@ Advanced table processing for PDF parsing.
 Handles header welding, merged cell recovery, cross-page stitching,
 and other table heuristics for robust data extraction.
 """
+
 import re
 import logging
 import pandas as pd
-from typing import List, Dict, Tuple, Optional, Any, Union
+from typing import List, Dict, Tuple, Union
 from dataclasses import dataclass
 import numpy as np
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TableStructure:
     """Metadata about table structure."""
+
     has_multi_row_header: bool
     merged_cells: List[Tuple[int, int, int, int]]  # (start_row, end_row, start_col, end_col)
     header_rows: int
@@ -28,6 +30,7 @@ class TableStructure:
 @dataclass
 class ProcessedTable:
     """Result of table processing."""
+
     dataframe: pd.DataFrame
     structure: TableStructure
     original_shape: Tuple[int, int]
@@ -46,9 +49,12 @@ class TableProcessor:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
-    def process_table(self, table_data: Union[pd.DataFrame, List[List]],
-                     page_number: int = 0,
-                     table_index: int = 0) -> ProcessedTable:
+    def process_table(
+        self,
+        table_data: Union[pd.DataFrame, List[List]],
+        page_number: int = 0,
+        table_index: int = 0,
+    ) -> ProcessedTable:
         """
         Process a raw table with all heuristics.
 
@@ -72,7 +78,7 @@ class TableProcessor:
                 structure=TableStructure(False, [], 0, 0, 0.0, ""),
                 original_shape=(0, 0),
                 processing_notes=["Empty table"],
-                confidence=0.0
+                confidence=0.0,
             )
 
         original_shape = df.shape
@@ -80,7 +86,7 @@ class TableProcessor:
 
         # Step 1: Detect and weld multi-row headers
         df, header_info = self._weld_headers(df)
-        if header_info['welded']:
+        if header_info["welded"]:
             processing_notes.append(f"Welded {header_info['rows']} header rows")
 
         # Step 2: Recover merged cells
@@ -103,7 +109,7 @@ class TableProcessor:
             structure=structure,
             original_shape=original_shape,
             processing_notes=processing_notes,
-            confidence=confidence
+            confidence=confidence,
         )
 
     def _weld_headers(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict]:
@@ -117,7 +123,7 @@ class TableProcessor:
             Tuple of (processed_df, header_info)
         """
         if len(df) < 2:
-            return df, {'welded': False, 'rows': 0}
+            return df, {"welded": False, "rows": 0}
 
         # Look for header patterns in first few rows
         header_candidates = []
@@ -138,7 +144,7 @@ class TableProcessor:
                 break
 
         if len(header_rows) <= 1:
-            return df, {'welded': False, 'rows': 0}
+            return df, {"welded": False, "rows": 0}
 
         # Weld headers together
         welded_header = []
@@ -147,11 +153,11 @@ class TableProcessor:
             header_parts = []
             for row_idx in header_rows:
                 cell_value = str(df.iloc[row_idx, col_idx]).strip()
-                if cell_value and cell_value.lower() not in ['nan', 'none', '']:
+                if cell_value and cell_value.lower() not in ["nan", "none", ""]:
                     header_parts.append(cell_value)
 
             # Join with space, remove duplicates
-            welded_text = ' '.join(dict.fromkeys(header_parts))  # Preserves order, removes dupes
+            welded_text = " ".join(dict.fromkeys(header_parts))  # Preserves order, removes dupes
             welded_header.append(welded_text or f"col_{col_idx}")
 
         # Create new DataFrame with welded header
@@ -160,7 +166,7 @@ class TableProcessor:
         new_df.columns = welded_header
         new_df.reset_index(drop=True, inplace=True)
 
-        return new_df, {'welded': True, 'rows': len(header_rows)}
+        return new_df, {"welded": True, "rows": len(header_rows)}
 
     def _is_header_row(self, row: pd.Series, df: pd.DataFrame) -> bool:
         """
@@ -173,12 +179,23 @@ class TableProcessor:
         Returns:
             True if row appears to be a header
         """
-        row_text = ' '.join(str(cell) for cell in row).lower()
+        row_text = " ".join(str(cell) for cell in row).lower()
 
         # Header indicators
         header_keywords = [
-            'model', 'description', 'price', 'series', 'size', 'finish',
-            'code', 'name', 'qty', 'quantity', 'part', 'sku', 'item'
+            "model",
+            "description",
+            "price",
+            "series",
+            "size",
+            "finish",
+            "code",
+            "name",
+            "qty",
+            "quantity",
+            "part",
+            "sku",
+            "item",
         ]
 
         # Check for header keywords
@@ -201,11 +218,11 @@ class TableProcessor:
     def _is_numeric_or_price(self, text: str) -> bool:
         """Check if text represents a number or price."""
         text = text.strip()
-        if not text or text.lower() in ['nan', 'none', '']:
+        if not text or text.lower() in ["nan", "none", ""]:
             return False
 
         # Remove currency symbols and check if numeric
-        clean_text = re.sub(r'[$,]', '', text)
+        clean_text = re.sub(r"[$,]", "", text)
         try:
             float(clean_text)
             return True
@@ -239,7 +256,7 @@ class TableProcessor:
             for row_idx in range(len(col_data)):
                 cell_value = str(col_data.iloc[row_idx]).strip()
 
-                if cell_value and cell_value.lower() not in ['nan', 'none', '']:
+                if cell_value and cell_value.lower() not in ["nan", "none", ""]:
                     # Non-empty cell
                     if span_start is not None and current_value:
                         # End of merged span - fill it
@@ -268,7 +285,7 @@ class TableProcessor:
             for col_idx in range(len(row_data)):
                 cell_value = str(row_data.iloc[col_idx]).strip()
 
-                if cell_value and cell_value.lower() not in ['nan', 'none', '']:
+                if cell_value and cell_value.lower() not in ["nan", "none", ""]:
                     # Non-empty cell
                     if span_start is not None and current_value:
                         # End of merged span
@@ -328,16 +345,17 @@ class TableProcessor:
 
     def _convert_to_numeric(self, column: pd.Series) -> pd.Series:
         """Convert a column to numeric, handling currency and formatting."""
+
         def clean_numeric(text):
             if pd.isna(text):
                 return np.nan
 
             text = str(text).strip()
-            if not text or text.lower() in ['nan', 'none', '']:
+            if not text or text.lower() in ["nan", "none", ""]:
                 return np.nan
 
             # Remove currency symbols and formatting
-            cleaned = re.sub(r'[$,]', '', text)
+            cleaned = re.sub(r"[$,]", "", text)
             try:
                 return float(cleaned)
             except ValueError:
@@ -345,8 +363,9 @@ class TableProcessor:
 
         return column.apply(clean_numeric)
 
-    def _analyze_structure(self, df: pd.DataFrame, merged_cells: List,
-                          header_info: Dict) -> TableStructure:
+    def _analyze_structure(
+        self, df: pd.DataFrame, merged_cells: List, header_info: Dict
+    ) -> TableStructure:
         """
         Analyze table structure and create metadata.
 
@@ -365,17 +384,17 @@ class TableProcessor:
         data_rows = len(df)
         if data_rows > 2:
             # Remove potential footer rows (totals, etc.)
-            last_row_text = ' '.join(str(cell) for cell in df.iloc[-1]).lower()
-            if any(word in last_row_text for word in ['total', 'subtotal', 'sum']):
+            last_row_text = " ".join(str(cell) for cell in df.iloc[-1]).lower()
+            if any(word in last_row_text for word in ["total", "subtotal", "sum"]):
                 data_rows -= 1
 
         structure = TableStructure(
-            has_multi_row_header=header_info.get('welded', False),
+            has_multi_row_header=header_info.get("welded", False),
             merged_cells=merged_cells,
-            header_rows=header_info.get('rows', 1),
+            header_rows=header_info.get("rows", 1),
             data_rows=data_rows,
             confidence=0.0,  # Will be calculated separately
-            fingerprint=fingerprint
+            fingerprint=fingerprint,
         )
 
         return structure
@@ -394,23 +413,25 @@ class TableProcessor:
             return "empty"
 
         # Use column names and basic structure
-        col_signature = '|'.join(str(col).lower()[:10] for col in df.columns)
+        col_signature = "|".join(str(col).lower()[:10] for col in df.columns)
         shape_signature = f"{len(df.columns)}x{len(df)}"
 
         # Sample some data patterns
         data_patterns = []
         for col_idx in range(min(3, len(df.columns))):
             col_data = df.iloc[:, col_idx].head(3)
-            pattern = ''.join('N' if self._is_numeric_or_price(str(val)) else 'T'
-                            for val in col_data)
+            pattern = "".join(
+                "N" if self._is_numeric_or_price(str(val)) else "T" for val in col_data
+            )
             data_patterns.append(pattern)
 
-        pattern_signature = ','.join(data_patterns)
+        pattern_signature = ",".join(data_patterns)
 
         return f"{col_signature}#{shape_signature}#{pattern_signature}"
 
-    def _calculate_confidence(self, df: pd.DataFrame, structure: TableStructure,
-                            original_shape: Tuple[int, int]) -> float:
+    def _calculate_confidence(
+        self, df: pd.DataFrame, structure: TableStructure, original_shape: Tuple[int, int]
+    ) -> float:
         """
         Calculate confidence in table processing results.
 
@@ -430,9 +451,12 @@ class TableProcessor:
         # Factor 1: Data completeness
         total_cells = df.shape[0] * df.shape[1]
         if total_cells > 0:
-            non_empty_cells = sum(1 for _, row in df.iterrows()
-                                for cell in row
-                                if str(cell).strip() and str(cell).lower() not in ['nan', 'none'])
+            non_empty_cells = sum(
+                1
+                for _, row in df.iterrows()
+                for cell in row
+                if str(cell).strip() and str(cell).lower() not in ["nan", "none"]
+            )
             completeness = non_empty_cells / total_cells
             confidence_factors.append(min(completeness * 2, 1.0))  # Weight completeness
 
@@ -444,9 +468,12 @@ class TableProcessor:
                 col_data = df.iloc[:, col_idx].dropna()
                 if len(col_data) > 1:
                     # Check if most values in column are same type
-                    numeric_ratio = sum(1 for val in col_data
-                                      if self._is_numeric_or_price(str(val))) / len(col_data)
-                    consistency = max(numeric_ratio, 1 - numeric_ratio)  # Either mostly numeric or mostly text
+                    numeric_ratio = sum(
+                        1 for val in col_data if self._is_numeric_or_price(str(val))
+                    ) / len(col_data)
+                    consistency = max(
+                        numeric_ratio, 1 - numeric_ratio
+                    )  # Either mostly numeric or mostly text
                     type_consistency += consistency
 
             if len(df.columns) > 0:
@@ -466,7 +493,7 @@ class TableProcessor:
             header_quality = 0
             for col_name in df.columns:
                 col_name_str = str(col_name).strip()
-                if col_name_str and col_name_str not in ['0', '1', '2', 'col_0', 'col_1']:
+                if col_name_str and col_name_str not in ["0", "1", "2", "col_0", "col_1"]:
                     header_quality += 1
             header_quality = header_quality / len(df.columns) if len(df.columns) > 0 else 0
             confidence_factors.append(header_quality)
@@ -545,13 +572,17 @@ class TableProcessor:
             return True
 
         # Check column compatibility
-        if (len(table1.dataframe.columns) == len(table2.dataframe.columns) and
-            table1.dataframe.columns.tolist() == table2.dataframe.columns.tolist()):
+        if (
+            len(table1.dataframe.columns) == len(table2.dataframe.columns)
+            and table1.dataframe.columns.tolist() == table2.dataframe.columns.tolist()
+        ):
             return True
 
         # Check structure similarity (flexible matching)
-        if (abs(len(table1.dataframe.columns) - len(table2.dataframe.columns)) <= 1 and
-            table1.structure.has_multi_row_header == table2.structure.has_multi_row_header):
+        if (
+            abs(len(table1.dataframe.columns) - len(table2.dataframe.columns)) <= 1
+            and table1.structure.has_multi_row_header == table2.structure.has_multi_row_header
+        ):
 
             # Check if column patterns are similar
             pattern1 = self._get_column_patterns(table1.dataframe)
@@ -571,9 +602,9 @@ class TableProcessor:
         for col_idx in range(len(df.columns)):
             col_data = df.iloc[:, col_idx].head(3)  # Sample first few rows
             if self._column_looks_numeric(col_data):
-                patterns.append('N')
+                patterns.append("N")
             else:
-                patterns.append('T')
+                patterns.append("T")
         return patterns
 
     def _stitch_tables(self, tables: List[ProcessedTable]) -> ProcessedTable:
@@ -603,12 +634,12 @@ class TableProcessor:
             elif len(df.columns) < len(target_columns):
                 # Pad with empty columns
                 for i in range(len(target_columns) - len(df.columns)):
-                    df[f'pad_col_{i}'] = ''
+                    df[f"pad_col_{i}"] = ""
                 df.columns = target_columns
                 aligned_dfs.append(df)
             else:
                 # Truncate extra columns
-                df_truncated = df.iloc[:, :len(target_columns)]
+                df_truncated = df.iloc[:, : len(target_columns)]
                 df_truncated.columns = target_columns
                 aligned_dfs.append(df_truncated)
 
@@ -627,7 +658,9 @@ class TableProcessor:
         for table in tables:
             # Adjust merged cell coordinates for combined table
             for start_row, end_row, start_col, end_col in table.structure.merged_cells:
-                merged_cells.append((start_row + row_offset, end_row + row_offset, start_col, end_col))
+                merged_cells.append(
+                    (start_row + row_offset, end_row + row_offset, start_col, end_col)
+                )
             row_offset += len(table.dataframe)
 
         combined_structure = TableStructure(
@@ -636,7 +669,7 @@ class TableProcessor:
             header_rows=tables[0].structure.header_rows,
             data_rows=sum(table.structure.data_rows for table in tables),
             confidence=sum(table.structure.confidence for table in tables) / len(tables),
-            fingerprint=tables[0].structure.fingerprint
+            fingerprint=tables[0].structure.fingerprint,
         )
 
         # Calculate combined confidence
@@ -645,8 +678,10 @@ class TableProcessor:
         return ProcessedTable(
             dataframe=combined_df,
             structure=combined_structure,
-            original_shape=(sum(table.original_shape[0] for table in tables),
-                          tables[0].original_shape[1]),
+            original_shape=(
+                sum(table.original_shape[0] for table in tables),
+                tables[0].original_shape[1],
+            ),
             processing_notes=all_notes,
-            confidence=combined_confidence
+            confidence=combined_confidence,
         )

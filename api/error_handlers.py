@@ -4,6 +4,7 @@ FastAPI error handlers for structured exception handling.
 Provides consistent error responses with proper HTTP status codes,
 logging, and monitoring integration for all application exceptions.
 """
+
 import traceback
 from typing import Dict, Any
 from datetime import datetime
@@ -11,9 +12,8 @@ from datetime import datetime
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from core.exceptions import BaseArcException, categorize_exception, ErrorCategory
+from core.exceptions import BaseArcException, categorize_exception
 from core.observability import get_logger, capture_exception, metrics_collector
 from core.resilience import get_resilience_status
 
@@ -53,17 +53,13 @@ async def handle_arc_exception(request: Request, exc: BaseArcException) -> JSONR
 
     # Set timestamp if not already set
     if exc.timestamp is None:
-        exc.timestamp = datetime.utcnow().isoformat() + 'Z'
+        exc.timestamp = datetime.utcnow().isoformat() + "Z"
 
     # Extract request context
     request_context = await extract_request_context(request)
 
     # Log the exception with full context
-    logger.error(
-        f"ARC Exception: {exc.message}",
-        exception=exc,
-        **request_context
-    )
+    logger.error(f"ARC Exception: {exc.message}", exception=exc, **request_context)
 
     # Track metrics
     metrics_collector.increment_counter(f"errors_{exc.category.value}")
@@ -79,8 +75,8 @@ async def handle_arc_exception(request: Request, exc: BaseArcException) -> JSONR
             "code": exc.error_code,
             "message": exc.user_message,
             "category": exc.category.value,
-            "timestamp": exc.timestamp
-        }
+            "timestamp": exc.timestamp,
+        },
     }
 
     # Add retry information if available
@@ -92,7 +88,7 @@ async def handle_arc_exception(request: Request, exc: BaseArcException) -> JSONR
         response_data["error"]["debug"] = {
             "internal_message": exc.message,
             "context": exc.context,
-            "request_id": request_context.get("request_id")
+            "request_id": request_context.get("request_id"),
         }
 
     # Set retry-after header if specified
@@ -100,11 +96,7 @@ async def handle_arc_exception(request: Request, exc: BaseArcException) -> JSONR
     if exc.retry_after:
         headers["Retry-After"] = str(exc.retry_after)
 
-    return JSONResponse(
-        status_code=exc.http_status,
-        content=response_data,
-        headers=headers
-    )
+    return JSONResponse(status_code=exc.http_status, content=response_data, headers=headers)
 
 
 async def handle_http_exception(request: Request, exc: HTTPException) -> JSONResponse:
@@ -116,7 +108,7 @@ async def handle_http_exception(request: Request, exc: HTTPException) -> JSONRes
         f"HTTP Exception: {exc.detail}",
         error_code="HTTP_EXCEPTION",
         http_status=exc.status_code,
-        **request_context
+        **request_context,
     )
 
     metrics_collector.increment_counter(f"http_status_{exc.status_code}")
@@ -127,19 +119,14 @@ async def handle_http_exception(request: Request, exc: HTTPException) -> JSONRes
             "code": "HTTP_ERROR",
             "message": exc.detail,
             "category": "validation" if exc.status_code < 500 else "system",
-            "timestamp": datetime.utcnow().isoformat() + 'Z'
-        }
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        },
     }
 
     if should_include_debug_info():
-        response_data["error"]["debug"] = {
-            "request_id": request_context.get("request_id")
-        }
+        response_data["error"]["debug"] = {"request_id": request_context.get("request_id")}
 
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=response_data
-    )
+    return JSONResponse(status_code=exc.status_code, content=response_data)
 
 
 async def handle_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -150,17 +137,19 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
     # Extract validation error details
     validation_errors = []
     for error in exc.errors():
-        validation_errors.append({
-            "field": ".".join(str(loc) for loc in error["loc"]),
-            "message": error["msg"],
-            "type": error["type"]
-        })
+        validation_errors.append(
+            {
+                "field": ".".join(str(loc) for loc in error["loc"]),
+                "message": error["msg"],
+                "type": error["type"],
+            }
+        )
 
     logger.warning(
         "Request validation failed",
         error_code="VALIDATION_ERROR",
         validation_errors=validation_errors,
-        **request_context
+        **request_context,
     )
 
     metrics_collector.increment_counter("validation_errors")
@@ -172,21 +161,18 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
             "code": "VALIDATION_ERROR",
             "message": "Request validation failed",
             "category": "validation",
-            "timestamp": datetime.utcnow().isoformat() + 'Z',
-            "validation_errors": validation_errors
-        }
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "validation_errors": validation_errors,
+        },
     }
 
     if should_include_debug_info():
         response_data["error"]["debug"] = {
             "request_id": request_context.get("request_id"),
-            "raw_errors": exc.errors()
+            "raw_errors": exc.errors(),
         }
 
-    return JSONResponse(
-        status_code=422,
-        content=response_data
-    )
+    return JSONResponse(status_code=422, content=response_data)
 
 
 async def handle_general_exception(request: Request, exc: Exception) -> JSONResponse:
@@ -202,7 +188,7 @@ async def handle_general_exception(request: Request, exc: Exception) -> JSONResp
         exception=exc,
         error_code=exc_info.get("error_code", "UNKNOWN_ERROR"),
         exception_type=type(exc).__name__,
-        **request_context
+        **request_context,
     )
 
     # Track metrics
@@ -218,8 +204,8 @@ async def handle_general_exception(request: Request, exc: Exception) -> JSONResp
             "code": exc_info.get("error_code", "INTERNAL_ERROR"),
             "message": "An internal error occurred",
             "category": exc_info.get("category", "system"),
-            "timestamp": datetime.utcnow().isoformat() + 'Z'
-        }
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        },
     }
 
     if should_include_debug_info():
@@ -227,13 +213,10 @@ async def handle_general_exception(request: Request, exc: Exception) -> JSONResp
             "internal_message": str(exc),
             "exception_type": type(exc).__name__,
             "stack_trace": traceback.format_exc(),
-            "request_id": request_context.get("request_id")
+            "request_id": request_context.get("request_id"),
         }
 
-    return JSONResponse(
-        status_code=exc_info.get("http_status", 500),
-        content=response_data
-    )
+    return JSONResponse(status_code=exc_info.get("http_status", 500), content=response_data)
 
 
 async def extract_request_context(request: Request) -> Dict[str, Any]:
@@ -271,6 +254,7 @@ async def extract_request_context(request: Request) -> Dict[str, Any]:
 def should_include_debug_info() -> bool:
     """Determine if debug information should be included in error responses."""
     import os
+
     environment = os.getenv("ENVIRONMENT", "development")
     return environment.lower() in ["development", "testing", "staging"]
 
@@ -286,16 +270,18 @@ async def health_check_handler(request: Request) -> JSONResponse:
     try:
         # Get system status
         resilience_status = get_resilience_status()
-        metrics_summary = metrics_collector.get_metrics_summary()
+        metrics_collector.get_metrics_summary()
 
         # Calculate error rate (last 5 minutes)
         recent_metrics = metrics_collector.get_recent_metrics()
         error_count = sum(
-            len(metrics) for name, metrics in recent_metrics.items()
+            len(metrics)
+            for name, metrics in recent_metrics.items()
             if name.startswith("errors_") or name.startswith("http_status_5")
         )
         total_requests = sum(
-            len(metrics) for name, metrics in recent_metrics.items()
+            len(metrics)
+            for name, metrics in recent_metrics.items()
             if name.startswith("http_status_")
         )
         error_rate = (error_count / total_requests) if total_requests > 0 else 0.0
@@ -310,34 +296,31 @@ async def health_check_handler(request: Request) -> JSONResponse:
 
         health_data = {
             "status": "healthy" if is_healthy else "unhealthy",
-            "timestamp": datetime.utcnow().isoformat() + 'Z',
+            "timestamp": datetime.utcnow().isoformat() + "Z",
             "version": "1.0.0",  # Would come from config
             "checks": {
                 "error_rate": {
                     "status": "pass" if error_rate < 0.05 else "fail",
                     "value": f"{error_rate:.2%}",
-                    "threshold": "5%"
+                    "threshold": "5%",
                 },
                 "circuit_breakers": {
                     "status": "pass" if circuit_breakers_healthy else "fail",
-                    "details": resilience_status["circuit_breakers"]
+                    "details": resilience_status["circuit_breakers"],
                 },
                 "active_operations": {
                     "status": "pass",
-                    "count": len(resilience_status["active_operations"])
-                }
+                    "count": len(resilience_status["active_operations"]),
+                },
             },
             "metrics": {
                 "requests_total": total_requests,
                 "errors_total": error_count,
-                "error_rate": error_rate
-            }
+                "error_rate": error_rate,
+            },
         }
 
-        return JSONResponse(
-            status_code=200 if is_healthy else 503,
-            content=health_data
-        )
+        return JSONResponse(status_code=200 if is_healthy else 503, content=health_data)
 
     except Exception as exc:
         logger = get_logger()
@@ -347,9 +330,9 @@ async def health_check_handler(request: Request) -> JSONResponse:
             status_code=503,
             content={
                 "status": "unhealthy",
-                "timestamp": datetime.utcnow().isoformat() + 'Z',
-                "error": "Health check failed"
-            }
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "error": "Health check failed",
+            },
         )
 
 
@@ -369,7 +352,7 @@ async def error_stats_handler(request: Request) -> JSONResponse:
             "error_counts_by_category": {},
             "error_counts_by_status": {},
             "recent_errors": {},
-            "error_trends": {}
+            "error_trends": {},
         }
 
         # Process counters
@@ -390,10 +373,10 @@ async def error_stats_handler(request: Request) -> JSONResponse:
         return JSONResponse(
             status_code=200,
             content={
-                "timestamp": datetime.utcnow().isoformat() + 'Z',
+                "timestamp": datetime.utcnow().isoformat() + "Z",
                 "error_statistics": error_stats,
-                "resilience_status": get_resilience_status()
-            }
+                "resilience_status": get_resilience_status(),
+            },
         )
 
     except Exception as exc:
@@ -404,6 +387,6 @@ async def error_stats_handler(request: Request) -> JSONResponse:
             status_code=500,
             content={
                 "error": "Failed to retrieve error statistics",
-                "timestamp": datetime.utcnow().isoformat() + 'Z'
-            }
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+            },
         )

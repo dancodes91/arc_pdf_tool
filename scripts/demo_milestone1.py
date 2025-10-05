@@ -12,7 +12,7 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from parsers.shared.confidence import ConfidenceScorer, ConfidenceLevel
+from parsers.shared.confidence import ConfidenceScorer
 from parsers.shared.normalization import DataNormalizer
 from parsers.shared.provenance import ProvenanceTracker
 from parsers.select.sections import SelectSectionExtractor
@@ -56,7 +56,9 @@ def demonstrate_normalization():
     print("Price Normalization:")
     for price in test_prices:
         result = normalizer.normalize_price(price)
-        print(f"  '{price}' -> ${result['value']:.2f} (confidence: {result['confidence'].score:.2f})")
+        print(
+            f"  '{price}' -> ${result['value']:.2f} (confidence: {result['confidence'].score:.2f})"
+        )
 
     # SKU normalization
     test_skus = ["BB1100-US3", "bb1100us3", "BB1100 US3", "BB-1100_US3"]
@@ -70,8 +72,10 @@ def demonstrate_normalization():
     print("\nDate Normalization:")
     for date_str in test_dates:
         result = normalizer.normalize_date(date_str)
-        if result['value']:
-            print(f"  '{date_str}' -> {result['value']} (confidence: {result['confidence'].score:.2f})")
+        if result["value"]:
+            print(
+                f"  '{date_str}' -> {result['value']} (confidence: {result['confidence'].score:.2f})"
+            )
         else:
             print(f"  '{date_str}' -> No date found")
 
@@ -90,7 +94,7 @@ def demonstrate_provenance_tracking():
         data_type="finish_symbol",
         raw_text="US3 Satin Chrome $12.50",
         page_number=1,
-        confidence=0.95
+        confidence=0.95,
     )
 
     product_item = tracker.create_parsed_item(
@@ -98,14 +102,18 @@ def demonstrate_provenance_tracking():
         data_type="product",
         raw_text="BB1100US3 $125.50",
         page_number=2,
-        confidence=0.90
+        confidence=0.90,
     )
 
-    print(f"Finish Item: {finish_item.value['code']} from page {finish_item.provenance.page_number}")
+    print(
+        f"Finish Item: {finish_item.value['code']} from page {finish_item.provenance.page_number}"
+    )
     print(f"  Confidence: {finish_item.confidence:.2f}")
     print(f"  Source: '{finish_item.provenance.raw_text}'")
 
-    print(f"\nProduct Item: {product_item.value['sku']} from page {product_item.provenance.page_number}")
+    print(
+        f"\nProduct Item: {product_item.value['sku']} from page {product_item.provenance.page_number}"
+    )
     print(f"  Confidence: {product_item.confidence:.2f}")
     print(f"  Source: '{product_item.provenance.raw_text}'")
 
@@ -127,7 +135,9 @@ def demonstrate_select_parser():
 
     effective_date = extractor.extract_effective_date(date_text.strip())
     if effective_date:
-        print(f"Effective Date: {effective_date.value} (confidence: {effective_date.confidence:.2f})")
+        print(
+            f"Effective Date: {effective_date.value} (confidence: {effective_date.confidence:.2f})"
+        )
 
     # Test options extraction
     options_text = """
@@ -141,7 +151,9 @@ def demonstrate_select_parser():
     print(f"\nNet Add Options Found: {len(options)}")
     for option in options[:3]:
         opt_data = option.value
-        print(f"  {opt_data['option_code']}: {opt_data['option_name']} (+${opt_data['adder_value']:.2f})")
+        print(
+            f"  {opt_data['option_code']}: {opt_data['option_name']} (+${opt_data['adder_value']:.2f})"
+        )
 
 
 def demonstrate_hager_parser():
@@ -211,12 +223,9 @@ def demonstrate_export_capabilities():
             "parser_version": "2.0",
             "extraction_method": "enhanced_pipeline",
             "total_pages": 45,
-            "overall_confidence": 0.89
+            "overall_confidence": 0.89,
         },
-        "effective_date": {
-            "value": "2025-04-07",
-            "confidence": 0.95
-        },
+        "effective_date": {"value": "2025-04-07", "confidence": 0.95},
         "products": [
             {
                 "value": {
@@ -226,7 +235,7 @@ def demonstrate_export_capabilities():
                     "description": "Ball Bearing Heavy Duty",
                     "base_price": 125.50,
                     "manufacturer": "SELECT",
-                    "is_active": True
+                    "is_active": True,
                 }
             },
             {
@@ -237,9 +246,9 @@ def demonstrate_export_capabilities():
                     "description": "Ball Bearing Heavy Duty",
                     "base_price": 128.75,
                     "manufacturer": "SELECT",
-                    "is_active": True
+                    "is_active": True,
                 }
-            }
+            },
         ],
         "finish_symbols": [
             {
@@ -248,7 +257,7 @@ def demonstrate_export_capabilities():
                     "name": "Satin Chrome",
                     "bhma_code": "US3",
                     "description": "Satin Chrome Finish",
-                    "base_price": 12.50
+                    "base_price": 12.50,
                 }
             },
             {
@@ -257,17 +266,17 @@ def demonstrate_export_capabilities():
                     "name": "Bright Chrome",
                     "bhma_code": "US4",
                     "description": "Bright Chrome Finish",
-                    "base_price": 15.75
+                    "base_price": 15.75,
                 }
-            }
+            },
         ],
         "summary": {
             "total_products": 2,
             "total_finishes": 2,
             "total_rules": 0,
             "total_options": 0,
-            "has_effective_date": True
-        }
+            "has_effective_date": True,
+        },
     }
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -279,8 +288,8 @@ def demonstrate_export_capabilities():
             print(f"  {export_type}: {Path(file_path).name} ({file_size} bytes)")
 
         # Show sample of JSON export
-        if 'results_json' in files_created:
-            with open(files_created['results_json'], 'r') as f:
+        if "results_json" in files_created:
+            with open(files_created["results_json"], "r") as f:
                 json_data = json.load(f)
                 print(f"\nJSON Export Summary:")
                 print(f"  Manufacturer: {json_data['manufacturer']}")
@@ -299,7 +308,7 @@ def demonstrate_test_coverage():
         "SELECT Parser Tests": {"total": 13, "passing": 13},
         "Hager Parser Tests": {"total": 13, "passing": 13},
         "Export System Tests": {"total": 10, "passing": 10},
-        "ETL Loader Tests": {"total": 8, "passing": 8}
+        "ETL Loader Tests": {"total": 8, "passing": 8},
     }
 
     total_tests = sum(stats["total"] for stats in test_stats.values())
@@ -346,7 +355,7 @@ def main():
         "✅ ETL Loader for Database Integration",
         "✅ CSV/XLSX/JSON Export System",
         "✅ Command-line Parsing and Export Tool",
-        "✅ 59/59 Tests Passing (100% Coverage)"
+        "✅ 59/59 Tests Passing (100% Coverage)",
     ]
 
     for feature in completed_features:
@@ -365,7 +374,7 @@ def main():
         "services/ (etl_loader.py, exporters.py)",
         "database/ (enhanced models with migrations)",
         "tests/ (comprehensive test suites)",
-        "scripts/ (CLI tools and demos)"
+        "scripts/ (CLI tools and demos)",
     ]
 
     for file_group in key_files:

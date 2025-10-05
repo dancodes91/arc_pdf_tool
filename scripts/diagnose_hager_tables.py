@@ -1,10 +1,10 @@
 """
 Diagnostic script to understand Hager PDF table structures.
 """
+
 import pdfplumber
 import camelot
-import json
-from pathlib import Path
+
 
 def diagnose_page(pdf_path: str, page_num: int):
     """Diagnose a single page to see table structure."""
@@ -39,11 +39,7 @@ def diagnose_page(pdf_path: str, page_num: int):
     # Extract with Camelot
     print(f"\n--- TABLES FOUND WITH CAMELOT (lattice) ---")
     try:
-        tables_lattice = camelot.read_pdf(
-            pdf_path,
-            pages=str(page_num),
-            flavor='lattice'
-        )
+        tables_lattice = camelot.read_pdf(pdf_path, pages=str(page_num), flavor="lattice")
         print(f"Number of tables: {len(tables_lattice)}")
 
         for i, table in enumerate(tables_lattice):
@@ -59,11 +55,7 @@ def diagnose_page(pdf_path: str, page_num: int):
 
     print(f"\n--- TABLES FOUND WITH CAMELOT (stream) ---")
     try:
-        tables_stream = camelot.read_pdf(
-            pdf_path,
-            pages=str(page_num),
-            flavor='stream'
-        )
+        tables_stream = camelot.read_pdf(pdf_path, pages=str(page_num), flavor="stream")
         print(f"Number of tables: {len(tables_stream)}")
 
         for i, table in enumerate(tables_stream):
@@ -92,26 +84,30 @@ def find_product_pages(pdf_path: str, max_pages: int = 50):
             text = page.extract_text() or ""
 
             # Check for product indicators
-            has_price = '$' in text
-            has_model = any(pattern in text for pattern in ['BB', 'ECBB', 'WT'])
-            has_finish = any(pattern in text for pattern in ['US3', 'US4', 'US10', 'US26'])
+            has_price = "$" in text
+            has_model = any(pattern in text for pattern in ["BB", "ECBB", "WT"])
+            has_finish = any(pattern in text for pattern in ["US3", "US4", "US10", "US26"])
 
             tables = page.extract_tables()
             has_tables = len(tables) > 0
 
             if has_tables and has_price and (has_model or has_finish):
-                product_pages.append({
-                    'page': page_num,
-                    'has_price': has_price,
-                    'has_model': has_model,
-                    'has_finish': has_finish,
-                    'table_count': len(tables)
-                })
+                product_pages.append(
+                    {
+                        "page": page_num,
+                        "has_price": has_price,
+                        "has_model": has_model,
+                        "has_finish": has_finish,
+                        "table_count": len(tables),
+                    }
+                )
 
     print(f"\nFound {len(product_pages)} pages with potential products:")
     for p in product_pages[:20]:  # Show first 20
-        print(f"  Page {p['page']}: {p['table_count']} tables, "
-              f"price={p['has_price']}, model={p['has_model']}, finish={p['has_finish']}")
+        print(
+            f"  Page {p['page']}: {p['table_count']} tables, "
+            f"price={p['has_price']}, model={p['has_model']}, finish={p['has_finish']}"
+        )
 
     return product_pages
 
@@ -129,7 +125,7 @@ def find_finish_pages(pdf_path: str, max_pages: int = 50):
             page = pdf.pages[page_num - 1]
             text = (page.extract_text() or "").upper()
 
-            if 'FINISH' in text and 'SYMBOL' in text:
+            if "FINISH" in text and "SYMBOL" in text:
                 finish_pages.append(page_num)
                 print(f"\nPage {page_num} - FOUND FINISH SYMBOLS")
                 print(f"Text excerpt:")
@@ -152,8 +148,10 @@ if __name__ == "__main__":
 
     if product_pages:
         print(f"\n\nDIAGNOSING FIRST PRODUCT PAGE: {product_pages[0]['page']}")
-        diagnose_page(pdf_path, product_pages[0]['page'])
+        diagnose_page(pdf_path, product_pages[0]["page"])
 
         if len(product_pages) > 5:
-            print(f"\n\nDIAGNOSING MIDDLE PRODUCT PAGE: {product_pages[len(product_pages)//2]['page']}")
-            diagnose_page(pdf_path, product_pages[len(product_pages)//2]['page'])
+            print(
+                f"\n\nDIAGNOSING MIDDLE PRODUCT PAGE: {product_pages[len(product_pages)//2]['page']}"
+            )
+            diagnose_page(pdf_path, product_pages[len(product_pages) // 2]["page"])

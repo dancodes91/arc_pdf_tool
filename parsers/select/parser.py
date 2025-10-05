@@ -1,13 +1,12 @@
 """
 Enhanced SELECT Hinges parser using shared utilities.
 """
+
 import logging
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
 from ..shared.pdf_io import EnhancedPDFExtractor, PDFDocument
-from ..shared.confidence import confidence_scorer, ConfidenceScore
-from ..shared.normalization import data_normalizer
 from ..shared.provenance import ProvenanceTracker, ParsedItem, ProvenanceAnalyzer
 from .sections import SelectSectionExtractor
 
@@ -114,8 +113,8 @@ class SelectHingesParser:
         self.logger.info(f"Found {len(self.net_add_options)} net add options")
         for option in self.net_add_options:
             if isinstance(option.value, dict):
-                code = option.value.get('option_code', 'Unknown')
-                price = option.value.get('adder_value', 0)
+                code = option.value.get("option_code", "Unknown")
+                price = option.value.get("adder_value", 0)
                 self.logger.debug(f"  {code}: ${price}")
 
     def _parse_model_tables(self, text: str, tables: List[Any]) -> None:
@@ -126,7 +125,7 @@ class SelectHingesParser:
 
         # Process EVERY page - try multiple extraction methods
         for page in self.document.pages:
-            page_text = page.text or ''
+            page_text = page.text or ""
             page_num = page.page_number
 
             # Always try Camelot first (prefer structured output)
@@ -138,7 +137,7 @@ class SelectHingesParser:
             page_tables = camelot_tables if camelot_tables else page.tables
 
             # If NO tables found but page has SL## text, try with stream flavor
-            if not page_tables and 'SL' in page_text.upper():
+            if not page_tables and "SL" in page_text.upper():
                 stream_tables = self.section_extractor.extract_tables_with_camelot(
                     self.pdf_path, page_num, flavor="stream"
                 )
@@ -155,13 +154,15 @@ class SelectHingesParser:
                     pages_processed.append(page_num)
                     self.logger.debug(f"Page {page_num}: extracted {len(page_products)} products")
 
-        self.logger.info(f"Found {len(self.products)} products across {len(pages_processed)} pages: {pages_processed}")
+        self.logger.info(
+            f"Found {len(self.products)} products across {len(pages_processed)} pages: {pages_processed}"
+        )
 
         # Log sample products for verification
         for i, product in enumerate(self.products[:5]):  # First 5 products
             if isinstance(product.value, dict):
-                sku = product.value.get('sku', 'Unknown')
-                price = product.value.get('base_price', 0)
+                sku = product.value.get("sku", "Unknown")
+                price = product.value.get("base_price", 0)
                 self.logger.debug(f"  {sku}: ${price}")
 
     def _build_results(self) -> Dict[str, Any]:
@@ -179,61 +180,61 @@ class SelectHingesParser:
 
         # Build structured results
         results = {
-            'manufacturer': 'SELECT Hinges',
-            'source_file': self.pdf_path,
-            'parsing_metadata': {
-                'parser_version': '2.0',
-                'extraction_method': 'enhanced_pipeline',
-                'total_pages': len(self.document.pages) if self.document else 0,
-                'overall_confidence': quality_analysis['quality_score'],
-                'extraction_quality': quality_analysis
+            "manufacturer": "SELECT Hinges",
+            "source_file": self.pdf_path,
+            "parsing_metadata": {
+                "parser_version": "2.0",
+                "extraction_method": "enhanced_pipeline",
+                "total_pages": len(self.document.pages) if self.document else 0,
+                "overall_confidence": quality_analysis["quality_score"],
+                "extraction_quality": quality_analysis,
             },
-            'effective_date': self._serialize_item(self.effective_date),
-            'net_add_options': [self._serialize_item(item) for item in self.net_add_options],
-            'products': [self._serialize_item(item) for item in self.products],
-            'finish_symbols': [self._serialize_item(item) for item in self.finishes],
-            'summary': {
-                'total_products': len(self.products),
-                'total_finishes': len(self.finishes),
-                'total_options': len(self.net_add_options),
-                'has_effective_date': self.effective_date is not None,
-                'confidence_distribution': quality_analysis.get('confidence_distribution', {}),
-                'recommendations': quality_analysis.get('recommendations', [])
-            }
+            "effective_date": self._serialize_item(self.effective_date),
+            "net_add_options": [self._serialize_item(item) for item in self.net_add_options],
+            "products": [self._serialize_item(item) for item in self.products],
+            "finish_symbols": [self._serialize_item(item) for item in self.finishes],
+            "summary": {
+                "total_products": len(self.products),
+                "total_finishes": len(self.finishes),
+                "total_options": len(self.net_add_options),
+                "has_effective_date": self.effective_date is not None,
+                "confidence_distribution": quality_analysis.get("confidence_distribution", {}),
+                "recommendations": quality_analysis.get("recommendations", []),
+            },
         }
 
         # Add validation results
-        results['validation'] = self._validate_results(results)
+        results["validation"] = self._validate_results(results)
 
         return results
 
     def _build_error_results(self, error_message: str) -> Dict[str, Any]:
         """Build results when parsing fails."""
         return {
-            'manufacturer': 'SELECT Hinges',
-            'source_file': self.pdf_path,
-            'parsing_metadata': {
-                'parser_version': '2.0',
-                'extraction_method': 'enhanced_pipeline',
-                'status': 'failed',
-                'error': error_message
+            "manufacturer": "SELECT Hinges",
+            "source_file": self.pdf_path,
+            "parsing_metadata": {
+                "parser_version": "2.0",
+                "extraction_method": "enhanced_pipeline",
+                "status": "failed",
+                "error": error_message,
             },
-            'effective_date': None,
-            'net_add_options': [],
-            'products': [],
-            'summary': {
-                'total_products': 0,
-                'total_options': 0,
-                'has_effective_date': False,
-                'parsing_failed': True,
-                'error_message': error_message
+            "effective_date": None,
+            "net_add_options": [],
+            "products": [],
+            "summary": {
+                "total_products": 0,
+                "total_options": 0,
+                "has_effective_date": False,
+                "parsing_failed": True,
+                "error_message": error_message,
             },
-            'validation': {
-                'is_valid': False,
-                'errors': [f"Parsing failed: {error_message}"],
-                'warnings': [],
-                'accuracy_metrics': {}
-            }
+            "validation": {
+                "is_valid": False,
+                "errors": [f"Parsing failed: {error_message}"],
+                "warnings": [],
+                "accuracy_metrics": {},
+            },
         }
 
     def _serialize_item(self, item: Optional[ParsedItem]) -> Optional[Dict[str, Any]]:
@@ -242,71 +243,68 @@ class SelectHingesParser:
             return None
 
         return {
-            'value': item.value,
-            'data_type': item.data_type,
-            'normalized_value': item.normalized_value,
-            'confidence': item.confidence,
-            'provenance': item.provenance.to_dict() if item.provenance else None,
-            'validation_errors': item.validation_errors
+            "value": item.value,
+            "data_type": item.data_type,
+            "normalized_value": item.normalized_value,
+            "confidence": item.confidence,
+            "provenance": item.provenance.to_dict() if item.provenance else None,
+            "validation_errors": item.validation_errors,
         }
 
     def _validate_results(self, results: Dict[str, Any]) -> Dict[str, Any]:
         """Validate parsing results."""
-        validation = {
-            'is_valid': True,
-            'errors': [],
-            'warnings': [],
-            'accuracy_metrics': {}
-        }
+        validation = {"is_valid": True, "errors": [], "warnings": [], "accuracy_metrics": {}}
 
         # Check for effective date
-        if not results['effective_date']:
-            validation['warnings'].append("No effective date found")
+        if not results["effective_date"]:
+            validation["warnings"].append("No effective date found")
 
         # Check product count
-        product_count = len(results['products'])
+        product_count = len(results["products"])
         if product_count == 0:
-            validation['errors'].append("No products extracted")
-            validation['is_valid'] = False
+            validation["errors"].append("No products extracted")
+            validation["is_valid"] = False
         elif product_count < 10:
-            validation['warnings'].append(f"Low product count: {product_count}")
+            validation["warnings"].append(f"Low product count: {product_count}")
 
         # Check option count
-        option_count = len(results['net_add_options'])
+        option_count = len(results["net_add_options"])
         if option_count == 0:
-            validation['warnings'].append("No net add options found")
+            validation["warnings"].append("No net add options found")
 
         # Calculate accuracy metrics
         total_items = product_count + option_count
         if total_items > 0:
             # Count items with high confidence
             high_confidence_count = 0
-            for item_list in [results['products'], results['net_add_options']]:
+            for item_list in [results["products"], results["net_add_options"]]:
                 for item in item_list:
-                    if item and item.get('confidence', 0) >= 0.8:
+                    if item and item.get("confidence", 0) >= 0.8:
                         high_confidence_count += 1
 
             confidence_rate = high_confidence_count / total_items
-            validation['accuracy_metrics']['confidence_rate'] = confidence_rate
+            validation["accuracy_metrics"]["confidence_rate"] = confidence_rate
 
             if confidence_rate < 0.7:
-                validation['warnings'].append(f"Low confidence rate: {confidence_rate:.1%}")
+                validation["warnings"].append(f"Low confidence rate: {confidence_rate:.1%}")
 
         # Overall validation
-        if len(validation['errors']) == 0 and len(validation['warnings']) <= 2:
-            validation['accuracy_metrics']['overall_quality'] = 'good'
-        elif len(validation['errors']) == 0:
-            validation['accuracy_metrics']['overall_quality'] = 'acceptable'
+        if len(validation["errors"]) == 0 and len(validation["warnings"]) <= 2:
+            validation["accuracy_metrics"]["overall_quality"] = "good"
+        elif len(validation["errors"]) == 0:
+            validation["accuracy_metrics"]["overall_quality"] = "acceptable"
         else:
-            validation['accuracy_metrics']['overall_quality'] = 'poor'
+            validation["accuracy_metrics"]["overall_quality"] = "poor"
 
         return validation
 
     def _get_summary(self) -> str:
         """Get parsing summary for logging."""
-        return (f"{len(self.products)} products, "
-                f"{len(self.net_add_options)} options, "
-                f"effective_date={'found' if self.effective_date else 'not_found'}")
+        return (
+            f"{len(self.products)} products, "
+            f"{len(self.net_add_options)} options, "
+            f"effective_date={'found' if self.effective_date else 'not_found'}"
+        )
 
     def get_provenance_report(self) -> str:
         """Generate detailed provenance report."""
@@ -330,39 +328,40 @@ class SelectHingesParser:
         if self.effective_date:
             date_file = output_path / "effective_date.json"
             import json
-            with open(date_file, 'w') as f:
+
+            with open(date_file, "w") as f:
                 json.dump(self._serialize_item(self.effective_date), f, indent=2, default=str)
-            files_created['effective_date'] = str(date_file)
+            files_created["effective_date"] = str(date_file)
 
         # Export options
         if self.net_add_options:
             options_file = output_path / "net_add_options.json"
-            with open(options_file, 'w') as f:
+            with open(options_file, "w") as f:
                 options_data = [self._serialize_item(item) for item in self.net_add_options]
                 json.dump(options_data, f, indent=2, default=str)
-            files_created['options'] = str(options_file)
+            files_created["options"] = str(options_file)
 
         # Export products (sample)
         if self.products:
             products_file = output_path / "products_sample.json"
             sample_products = self.products[:10]  # First 10 products
-            with open(products_file, 'w') as f:
+            with open(products_file, "w") as f:
                 products_data = [self._serialize_item(item) for item in sample_products]
                 json.dump(products_data, f, indent=2, default=str)
-            files_created['products'] = str(products_file)
+            files_created["products"] = str(products_file)
 
         # Export provenance report
         provenance_file = output_path / "provenance_report.txt"
-        with open(provenance_file, 'w') as f:
+        with open(provenance_file, "w") as f:
             f.write(self.get_provenance_report())
-        files_created['provenance'] = str(provenance_file)
+        files_created["provenance"] = str(provenance_file)
 
         return files_created
 
     def identify_manufacturer(self) -> str:
         """Identify manufacturer from PDF content for compatibility with app.py."""
         # Extract text if not already done
-        if not hasattr(self, 'document') or not self.document:
+        if not hasattr(self, "document") or not self.document:
             try:
                 self.document = self.pdf_extractor.extract_document()
             except Exception:
@@ -371,24 +370,27 @@ class SelectHingesParser:
         # Get text content
         text = self._combine_text_content()
         if not text:
-            return 'select_hinges'  # Default for SELECT parser
+            return "select_hinges"  # Default for SELECT parser
 
         # Look for SELECT indicators
         text_lower = text.lower()
         select_indicators = [
-            'select hinges', 'select hardware', 'selecthinges',
-            'manufactured by select', 'select hinge'
+            "select hinges",
+            "select hardware",
+            "selecthinges",
+            "manufactured by select",
+            "select hinge",
         ]
 
         for indicator in select_indicators:
             if indicator in text_lower:
-                return 'select_hinges'
+                return "select_hinges"
 
         # Check for Hager indicators (in case wrong parser was used)
-        hager_indicators = ['hager', 'hager companies', 'architectural hardware group']
+        hager_indicators = ["hager", "hager companies", "architectural hardware group"]
         for indicator in hager_indicators:
             if indicator in text_lower:
-                return 'hager'
+                return "hager"
 
         # Default to select_hinges for this parser
-        return 'select_hinges'
+        return "select_hinges"

@@ -2,12 +2,13 @@
 Enhanced PDF extractor that integrates page classification, table processing,
 and OCR fallback for robust parsing.
 """
+
 import logging
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 import pandas as pd
 
-from .page_classifier import PageClassifier, PageAnalysis, ExtractionMethod, route_extraction
+from .page_classifier import PageClassifier, PageAnalysis, route_extraction
 from .table_processor import TableProcessor, ProcessedTable
 from .ocr_processor import OCRProcessor, OCRConfig, extract_with_ocr_fallback
 from .pdf_io import EnhancedPDFExtractor, PDFDocument
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EnhancedExtractionResult:
     """Result of enhanced extraction process."""
+
     text: str
     tables: List[ProcessedTable]
     page_analysis: PageAnalysis
@@ -43,16 +45,14 @@ class HardenedExtractor:
         # Initialize components
         self.page_classifier = PageClassifier()
         self.table_processor = TableProcessor()
-        self.ocr_processor = OCRProcessor(
-            OCRConfig(**self.config.get('ocr', {}))
-        )
+        self.ocr_processor = OCRProcessor(OCRConfig(**self.config.get("ocr", {})))
         self.base_extractor = EnhancedPDFExtractor(pdf_path, config)
         self.provenance_tracker = ProvenanceTracker(pdf_path)
 
         # Hardening thresholds
-        self.ocr_text_threshold = self.config.get('ocr_text_threshold', 50)
-        self.table_confidence_threshold = self.config.get('table_confidence_threshold', 0.3)
-        self.cross_page_stitch = self.config.get('cross_page_stitch', True)
+        self.ocr_text_threshold = self.config.get("ocr_text_threshold", 50)
+        self.table_confidence_threshold = self.config.get("table_confidence_threshold", 0.3)
+        self.cross_page_stitch = self.config.get("cross_page_stitch", True)
 
     def extract_document_hardened(self) -> Tuple[PDFDocument, List[EnhancedExtractionResult]]:
         """
@@ -97,29 +97,27 @@ class HardenedExtractor:
 
         # Step 1: Classify page and get routing recommendation
         page_analysis = self.page_classifier.classify_page(
-            page_text=base_text,
-            page_number=page_number,
-            tables=base_tables,
-            page_features={}
+            page_text=base_text, page_number=page_number, tables=base_tables, page_features={}
         )
 
-        extraction_config = route_extraction(page_analysis, {'text': base_text, 'tables': base_tables})
+        extraction_config = route_extraction(
+            page_analysis, {"text": base_text, "tables": base_tables}
+        )
         processing_notes = [f"Page classified as: {page_analysis.page_type.value}"]
 
         # Step 2: Apply method-specific extraction
         final_text = base_text
         final_tables = []
         ocr_result = None
-        method_used = extraction_config['method']
+        method_used = extraction_config["method"]
 
         try:
-            if extraction_config['ocr_fallback'] or method_used == 'ocr_fallback':
+            if extraction_config["ocr_fallback"] or method_used == "ocr_fallback":
                 # OCR fallback path
                 final_text, raw_tables, ocr_result = extract_with_ocr_fallback(
-                    self.pdf_path, page_number, base_text, base_tables,
-                    self.ocr_processor.config
+                    self.pdf_path, page_number, base_text, base_tables, self.ocr_processor.config
                 )
-                method_used = 'ocr_fallback'
+                method_used = "ocr_fallback"
                 processing_notes.append("OCR fallback applied")
 
                 # Process OCR tables
@@ -129,12 +127,12 @@ class HardenedExtractor:
                     )
                     final_tables.append(processed_table)
 
-            elif method_used in ['camelot_lattice', 'camelot_stream']:
+            elif method_used in ["camelot_lattice", "camelot_stream"]:
                 # Enhanced Camelot extraction with processing
-                raw_tables = self._extract_tables_camelot(
-                    page_number, extraction_config
+                raw_tables = self._extract_tables_camelot(page_number, extraction_config)
+                processing_notes.append(
+                    f"Camelot {extraction_config.get('camelot_flavor', 'lattice')} extraction"
                 )
-                processing_notes.append(f"Camelot {extraction_config.get('camelot_flavor', 'lattice')} extraction")
 
                 # Process each table with hardening
                 for table in raw_tables:
@@ -143,7 +141,7 @@ class HardenedExtractor:
                     )
                     final_tables.append(processed_table)
 
-            elif method_used == 'pdfplumber':
+            elif method_used == "pdfplumber":
                 # Enhanced pdfplumber extraction
                 if base_tables:
                     for table in base_tables:
@@ -168,7 +166,7 @@ class HardenedExtractor:
             processing_notes.append(f"Fallback to base extraction due to: {str(e)}")
 
         # Step 3: Apply rotated text handling if needed
-        if page_analysis.features.get('needs_rotation_detection', False):
+        if page_analysis.features.get("needs_rotation_detection", False):
             final_text = self._handle_rotated_text(final_text, page_number)
             processing_notes.append("Rotated text handling applied")
 
@@ -183,7 +181,7 @@ class HardenedExtractor:
             page_analysis=page_analysis,
             ocr_result=ocr_result,
             extraction_method_used=method_used,
-            processing_notes=processing_notes or []
+            processing_notes=processing_notes or [],
         )
 
     def _extract_tables_camelot(self, page_number: int, config: Dict) -> List[pd.DataFrame]:
@@ -191,26 +189,27 @@ class HardenedExtractor:
         try:
             import camelot
 
-            flavor = config.get('camelot_flavor', 'lattice')
+            flavor = config.get("camelot_flavor", "lattice")
             kwargs = {}
 
-            if flavor == 'lattice':
-                kwargs.update({
-                    'edge_tol': config.get('edge_tol', 50),
-                    'row_tol': config.get('row_tol', 2),
-                })
+            if flavor == "lattice":
+                kwargs.update(
+                    {
+                        "edge_tol": config.get("edge_tol", 50),
+                        "row_tol": config.get("row_tol", 2),
+                    }
+                )
             else:  # stream
-                kwargs.update({
-                    'row_tol': config.get('row_tol', 2),
-                    'col_tol': config.get('col_tol', 0),
-                })
+                kwargs.update(
+                    {
+                        "row_tol": config.get("row_tol", 2),
+                        "col_tol": config.get("col_tol", 0),
+                    }
+                )
 
             # Extract tables
             tables = camelot.read_pdf(
-                self.pdf_path,
-                pages=str(page_number),
-                flavor=flavor,
-                **kwargs
+                self.pdf_path, pages=str(page_number), flavor=flavor, **kwargs
             )
 
             return [table.df for table in tables]
@@ -219,7 +218,9 @@ class HardenedExtractor:
             self.logger.error(f"Camelot extraction failed for page {page_number}: {e}")
             return []
 
-    def _apply_cross_page_processing(self, page_results: List[EnhancedExtractionResult]) -> List[EnhancedExtractionResult]:
+    def _apply_cross_page_processing(
+        self, page_results: List[EnhancedExtractionResult]
+    ) -> List[EnhancedExtractionResult]:
         """
         Apply cross-page processing like table stitching.
 
@@ -245,7 +246,9 @@ class HardenedExtractor:
 
             # Redistribute stitched tables back to pages
             if len(stitched_tables) != len(all_tables):
-                self.logger.info(f"Table stitching: {len(all_tables)} -> {len(stitched_tables)} tables")
+                self.logger.info(
+                    f"Table stitching: {len(all_tables)} -> {len(stitched_tables)} tables"
+                )
 
                 # Simple redistribution - assign stitched tables to first relevant page
                 table_idx = 0
@@ -261,7 +264,9 @@ class HardenedExtractor:
 
                     result.tables = new_tables
                     if len(new_tables) != original_count:
-                        result.processing_notes.append(f"Cross-page stitching applied: {original_count} -> {len(new_tables)} tables")
+                        result.processing_notes.append(
+                            f"Cross-page stitching applied: {original_count} -> {len(new_tables)} tables"
+                        )
 
         return page_results
 
@@ -281,7 +286,7 @@ class HardenedExtractor:
         # to detect and correct text rotation
 
         # Simple heuristic: if text has unusual patterns, try to fix
-        lines = text.split('\n')
+        lines = text.split("\n")
 
         # Look for patterns that suggest rotation issues
         unusual_patterns = 0
@@ -313,16 +318,16 @@ class HardenedExtractor:
         import re
 
         # Normalize currency symbols
-        text = re.sub(r'\$\s+', '$', text)  # Remove space after $
-        text = re.sub(r'(\d)\s*,\s*(\d{3})', r'\1,\2', text)  # Fix comma spacing in numbers
-        text = re.sub(r'(\d)\s+\.(\d{2})', r'\1.\2', text)  # Fix decimal spacing
+        text = re.sub(r"\$\s+", "$", text)  # Remove space after $
+        text = re.sub(r"(\d)\s*,\s*(\d{3})", r"\1,\2", text)  # Fix comma spacing in numbers
+        text = re.sub(r"(\d)\s+\.(\d{2})", r"\1.\2", text)  # Fix decimal spacing
 
         # Normalize common units
         unit_normalizations = {
-            r'\binches?\b': 'in',
-            r'\bfeet\b': 'ft',
-            r'\bpounds?\b': 'lbs',
-            r'\bkilograms?\b': 'kg',
+            r"\binches?\b": "in",
+            r"\bfeet\b": "ft",
+            r"\bpounds?\b": "lbs",
+            r"\bkilograms?\b": "kg",
         }
 
         for pattern, replacement in unit_normalizations.items():
@@ -349,8 +354,8 @@ class HardenedExtractor:
             column = new_df.iloc[:, col_idx]
 
             # Check if column contains prices
-            sample_text = ' '.join(str(val) for val in column.head(5))
-            if '$' in sample_text:
+            sample_text = " ".join(str(val) for val in column.head(5))
+            if "$" in sample_text:
                 # Normalize price formatting in this column
                 def normalize_price(val):
                     if pd.isna(val):
@@ -358,16 +363,18 @@ class HardenedExtractor:
 
                     val_str = str(val)
                     # Remove extra spaces around currency
-                    val_str = re.sub(r'\$\s+', '$', val_str)
+                    val_str = re.sub(r"\$\s+", "$", val_str)
                     # Fix decimal spacing
-                    val_str = re.sub(r'(\d)\s+\.(\d{2})', r'\1.\2', val_str)
+                    val_str = re.sub(r"(\d)\s+\.(\d{2})", r"\1.\2", val_str)
                     return val_str
 
                 new_df.iloc[:, col_idx] = column.apply(normalize_price)
 
         return new_df
 
-    def extract_section_hardened(self, section_type: str, page_range: Optional[Tuple[int, int]] = None) -> List[Any]:
+    def extract_section_hardened(
+        self, section_type: str, page_range: Optional[Tuple[int, int]] = None
+    ) -> List[Any]:
         """
         Extract a specific section with hardening techniques.
 
@@ -384,23 +391,27 @@ class HardenedExtractor:
         if page_range:
             start_page, end_page = page_range
             relevant_results = [
-                result for result in page_results
+                result
+                for result in page_results
                 if start_page <= result.page_analysis.page_number <= end_page
             ]
         else:
             # Filter by page type relevance
             type_mapping = {
-                'finish_symbols': ['finish_symbols', 'mixed_content'],
-                'price_rules': ['price_rules', 'mixed_content'],
-                'products': ['data_table', 'mixed_content'],
-                'options': ['option_list', 'mixed_content']
+                "finish_symbols": ["finish_symbols", "mixed_content"],
+                "price_rules": ["price_rules", "mixed_content"],
+                "products": ["data_table", "mixed_content"],
+                "options": ["option_list", "mixed_content"],
             }
 
-            relevant_types = type_mapping.get(section_type, ['mixed_content'])
+            relevant_types = type_mapping.get(section_type, ["mixed_content"])
             relevant_results = [
-                result for result in page_results
+                result
+                for result in page_results
                 if result.page_analysis.page_type.value in relevant_types
             ]
 
-        self.logger.info(f"Section {section_type}: processing {len(relevant_results)} relevant pages")
+        self.logger.info(
+            f"Section {section_type}: processing {len(relevant_results)} relevant pages"
+        )
         return relevant_results

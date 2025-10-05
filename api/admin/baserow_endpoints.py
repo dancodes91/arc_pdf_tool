@@ -4,15 +4,14 @@ Admin API endpoints for Baserow publishing and synchronization management.
 Provides REST API for publishing price books to Baserow, monitoring sync status,
 and managing synchronization operations with comprehensive status tracking.
 """
+
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
-from fastapi.responses import JSONResponse, FileResponse
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
-import asyncio
 import json
 
-from services.publish_baserow import BaserowPublisher, PublishOptions, PublishResult
+from services.publish_baserow import BaserowPublisher, PublishOptions
 from integrations.baserow_client import BaserowConfig
 from models.baserow_syncs import BaserowSync
 from core.database import get_db_session, PriceBook, Manufacturer
@@ -28,7 +27,9 @@ logger = get_logger("baserow_admin")
 class PublishRequest(BaseModel):
     price_book_id: str = Field(..., description="ID of the price book to publish")
     dry_run: bool = Field(default=False, description="Perform validation without actual sync")
-    tables_to_sync: Optional[List[str]] = Field(default=None, description="Tables to sync (default: all)")
+    tables_to_sync: Optional[List[str]] = Field(
+        default=None, description="Tables to sync (default: all)"
+    )
     force_full_sync: bool = Field(default=False, description="Force full re-sync of all data")
     chunk_size: Optional[int] = Field(default=None, description="Batch size for processing")
     max_retries: int = Field(default=3, description="Maximum retry attempts")
@@ -87,7 +88,7 @@ def get_baserow_config() -> BaserowConfig:
     if not api_token:
         raise HTTPException(
             status_code=503,
-            detail="Baserow API token not configured. Please set BASEROW_API_TOKEN environment variable."
+            detail="Baserow API token not configured. Please set BASEROW_API_TOKEN environment variable.",
         )
 
     return BaserowConfig(
@@ -97,14 +98,12 @@ def get_baserow_config() -> BaserowConfig:
         database_id=os.getenv("BASEROW_DATABASE_ID"),
         timeout_seconds=int(os.getenv("BASEROW_TIMEOUT", "300")),
         max_retries=int(os.getenv("BASEROW_MAX_RETRIES", "3")),
-        rate_limit_requests_per_minute=int(os.getenv("BASEROW_RATE_LIMIT", "60"))
+        rate_limit_requests_per_minute=int(os.getenv("BASEROW_RATE_LIMIT", "60")),
     )
 
 
 @router.get("/config", response_model=ResponseModel[BaserowConfigResponse])
-async def get_baserow_configuration(
-    current_user: str = Depends(get_current_user)
-):
+async def get_baserow_configuration(current_user: str = Depends(get_current_user)):
     """Get current Baserow configuration and connection status."""
     try:
         import os
@@ -117,7 +116,7 @@ async def get_baserow_configuration(
             "workspace_id": os.getenv("BASEROW_WORKSPACE_ID"),
             "database_id": os.getenv("BASEROW_DATABASE_ID"),
             "is_configured": is_configured,
-            "connection_status": "unknown"
+            "connection_status": "unknown",
         }
 
         if is_configured:
@@ -125,6 +124,7 @@ async def get_baserow_configuration(
                 baserow_config = get_baserow_config()
                 # Test connection
                 from integrations.baserow_client import BaserowClient
+
                 async with BaserowClient(baserow_config) as client:
                     connection_ok = await client.test_connection()
                     config_data["connection_status"] = "connected" if connection_ok else "error"
@@ -137,7 +137,7 @@ async def get_baserow_configuration(
         return ResponseModel(
             success=True,
             data=BaserowConfigResponse(**config_data),
-            message="Configuration retrieved successfully"
+            message="Configuration retrieved successfully",
         )
 
     except Exception as e:
@@ -148,7 +148,7 @@ async def get_baserow_configuration(
 async def publish_to_baserow(
     request: PublishRequest,
     background_tasks: BackgroundTasks,
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """
     Publish a price book to Baserow.
@@ -160,7 +160,9 @@ async def publish_to_baserow(
         with get_db_session() as session:
             price_book = session.query(PriceBook).filter_by(id=request.price_book_id).first()
             if not price_book:
-                raise HTTPException(status_code=404, detail=f"Price book not found: {request.price_book_id}")
+                raise HTTPException(
+                    status_code=404, detail=f"Price book not found: {request.price_book_id}"
+                )
 
         # Get Baserow configuration
         baserow_config = get_baserow_config()
@@ -171,7 +173,7 @@ async def publish_to_baserow(
             tables_to_sync=request.tables_to_sync,
             force_full_sync=request.force_full_sync,
             chunk_size=request.chunk_size,
-            max_retries=request.max_retries
+            max_retries=request.max_retries,
         )
 
         # Start background task
@@ -179,9 +181,7 @@ async def publish_to_baserow(
             # For dry runs, execute immediately and return result
             publisher = BaserowPublisher(baserow_config)
             result = await publisher.publish_price_book(
-                price_book_id=request.price_book_id,
-                options=options,
-                user_id=current_user
+                price_book_id=request.price_book_id, options=options, user_id=current_user
             )
 
             return ResponseModel(
@@ -189,10 +189,12 @@ async def publish_to_baserow(
                 data=PublishResponse(
                     sync_id="dry_run",
                     status="completed",
-                    message="Dry run completed successfully" if result.success else "Dry run failed",
-                    started_at=datetime.utcnow()
+                    message=(
+                        "Dry run completed successfully" if result.success else "Dry run failed"
+                    ),
+                    started_at=datetime.utcnow(),
                 ),
-                message="Dry run executed immediately"
+                message="Dry run executed immediately",
             )
         else:
             # Create sync record
@@ -201,7 +203,7 @@ async def publish_to_baserow(
                     price_book_id=request.price_book_id,
                     user_id=current_user,
                     options=options.__dict__,
-                    dry_run=request.dry_run
+                    dry_run=request.dry_run,
                 )
                 sync_record.status = "running"
                 session.add(sync_record)
@@ -215,7 +217,7 @@ async def publish_to_baserow(
                 request.price_book_id,
                 options,
                 baserow_config,
-                current_user
+                current_user,
             )
 
             return ResponseModel(
@@ -224,9 +226,9 @@ async def publish_to_baserow(
                     sync_id=sync_id,
                     status="running",
                     message="Publishing started in background",
-                    started_at=datetime.utcnow()
+                    started_at=datetime.utcnow(),
                 ),
-                message=f"Publish operation started. Monitor progress at /admin/baserow/sync/{sync_id}"
+                message=f"Publish operation started. Monitor progress at /admin/baserow/sync/{sync_id}",
             )
 
     except HTTPException:
@@ -237,10 +239,7 @@ async def publish_to_baserow(
 
 
 @router.get("/sync/{sync_id}", response_model=ResponseModel[SyncStatusResponse])
-async def get_sync_status(
-    sync_id: str,
-    current_user: str = Depends(get_current_user)
-):
+async def get_sync_status(sync_id: str, current_user: str = Depends(get_current_user)):
     """Get detailed status of a sync operation."""
     try:
         with get_db_session() as session:
@@ -256,8 +255,16 @@ async def get_sync_status(
                     sync_id=sync_data["id"],
                     price_book_id=sync_data["price_book_id"],
                     status=sync_data["status"],
-                    started_at=datetime.fromisoformat(sync_data["started_at"]) if sync_data["started_at"] else None,
-                    completed_at=datetime.fromisoformat(sync_data["completed_at"]) if sync_data["completed_at"] else None,
+                    started_at=(
+                        datetime.fromisoformat(sync_data["started_at"])
+                        if sync_data["started_at"]
+                        else None
+                    ),
+                    completed_at=(
+                        datetime.fromisoformat(sync_data["completed_at"])
+                        if sync_data["completed_at"]
+                        else None
+                    ),
                     duration_seconds=sync_data["duration_seconds"],
                     rows_processed=sync_data["rows_processed"] or 0,
                     rows_created=sync_data["rows_created"] or 0,
@@ -265,9 +272,9 @@ async def get_sync_status(
                     tables_synced=sync_data["tables_synced"],
                     errors=sync_data["errors"],
                     warnings=sync_data["warnings"],
-                    summary=sync_data["summary"]
+                    summary=sync_data["summary"],
                 ),
-                message="Sync status retrieved successfully"
+                message="Sync status retrieved successfully",
             )
 
     except HTTPException:
@@ -282,12 +289,14 @@ async def list_sync_operations(
     status: Optional[str] = Query(None, description="Filter by status"),
     limit: int = Query(50, description="Maximum number of results"),
     offset: int = Query(0, description="Number of results to skip"),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """List recent sync operations with optional filtering."""
     try:
         with get_db_session() as session:
-            query = session.query(BaserowSync).join(PriceBook, BaserowSync.price_book_id == PriceBook.id)
+            query = session.query(BaserowSync).join(
+                PriceBook, BaserowSync.price_book_id == PriceBook.id
+            )
 
             # Apply filters
             if price_book_id:
@@ -303,22 +312,22 @@ async def list_sync_operations(
             # Convert to response format
             sync_list = []
             for sync in syncs:
-                sync_list.append(SyncListResponse(
-                    sync_id=sync.id,
-                    price_book_id=sync.price_book_id,
-                    manufacturer=sync.price_book.manufacturer if sync.price_book else None,
-                    status=sync.status,
-                    started_at=sync.started_at,
-                    completed_at=sync.completed_at,
-                    duration_seconds=sync.duration_seconds,
-                    rows_processed=sync.rows_processed or 0,
-                    initiated_by=sync.initiated_by
-                ))
+                sync_list.append(
+                    SyncListResponse(
+                        sync_id=sync.id,
+                        price_book_id=sync.price_book_id,
+                        manufacturer=sync.price_book.manufacturer if sync.price_book else None,
+                        status=sync.status,
+                        started_at=sync.started_at,
+                        completed_at=sync.completed_at,
+                        duration_seconds=sync.duration_seconds,
+                        rows_processed=sync.rows_processed or 0,
+                        initiated_by=sync.initiated_by,
+                    )
+                )
 
             return ResponseModel(
-                success=True,
-                data=sync_list,
-                message=f"Retrieved {len(sync_list)} sync operations"
+                success=True, data=sync_list, message=f"Retrieved {len(sync_list)} sync operations"
             )
 
     except Exception as e:
@@ -326,10 +335,7 @@ async def list_sync_operations(
 
 
 @router.delete("/sync/{sync_id}", response_model=ResponseModel[Dict[str, str]])
-async def cancel_sync_operation(
-    sync_id: str,
-    current_user: str = Depends(get_current_user)
-):
+async def cancel_sync_operation(sync_id: str, current_user: str = Depends(get_current_user)):
     """Cancel a running sync operation."""
     try:
         with get_db_session() as session:
@@ -339,8 +345,7 @@ async def cancel_sync_operation(
 
             if sync.status not in ["running", "pending"]:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Cannot cancel sync in status: {sync.status}"
+                    status_code=400, detail=f"Cannot cancel sync in status: {sync.status}"
                 )
 
             # Update status to cancelled
@@ -351,7 +356,7 @@ async def cancel_sync_operation(
             return ResponseModel(
                 success=True,
                 data={"sync_id": sync_id, "status": "cancelled"},
-                message="Sync operation cancelled successfully"
+                message="Sync operation cancelled successfully",
             )
 
     except HTTPException:
@@ -364,7 +369,7 @@ async def cancel_sync_operation(
 async def list_price_books_for_publishing(
     manufacturer: Optional[str] = Query(None, description="Filter by manufacturer"),
     limit: int = Query(50, description="Maximum number of results"),
-    current_user: str = Depends(get_current_user)
+    current_user: str = Depends(get_current_user),
 ):
     """List available price books that can be published to Baserow."""
     try:
@@ -372,7 +377,9 @@ async def list_price_books_for_publishing(
             query = session.query(PriceBook)
 
             if manufacturer:
-                query = query.join(PriceBook.manufacturer).filter(Manufacturer.name.ilike(f"%{manufacturer}%"))
+                query = query.join(PriceBook.manufacturer).filter(
+                    Manufacturer.name.ilike(f"%{manufacturer}%")
+                )
 
             query = query.order_by(PriceBook.effective_date.desc(), PriceBook.upload_date.desc())
             query = query.limit(limit)
@@ -383,35 +390,44 @@ async def list_price_books_for_publishing(
             book_list = []
             for book in books:
                 # Get most recent sync for this book
-                recent_sync = session.query(BaserowSync).filter_by(
-                    price_book_id=book.id
-                ).order_by(BaserowSync.started_at.desc()).first()
+                recent_sync = (
+                    session.query(BaserowSync)
+                    .filter_by(price_book_id=book.id)
+                    .order_by(BaserowSync.started_at.desc())
+                    .first()
+                )
 
                 book_info = {
                     "id": book.id,
                     "manufacturer": book.manufacturer.name if book.manufacturer else "Unknown",
-                    "effective_date": book.effective_date.isoformat() if book.effective_date else None,
-                    "filename": book.file_path.split('/')[-1] if book.file_path else 'Unknown',
+                    "effective_date": (
+                        book.effective_date.isoformat() if book.effective_date else None
+                    ),
+                    "filename": book.file_path.split("/")[-1] if book.file_path else "Unknown",
                     "created_at": book.upload_date.isoformat() if book.upload_date else None,
                     "processing_status": book.status,
-                    "last_sync": None
+                    "last_sync": None,
                 }
 
                 if recent_sync:
                     book_info["last_sync"] = {
                         "sync_id": recent_sync.id,
                         "status": recent_sync.status,
-                        "started_at": recent_sync.started_at.isoformat() if recent_sync.started_at else None,
-                        "completed_at": recent_sync.completed_at.isoformat() if recent_sync.completed_at else None,
-                        "rows_processed": recent_sync.rows_processed or 0
+                        "started_at": (
+                            recent_sync.started_at.isoformat() if recent_sync.started_at else None
+                        ),
+                        "completed_at": (
+                            recent_sync.completed_at.isoformat()
+                            if recent_sync.completed_at
+                            else None
+                        ),
+                        "rows_processed": recent_sync.rows_processed or 0,
                     }
 
                 book_list.append(book_info)
 
             return ResponseModel(
-                success=True,
-                data=book_list,
-                message=f"Retrieved {len(book_list)} price books"
+                success=True, data=book_list, message=f"Retrieved {len(book_list)} price books"
             )
 
     except Exception as e:
@@ -419,27 +435,25 @@ async def list_price_books_for_publishing(
 
 
 @router.get("/tables", response_model=ResponseModel[List[Dict[str, Any]]])
-async def list_available_tables(
-    current_user: str = Depends(get_current_user)
-):
+async def list_available_tables(current_user: str = Depends(get_current_user)):
     """List available tables for Baserow synchronization."""
     try:
         from integrations.baserow_client import ARC_SCHEMA_DEFINITIONS
 
         tables = []
         for table_name, schema in ARC_SCHEMA_DEFINITIONS.items():
-            tables.append({
-                "name": table_name,
-                "description": schema.description,
-                "field_count": len(schema.fields),
-                "natural_key_fields": schema.natural_key_fields,
-                "required_fields": [f.name for f in schema.fields if f.required]
-            })
+            tables.append(
+                {
+                    "name": table_name,
+                    "description": schema.description,
+                    "field_count": len(schema.fields),
+                    "natural_key_fields": schema.natural_key_fields,
+                    "required_fields": [f.name for f in schema.fields if f.required],
+                }
+            )
 
         return ResponseModel(
-            success=True,
-            data=tables,
-            message=f"Retrieved {len(tables)} available tables"
+            success=True, data=tables, message=f"Retrieved {len(tables)} available tables"
         )
 
     except Exception as e:
@@ -447,14 +461,13 @@ async def list_available_tables(
 
 
 @router.post("/test-connection", response_model=ResponseModel[Dict[str, Any]])
-async def test_baserow_connection(
-    current_user: str = Depends(get_current_user)
-):
+async def test_baserow_connection(current_user: str = Depends(get_current_user)):
     """Test connection to Baserow API."""
     try:
         baserow_config = get_baserow_config()
 
         from integrations.baserow_client import BaserowClient
+
         async with BaserowClient(baserow_config) as client:
             connection_ok = await client.test_connection()
 
@@ -474,15 +487,15 @@ async def test_baserow_connection(
                         "api_url": baserow_config.api_url,
                         "workspace_id": baserow_config.workspace_id,
                         "database_id": baserow_config.database_id,
-                        "workspace_info": workspace_info
+                        "workspace_info": workspace_info,
                     },
-                    message="Connection to Baserow successful"
+                    message="Connection to Baserow successful",
                 )
             else:
                 return ResponseModel(
                     success=False,
                     data={"connection_status": "failed"},
-                    message="Failed to connect to Baserow API"
+                    message="Failed to connect to Baserow API",
                 )
 
     except HTTPException:
@@ -498,7 +511,7 @@ async def _publish_background_task(
     price_book_id: str,
     options: PublishOptions,
     baserow_config: BaserowConfig,
-    user_id: str
+    user_id: str,
 ):
     """Background task to execute the publish operation."""
     try:
@@ -507,9 +520,7 @@ async def _publish_background_task(
         # Create publisher and execute
         publisher = BaserowPublisher(baserow_config)
         result = await publisher.publish_price_book(
-            price_book_id=price_book_id,
-            options=options,
-            user_id=user_id
+            price_book_id=price_book_id, options=options, user_id=user_id
         )
 
         # Update sync record with final results
@@ -519,7 +530,9 @@ async def _publish_background_task(
                 sync.update_from_result(result)
                 session.commit()
 
-        logger.info(f"Background publish task completed for sync {sync_id}, success: {result.success}")
+        logger.info(
+            f"Background publish task completed for sync {sync_id}, success: {result.success}"
+        )
 
     except Exception as e:
         logger.error(f"Background publish task failed for sync {sync_id}: {e}")
@@ -539,9 +552,7 @@ async def _publish_background_task(
 
 # Statistics endpoint
 @router.get("/stats", response_model=ResponseModel[Dict[str, Any]])
-async def get_baserow_statistics(
-    current_user: str = Depends(get_current_user)
-):
+async def get_baserow_statistics(current_user: str = Depends(get_current_user)):
     """Get Baserow synchronization statistics."""
     try:
         with get_db_session() as session:
@@ -553,23 +564,29 @@ async def get_baserow_statistics(
 
             # Get recent activity (last 30 days)
             from datetime import timedelta
+
             thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-            recent_syncs = session.query(BaserowSync).filter(
-                BaserowSync.started_at >= thirty_days_ago
-            ).count()
+            recent_syncs = (
+                session.query(BaserowSync).filter(BaserowSync.started_at >= thirty_days_ago).count()
+            )
 
             # Calculate average duration for completed syncs
             completed_syncs = session.query(BaserowSync).filter_by(status="completed").all()
             avg_duration = None
             if completed_syncs:
-                durations = [sync.duration_seconds for sync in completed_syncs if sync.duration_seconds]
+                durations = [
+                    sync.duration_seconds for sync in completed_syncs if sync.duration_seconds
+                ]
                 if durations:
                     avg_duration = sum(durations) / len(durations)
 
             # Get total rows processed
-            total_rows_processed = session.query(BaserowSync).filter(
-                BaserowSync.rows_processed.isnot(None)
-            ).with_entities(BaserowSync.rows_processed).all()
+            total_rows_processed = (
+                session.query(BaserowSync)
+                .filter(BaserowSync.rows_processed.isnot(None))
+                .with_entities(BaserowSync.rows_processed)
+                .all()
+            )
             total_rows = sum(row[0] for row in total_rows_processed if row[0])
 
             stats = {
@@ -581,13 +598,11 @@ async def get_baserow_statistics(
                 "success_rate": (successful_syncs / total_syncs * 100) if total_syncs > 0 else 0,
                 "average_duration_seconds": avg_duration,
                 "total_rows_processed": total_rows,
-                "last_updated": datetime.utcnow().isoformat()
+                "last_updated": datetime.utcnow().isoformat(),
             }
 
             return ResponseModel(
-                success=True,
-                data=stats,
-                message="Statistics retrieved successfully"
+                success=True, data=stats, message="Statistics retrieved successfully"
             )
 
     except Exception as e:

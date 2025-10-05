@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from database.models import DatabaseManager, PriceBook, Product, ProductOption
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
 def get_book_data(session, book_id: int) -> Dict[str, Any]:
@@ -42,31 +42,33 @@ def get_book_data(session, book_id: int) -> Dict[str, Any]:
         # Get options for this product
         options = session.query(ProductOption).filter_by(product_id=product.id).all()
 
-        product_data.append({
-            'id': product.id,
-            'model': product.model,
-            'sku': product.sku,
-            'description': product.description,
-            'base_price': float(product.base_price) if product.base_price else None,
-            'is_active': product.is_active,
-            'options': [
-                {
-                    'type': opt.option_type,
-                    'code': opt.option_code,
-                    'name': opt.option_name,
-                    'adder_value': float(opt.adder_value) if opt.adder_value else None
-                }
-                for opt in options
-            ]
-        })
+        product_data.append(
+            {
+                "id": product.id,
+                "model": product.model,
+                "sku": product.sku,
+                "description": product.description,
+                "base_price": float(product.base_price) if product.base_price else None,
+                "is_active": product.is_active,
+                "options": [
+                    {
+                        "type": opt.option_type,
+                        "code": opt.option_code,
+                        "name": opt.option_name,
+                        "adder_value": float(opt.adder_value) if opt.adder_value else None,
+                    }
+                    for opt in options
+                ],
+            }
+        )
 
     return {
-        'id': price_book.id,
-        'edition': price_book.edition,
-        'manufacturer': price_book.manufacturer.name if price_book.manufacturer else 'unknown',
-        'total_products': len(products),
-        'products': product_data,
-        'parsing_notes': price_book.parsing_notes
+        "id": price_book.id,
+        "edition": price_book.edition,
+        "manufacturer": price_book.manufacturer.name if price_book.manufacturer else "unknown",
+        "total_products": len(products),
+        "products": product_data,
+        "parsing_notes": price_book.parsing_notes,
     }
 
 
@@ -77,7 +79,7 @@ def calculate_row_accuracy(parsed_data: Dict, expected_count: int = None) -> Tup
     Returns:
         Tuple of (accuracy_rate, metadata)
     """
-    total_products = parsed_data['total_products']
+    total_products = parsed_data["total_products"]
 
     # If expected count is provided, use it; otherwise estimate from data
     if expected_count is None:
@@ -86,11 +88,7 @@ def calculate_row_accuracy(parsed_data: Dict, expected_count: int = None) -> Tup
 
     accuracy = total_products / expected_count if expected_count > 0 else 1.0
 
-    metadata = {
-        'extracted': total_products,
-        'expected': expected_count,
-        'accuracy': accuracy
-    }
+    metadata = {"extracted": total_products, "expected": expected_count, "accuracy": accuracy}
 
     return accuracy, metadata
 
@@ -112,7 +110,7 @@ def calculate_numeric_accuracy(products: List[Dict], sample_size: int = None) ->
     invalid_examples = []
 
     for product in products:
-        price = product.get('base_price')
+        price = product.get("base_price")
 
         if price is None:
             continue
@@ -128,39 +126,39 @@ def calculate_numeric_accuracy(products: List[Dict], sample_size: int = None) ->
                 if 0 < price_val < 10000:  # Reasonable range for door hardware
                     valid_prices += 1
                 else:
-                    invalid_examples.append({
-                        'model': product.get('model'),
-                        'price': price,
-                        'reason': 'Out of reasonable range'
-                    })
+                    invalid_examples.append(
+                        {
+                            "model": product.get("model"),
+                            "price": price,
+                            "reason": "Out of reasonable range",
+                        }
+                    )
             else:
-                invalid_examples.append({
-                    'model': product.get('model'),
-                    'price': price,
-                    'reason': 'Not numeric'
-                })
+                invalid_examples.append(
+                    {"model": product.get("model"), "price": price, "reason": "Not numeric"}
+                )
 
         except (ValueError, TypeError) as e:
-            invalid_examples.append({
-                'model': product.get('model'),
-                'price': price,
-                'reason': f'Conversion error: {e}'
-            })
+            invalid_examples.append(
+                {"model": product.get("model"), "price": price, "reason": f"Conversion error: {e}"}
+            )
 
     accuracy = valid_prices / total_prices if total_prices > 0 else 1.0
 
     metadata = {
-        'total_checked': total_prices,
-        'valid': valid_prices,
-        'invalid': total_prices - valid_prices,
-        'accuracy': accuracy,
-        'invalid_examples': invalid_examples[:10]  # First 10 examples
+        "total_checked": total_prices,
+        "valid": valid_prices,
+        "invalid": total_prices - valid_prices,
+        "accuracy": accuracy,
+        "invalid_examples": invalid_examples[:10],  # First 10 examples
     }
 
     return accuracy, metadata
 
 
-def calculate_option_mapping_accuracy(products: List[Dict], sample_size: int = None) -> Tuple[float, Dict]:
+def calculate_option_mapping_accuracy(
+    products: List[Dict], sample_size: int = None
+) -> Tuple[float, Dict]:
     """
     Calculate option→rule mapping accuracy.
 
@@ -177,7 +175,7 @@ def calculate_option_mapping_accuracy(products: List[Dict], sample_size: int = N
     mapping_issues = []
 
     for product in products:
-        options = product.get('options', [])
+        options = product.get("options", [])
 
         if not options:
             continue
@@ -187,43 +185,51 @@ def calculate_option_mapping_accuracy(products: List[Dict], sample_size: int = N
 
         for option in options:
             # Check if option has required fields
-            if not option.get('type') or not option.get('code'):
+            if not option.get("type") or not option.get("code"):
                 has_issues = True
-                mapping_issues.append({
-                    'model': product.get('model'),
-                    'issue': 'Missing type or code',
-                    'option': option
-                })
+                mapping_issues.append(
+                    {
+                        "model": product.get("model"),
+                        "issue": "Missing type or code",
+                        "option": option,
+                    }
+                )
                 break
 
             # Check if adder value is reasonable (if present)
-            adder = option.get('adder_value')
+            adder = option.get("adder_value")
             if adder and (adder < -1000 or adder > 1000):
                 has_issues = True
-                mapping_issues.append({
-                    'model': product.get('model'),
-                    'issue': f'Unreasonable adder: {adder}',
-                    'option': option
-                })
+                mapping_issues.append(
+                    {
+                        "model": product.get("model"),
+                        "issue": f"Unreasonable adder: {adder}",
+                        "option": option,
+                    }
+                )
                 break
 
         if not has_issues:
             properly_mapped += 1
 
-    accuracy = properly_mapped / total_products_with_options if total_products_with_options > 0 else 1.0
+    accuracy = (
+        properly_mapped / total_products_with_options if total_products_with_options > 0 else 1.0
+    )
 
     metadata = {
-        'products_with_options': total_products_with_options,
-        'properly_mapped': properly_mapped,
-        'with_issues': len(mapping_issues),
-        'accuracy': accuracy,
-        'issue_examples': mapping_issues[:10]
+        "products_with_options": total_products_with_options,
+        "properly_mapped": properly_mapped,
+        "with_issues": len(mapping_issues),
+        "accuracy": accuracy,
+        "issue_examples": mapping_issues[:10],
     }
 
     return accuracy, metadata
 
 
-def print_accuracy_report(book_data: Dict, row_result: Tuple, numeric_result: Tuple, option_result: Tuple):
+def print_accuracy_report(
+    book_data: Dict, row_result: Tuple, numeric_result: Tuple, option_result: Tuple
+):
     """Print comprehensive accuracy report."""
     row_acc, row_meta = row_result
     numeric_acc, numeric_meta = numeric_result
@@ -264,9 +270,9 @@ def print_accuracy_report(book_data: Dict, row_result: Tuple, numeric_result: Tu
     else:
         print(f"   ❌ FAIL (< 99%)")
 
-    if numeric_meta.get('invalid_examples'):
+    if numeric_meta.get("invalid_examples"):
         print(f"   Invalid examples:")
-        for ex in numeric_meta['invalid_examples'][:5]:
+        for ex in numeric_meta["invalid_examples"][:5]:
             print(f"     • {ex['model']}: {ex['price']} ({ex['reason']})")
     print()
 
@@ -282,9 +288,9 @@ def print_accuracy_report(book_data: Dict, row_result: Tuple, numeric_result: Tu
     else:
         print(f"   ❌ FAIL (< 95%)")
 
-    if option_meta.get('issue_examples'):
+    if option_meta.get("issue_examples"):
         print(f"   Issue examples:")
-        for ex in option_meta['issue_examples'][:5]:
+        for ex in option_meta["issue_examples"][:5]:
             print(f"     • {ex['model']}: {ex['issue']}")
     print()
 
@@ -307,12 +313,12 @@ def print_accuracy_report(book_data: Dict, row_result: Tuple, numeric_result: Tu
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Measure parsing accuracy for price book')
-    parser.add_argument('--book', type=int, required=True, help='Price book ID to measure')
-    parser.add_argument('--expected-rows', type=int, help='Expected number of products')
-    parser.add_argument('--sample', type=int, help='Sample size for numeric/option checks')
-    parser.add_argument('--export', type=str, help='Export report to JSON file')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose logging')
+    parser = argparse.ArgumentParser(description="Measure parsing accuracy for price book")
+    parser.add_argument("--book", type=int, required=True, help="Price book ID to measure")
+    parser.add_argument("--expected-rows", type=int, help="Expected number of products")
+    parser.add_argument("--sample", type=int, help="Sample size for numeric/option checks")
+    parser.add_argument("--export", type=str, help="Export report to JSON file")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose logging")
 
     args = parser.parse_args()
 
@@ -331,8 +337,10 @@ def main():
 
         # Calculate accuracies
         row_result = calculate_row_accuracy(book_data, expected_count=args.expected_rows)
-        numeric_result = calculate_numeric_accuracy(book_data['products'], sample_size=args.sample)
-        option_result = calculate_option_mapping_accuracy(book_data['products'], sample_size=args.sample)
+        numeric_result = calculate_numeric_accuracy(book_data["products"], sample_size=args.sample)
+        option_result = calculate_option_mapping_accuracy(
+            book_data["products"], sample_size=args.sample
+        )
 
         # Print report
         print_accuracy_report(book_data, row_result, numeric_result, option_result)
@@ -340,25 +348,16 @@ def main():
         # Export if requested
         if args.export:
             report = {
-                'book_id': book_data['id'],
-                'manufacturer': book_data['manufacturer'],
-                'edition': book_data['edition'],
-                'timestamp': str(logger),
-                'row_accuracy': {
-                    'rate': row_result[0],
-                    'metadata': row_result[1]
-                },
-                'numeric_accuracy': {
-                    'rate': numeric_result[0],
-                    'metadata': numeric_result[1]
-                },
-                'option_accuracy': {
-                    'rate': option_result[0],
-                    'metadata': option_result[1]
-                }
+                "book_id": book_data["id"],
+                "manufacturer": book_data["manufacturer"],
+                "edition": book_data["edition"],
+                "timestamp": str(logger),
+                "row_accuracy": {"rate": row_result[0], "metadata": row_result[1]},
+                "numeric_accuracy": {"rate": numeric_result[0], "metadata": numeric_result[1]},
+                "option_accuracy": {"rate": option_result[0], "metadata": option_result[1]},
             }
 
-            with open(args.export, 'w') as f:
+            with open(args.export, "w") as f:
                 json.dump(report, f, indent=2, default=str)
 
             logger.info(f"✓ Exported report to {args.export}")
@@ -366,11 +365,7 @@ def main():
         session.close()
 
         # Exit with appropriate code
-        all_pass = (
-            row_result[0] >= 0.98 and
-            numeric_result[0] >= 0.99 and
-            option_result[0] >= 0.95
-        )
+        all_pass = row_result[0] >= 0.98 and numeric_result[0] >= 0.99 and option_result[0] >= 0.95
 
         sys.exit(0 if all_pass else 1)
 
@@ -379,5 +374,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

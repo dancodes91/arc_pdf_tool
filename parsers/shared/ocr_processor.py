@@ -4,21 +4,18 @@ OCR fallback processor for PDF parsing.
 Handles OCR extraction when native text extraction fails or produces
 insufficient results, with preprocessing and confidence routing.
 """
-import os
+
 import re
 import logging
-import tempfile
-import subprocess
-from typing import Dict, List, Tuple, Optional, Any, Union
-from pathlib import Path
+from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 import pandas as pd
-import numpy as np
 
 try:
     import pytesseract
     from PIL import Image, ImageEnhance, ImageFilter
     from pdf2image import convert_from_path
+
     TESSERACT_AVAILABLE = True
 except ImportError:
     TESSERACT_AVAILABLE = False
@@ -29,6 +26,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class OCRResult:
     """Result of OCR processing."""
+
     text: str
     confidence: float
     word_confidences: List[Tuple[str, float]]  # (word, confidence)
@@ -40,6 +38,7 @@ class OCRResult:
 @dataclass
 class OCRConfig:
     """OCR processing configuration."""
+
     engine: str = "tesseract"
     psm: int = 6  # Page segmentation mode
     oem: int = 3  # OCR Engine Mode
@@ -65,7 +64,9 @@ class OCRProcessor:
         self.logger = logging.getLogger(__name__)
 
         if not TESSERACT_AVAILABLE:
-            self.logger.warning("OCR dependencies not available. Install with: pip install pytesseract pillow pdf2image")
+            self.logger.warning(
+                "OCR dependencies not available. Install with: pip install pytesseract pillow pdf2image"
+            )
 
         # Verify Tesseract installation
         self._verify_tesseract()
@@ -82,9 +83,9 @@ class OCRProcessor:
             self.logger.error(f"Tesseract not available: {e}")
             self.logger.info("Install Tesseract: https://github.com/tesseract-ocr/tesseract")
 
-    def should_use_ocr(self, text: str, tables: List,
-                      text_threshold: int = 50,
-                      table_threshold: float = 0.3) -> bool:
+    def should_use_ocr(
+        self, text: str, tables: List, text_threshold: int = 50, table_threshold: float = 0.3
+    ) -> bool:
         """
         Determine if OCR should be used based on extraction quality.
 
@@ -104,7 +105,7 @@ class OCRProcessor:
 
         # Trigger OCR if expected tables but none found
         text_lower = text.lower()
-        table_indicators = ['model', 'price', 'description', 'series', '$']
+        table_indicators = ["model", "price", "description", "series", "$"]
         has_table_indicators = any(indicator in text_lower for indicator in table_indicators)
 
         if has_table_indicators and len(tables) == 0:
@@ -113,7 +114,9 @@ class OCRProcessor:
 
         # Trigger OCR if tables have very low confidence
         if tables:
-            avg_confidence = sum(getattr(table, 'confidence', 1.0) for table in tables) / len(tables)
+            avg_confidence = sum(getattr(table, "confidence", 1.0) for table in tables) / len(
+                tables
+            )
             if avg_confidence < table_threshold:
                 self.logger.info(f"OCR triggered: low table confidence {avg_confidence}")
                 return True
@@ -137,16 +140,13 @@ class OCRProcessor:
                 confidence=0.0,
                 word_confidences=[],
                 preprocessing_applied=["ERROR: OCR not available"],
-                method="none"
+                method="none",
             )
 
         try:
             # Convert PDF page to image
             images = convert_from_path(
-                pdf_path,
-                first_page=page_number,
-                last_page=page_number,
-                dpi=self.config.dpi
+                pdf_path, first_page=page_number, last_page=page_number, dpi=self.config.dpi
             )
 
             if not images:
@@ -173,7 +173,7 @@ class OCRProcessor:
                 confidence=0.0,
                 word_confidences=[],
                 preprocessing_applied=[f"ERROR: {str(e)}"],
-                method="tesseract"
+                method="tesseract",
             )
 
     def _preprocess_image(self, image: Image.Image) -> Tuple[Image.Image, List[str]]:
@@ -190,8 +190,8 @@ class OCRProcessor:
         steps = []
 
         # Convert to grayscale
-        if processed.mode != 'L':
-            processed = processed.convert('L')
+        if processed.mode != "L":
+            processed = processed.convert("L")
             steps.append("converted_to_grayscale")
 
         # Enhance contrast
@@ -208,7 +208,7 @@ class OCRProcessor:
         # Resize if too small (OCR works better on larger images)
         width, height = processed.size
         if width < 1200 or height < 1600:
-            scale_factor = max(1200/width, 1600/height)
+            scale_factor = max(1200 / width, 1600 / height)
             new_size = (int(width * scale_factor), int(height * scale_factor))
             processed = processed.resize(new_size, Image.Resampling.LANCZOS)
             steps.append(f"resized_{scale_factor:.1f}x")
@@ -216,11 +216,11 @@ class OCRProcessor:
         # Threshold to binary (black and white)
         # Find optimal threshold using Otsu's method approximation
         histogram = processed.histogram()
-        total_pixels = sum(histogram)
+        sum(histogram)
 
         # Simple threshold - can be improved with actual Otsu's method
         threshold = 128
-        processed = processed.point(lambda x: 255 if x > threshold else 0, mode='1')
+        processed = processed.point(lambda x: 255 if x > threshold else 0, mode="1")
         steps.append("binary_threshold")
 
         return processed, steps
@@ -237,38 +237,46 @@ class OCRProcessor:
         """
         try:
             # Get detailed OCR data with confidence
-            custom_config = f'--oem {self.config.oem} --psm {self.config.psm} -l {self.config.language}'
+            custom_config = (
+                f"--oem {self.config.oem} --psm {self.config.psm} -l {self.config.language}"
+            )
 
             # Extract text
             text = pytesseract.image_to_string(image, config=custom_config)
 
             # Extract word-level confidence data
-            data = pytesseract.image_to_data(image, config=custom_config, output_type=pytesseract.Output.DICT)
+            data = pytesseract.image_to_data(
+                image, config=custom_config, output_type=pytesseract.Output.DICT
+            )
 
             # Process confidence data
             word_confidences = []
             bbox_data = []
 
-            for i in range(len(data['text'])):
-                word = data['text'][i].strip()
-                conf = float(data['conf'][i])
+            for i in range(len(data["text"])):
+                word = data["text"][i].strip()
+                conf = float(data["conf"][i])
 
                 if word and conf > 0:  # Only include words with positive confidence
                     word_confidences.append((word, conf / 100.0))  # Normalize to 0-1
 
                     # Store bounding box data
-                    bbox_data.append({
-                        'word': word,
-                        'confidence': conf / 100.0,
-                        'left': data['left'][i],
-                        'top': data['top'][i],
-                        'width': data['width'][i],
-                        'height': data['height'][i]
-                    })
+                    bbox_data.append(
+                        {
+                            "word": word,
+                            "confidence": conf / 100.0,
+                            "left": data["left"][i],
+                            "top": data["top"][i],
+                            "width": data["width"][i],
+                            "height": data["height"][i],
+                        }
+                    )
 
             # Calculate overall confidence
             if word_confidences:
-                overall_confidence = sum(conf for _, conf in word_confidences) / len(word_confidences)
+                overall_confidence = sum(conf for _, conf in word_confidences) / len(
+                    word_confidences
+                )
             else:
                 overall_confidence = 0.0
 
@@ -278,7 +286,7 @@ class OCRProcessor:
                 word_confidences=word_confidences,
                 preprocessing_applied=[],  # Will be set by caller
                 method="tesseract",
-                bbox_data=bbox_data
+                bbox_data=bbox_data,
             )
 
         except Exception as e:
@@ -288,11 +296,12 @@ class OCRProcessor:
                 confidence=0.0,
                 word_confidences=[],
                 preprocessing_applied=[f"ERROR: {str(e)}"],
-                method="tesseract"
+                method="tesseract",
             )
 
-    def extract_tables_from_ocr(self, ocr_result: OCRResult,
-                               page_number: int = 0) -> List[pd.DataFrame]:
+    def extract_tables_from_ocr(
+        self, ocr_result: OCRResult, page_number: int = 0
+    ) -> List[pd.DataFrame]:
         """
         Extract tables from OCR text using layout analysis.
 
@@ -310,7 +319,7 @@ class OCRProcessor:
 
         try:
             # Analyze word positions to detect table structure
-            words_with_pos = sorted(ocr_result.bbox_data, key=lambda x: (x['top'], x['left']))
+            words_with_pos = sorted(ocr_result.bbox_data, key=lambda x: (x["top"], x["left"]))
 
             # Group words into lines based on vertical position
             lines = self._group_words_into_lines(words_with_pos)
@@ -329,8 +338,9 @@ class OCRProcessor:
 
         return tables
 
-    def _group_words_into_lines(self, words: List[Dict],
-                               line_tolerance: int = 10) -> List[List[Dict]]:
+    def _group_words_into_lines(
+        self, words: List[Dict], line_tolerance: int = 10
+    ) -> List[List[Dict]]:
         """
         Group words into lines based on vertical position.
 
@@ -346,25 +356,25 @@ class OCRProcessor:
 
         lines = []
         current_line = [words[0]]
-        current_top = words[0]['top']
+        current_top = words[0]["top"]
 
         for word in words[1:]:
             # Check if word is on same line
-            if abs(word['top'] - current_top) <= line_tolerance:
+            if abs(word["top"] - current_top) <= line_tolerance:
                 current_line.append(word)
             else:
                 # Start new line
                 if current_line:
                     # Sort words in line by horizontal position
-                    current_line.sort(key=lambda x: x['left'])
+                    current_line.sort(key=lambda x: x["left"])
                     lines.append(current_line)
 
                 current_line = [word]
-                current_top = word['top']
+                current_top = word["top"]
 
         # Add last line
         if current_line:
-            current_line.sort(key=lambda x: x['left'])
+            current_line.sort(key=lambda x: x["left"])
             lines.append(current_line)
 
         return lines
@@ -416,31 +426,30 @@ class OCRProcessor:
             return False
 
         # Check for tabular indicators
-        line_text = ' '.join(word['word'] for word in line).lower()
+        line_text = " ".join(word["word"] for word in line).lower()
 
         # Table headers
-        table_keywords = ['model', 'price', 'description', 'series', 'size', 'qty']
+        table_keywords = ["model", "price", "description", "series", "size", "qty"]
         has_table_keywords = any(keyword in line_text for keyword in table_keywords)
 
         # Numeric data (prices, quantities)
-        has_numbers = bool(re.search(r'\$\d+|\d+\.\d{2}|\d+', line_text))
+        has_numbers = bool(re.search(r"\$\d+|\d+\.\d{2}|\d+", line_text))
 
         # Regular spacing (words are somewhat evenly distributed)
         if len(line) >= 3:
-            positions = [word['left'] for word in line]
-            gaps = [positions[i+1] - positions[i] for i in range(len(positions)-1)]
+            positions = [word["left"] for word in line]
+            gaps = [positions[i + 1] - positions[i] for i in range(len(positions) - 1)]
             avg_gap = sum(gaps) / len(gaps) if gaps else 0
-            regular_spacing = all(abs(gap - avg_gap) < avg_gap * 0.5 for gap in gaps) if avg_gap > 0 else False
+            regular_spacing = (
+                all(abs(gap - avg_gap) < avg_gap * 0.5 for gap in gaps) if avg_gap > 0 else False
+            )
         else:
             regular_spacing = False
 
         # Combine indicators
-        tabular_score = sum([
-            has_table_keywords,
-            has_numbers,
-            regular_spacing,
-            len(line) >= 3  # Multiple columns
-        ])
+        tabular_score = sum(
+            [has_table_keywords, has_numbers, regular_spacing, len(line) >= 3]  # Multiple columns
+        )
 
         return tabular_score >= 2
 
@@ -460,7 +469,7 @@ class OCRProcessor:
         # Determine column boundaries by analyzing word positions
         all_lefts = []
         for line in region:
-            all_lefts.extend(word['left'] for word in line)
+            all_lefts.extend(word["left"] for word in line)
 
         if not all_lefts:
             return pd.DataFrame()
@@ -472,16 +481,16 @@ class OCRProcessor:
         # Extract data into table structure
         table_data = []
         for line in region:
-            row_data = [''] * len(column_boundaries)
+            row_data = [""] * len(column_boundaries)
 
             for word in line:
                 # Find which column this word belongs to
-                col_idx = self._find_column_index(word['left'], column_boundaries)
+                col_idx = self._find_column_index(word["left"], column_boundaries)
                 if 0 <= col_idx < len(row_data):
                     if row_data[col_idx]:
-                        row_data[col_idx] += ' ' + word['word']
+                        row_data[col_idx] += " " + word["word"]
                     else:
-                        row_data[col_idx] = word['word']
+                        row_data[col_idx] = word["word"]
 
             table_data.append(row_data)
 
@@ -492,12 +501,11 @@ class OCRProcessor:
         df = pd.DataFrame(table_data)
 
         # Clean up empty columns and rows
-        df = df.dropna(how='all').dropna(axis=1, how='all')
+        df = df.dropna(how="all").dropna(axis=1, how="all")
 
         return df
 
-    def _find_column_boundaries(self, positions: List[int],
-                               min_gap: int = 30) -> List[int]:
+    def _find_column_boundaries(self, positions: List[int], min_gap: int = 30) -> List[int]:
         """
         Find column boundaries from word positions.
 
@@ -514,7 +522,7 @@ class OCRProcessor:
         boundaries = [positions[0]]
 
         for i in range(1, len(positions)):
-            if positions[i] - positions[i-1] >= min_gap:
+            if positions[i] - positions[i - 1] >= min_gap:
                 boundaries.append(positions[i])
 
         return boundaries
@@ -550,19 +558,17 @@ class OCRProcessor:
         # Common OCR error corrections
         corrections = {
             # Common character substitutions
-            r'\b0(?=\w)': 'O',  # 0 at beginning of word -> O
-            r'(?<=\w)0\b': 'O',  # 0 at end of word -> O
-            r'\b1(?=\w)': 'I',  # 1 at beginning of word -> I
-            r'rn': 'm',  # rn -> m
-            r'vv': 'w',  # vv -> w
-            r'\|': 'I',  # | -> I
-
+            r"\b0(?=\w)": "O",  # 0 at beginning of word -> O
+            r"(?<=\w)0\b": "O",  # 0 at end of word -> O
+            r"\b1(?=\w)": "I",  # 1 at beginning of word -> I
+            r"rn": "m",  # rn -> m
+            r"vv": "w",  # vv -> w
+            r"\|": "I",  # | -> I
             # Fix common price errors
-            r'\$(\s+)(\d)': r'$\2',  # Remove space after $
-            r'(\d)\s+\.(\d{2})': r'\1.\2',  # Fix decimal point spacing
-
+            r"\$(\s+)(\d)": r"$\2",  # Remove space after $
+            r"(\d)\s+\.(\d{2})": r"\1.\2",  # Fix decimal point spacing
             # Fix model number patterns
-            r'([A-Z]+)(\s+)(\d+)': r'\1\3',  # Remove space in model codes like "BB 1100"
+            r"([A-Z]+)(\s+)(\d+)": r"\1\3",  # Remove space in model codes like "BB 1100"
         }
 
         for pattern, replacement in corrections.items():
@@ -586,14 +592,14 @@ class OCRProcessor:
             word_confidences=processed_word_confidences,
             preprocessing_applied=ocr_result.preprocessing_applied + ["post_processed"],
             method=ocr_result.method,
-            bbox_data=ocr_result.bbox_data
+            bbox_data=ocr_result.bbox_data,
         )
 
 
 # Convenience functions for integration
-def extract_with_ocr_fallback(pdf_path: str, page_number: int,
-                             text: str, tables: List,
-                             config: Optional[OCRConfig] = None) -> Tuple[str, List, OCRResult]:
+def extract_with_ocr_fallback(
+    pdf_path: str, page_number: int, text: str, tables: List, config: Optional[OCRConfig] = None
+) -> Tuple[str, List, OCRResult]:
     """
     Extract text and tables with OCR fallback if needed.
 
