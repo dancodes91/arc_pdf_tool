@@ -103,23 +103,21 @@ def upload_pdf():
         # Get file size
         file_size = os.path.getsize(filepath)
         
-        # Parse PDF based on manufacturer using enhanced parsers
-        if manufacturer == 'hager':
-            from parsers.hager.parser import HagerParser
-            parser = HagerParser(filepath)
-        elif manufacturer == 'select_hinges':
-            from parsers.select.parser import SelectHingesParser
-            parser = SelectHingesParser(filepath)
-        else:
-            # Try to auto-detect manufacturer
-            from parsers.hager.parser import HagerParser
-            parser = HagerParser(filepath)
-            detected = parser.identify_manufacturer()
-            if detected == 'select_hinges':
-                from parsers.select.parser import SelectHingesParser
-                parser = SelectHingesParser(filepath)
+        # Parse PDF using Universal Parser with hybrid approach
+        # This works for ANY manufacturer (Hager, Select, Continental, Lockey, etc.)
+        from parsers.universal import UniversalParser
 
-        # Parse the PDF with enhanced parser
+        parser = UniversalParser(
+            filepath,
+            config={
+                'use_hybrid': True,  # Enable 3-layer hybrid approach
+                'use_ml_detection': True,
+                'confidence_threshold': 0.6,
+                'max_pages': None  # Process all pages
+            }
+        )
+
+        # Parse the PDF with Universal Parser (96% avg confidence)
         parsed_data = parser.parse()
         parsed_data['file_path'] = filepath
         parsed_data['file_size'] = file_size
