@@ -72,7 +72,7 @@ def test_with_custom_baseline(
 
         universal_products = universal_results['summary']['total_products']
         universal_options = universal_results['summary'].get('total_options', 0)
-        universal_conf = universal_results['summary']['confidence']
+        universal_conf = universal_results['summary'].get('confidence', 0.0)
 
         print(f"  OK: {universal_products} products, {universal_options} options ({universal_time:.1f}s)")
     except Exception as e:
