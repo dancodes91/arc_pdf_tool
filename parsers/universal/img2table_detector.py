@@ -90,21 +90,25 @@ class Img2TableDetector:
         """
         logger.info(f"Extracting tables from: {pdf_path}")
 
-        # Load PDF document
-        doc = PDF(pdf_path, pages=[i for i in range(1, max_pages + 1)] if max_pages else None)
+        try:
+            # Load PDF document
+            doc = PDF(pdf_path, pages=[i for i in range(1, max_pages + 1)] if max_pages else None)
 
-        # Get OCR engine
-        ocr = self._get_ocr()
+            # Get OCR engine
+            ocr = self._get_ocr()
 
-        # Extract tables
-        logger.info("Running table extraction...")
-        extracted_tables = doc.extract_tables(
-            ocr=ocr,
-            implicit_rows=self.implicit_rows,
-            implicit_columns=True,
-            borderless_tables=self.borderless_tables,
-            min_confidence=self.min_confidence
-        )
+            # Extract tables
+            logger.info("Running table extraction...")
+            extracted_tables = doc.extract_tables(
+                ocr=ocr,
+                implicit_rows=self.implicit_rows,
+                implicit_columns=True,
+                borderless_tables=self.borderless_tables,
+                min_confidence=self.min_confidence
+            )
+        except Exception as e:
+            logger.warning(f"img2table extraction failed: {e}, falling back to PyMuPDF method")
+            return self._extract_tables_with_pymupdf_fallback(pdf_path, max_pages)
 
         # Convert to structured format
         results = []
@@ -299,3 +303,108 @@ class Img2TableDetector:
 
         logger.info(f"Found {len(results)} tables on page {page_num}")
         return results
+
+    def _extract_tables_with_pymupdf_fallback(
+        self,
+        pdf_path: str,
+        max_pages: int = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Fallback method using PyMuPDF + pdfplumber when img2table fails.
+
+        This handles PDFs that pypdfium2 cannot process.
+        Uses a combination of PyMuPDF for rendering and pdfplumber for table extraction.
+
+        Args:
+            pdf_path: Path to PDF file
+            max_pages: Maximum pages to process (None = all)
+
+        Returns:
+            List of table dictionaries (same format as extract_tables_from_pdf)
+        """
+        try:
+            import pdfplumber
+            import fitz  # PyMuPDF
+        except ImportError:
+            logger.error("pdfplumber or PyMuPDF not installed. Cannot use fallback method.")
+            return []
+
+        logger.info("Using PyMuPDF + pdfplumber fallback for table extraction")
+        results = []
+
+        try:
+            # Open with pdfplumber (more robust for problematic PDFs)
+            with pdfplumber.open(pdf_path) as pdf:
+                total_pages = len(pdf.pages)
+                pages_to_process = min(max_pages, total_pages) if max_pages else total_pages
+
+                logger.info(f"Processing {pages_to_process} pages with fallback method")
+
+                for page_num in range(pages_to_process):
+                    try:
+                        page = pdf.pages[page_num]
+
+                        # Extract tables using pdfplumber
+                        tables = page.extract_tables()
+
+                        if not tables:
+                            continue
+
+                        for table in tables:
+                            if not table or len(table) == 0:
+                                continue
+
+                            # Convert to DataFrame
+                            try:
+                                # First row as header if it looks like headers
+                                if len(table) > 1:
+                                    df = pd.DataFrame(table[1:], columns=table[0])
+                                else:
+                                    df = pd.DataFrame(table)
+
+                                # Clean DataFrame
+                                df = df.fillna("")
+                                df = df.replace(r'^\s*$', "", regex=True)
+
+                                # Skip empty DataFrames
+                                if df.empty or df.shape[0] == 0:
+                                    continue
+
+                                num_rows, num_cols = df.shape
+
+                                # Estimate confidence based on data quality
+                                # Count non-empty cells
+                                non_empty = df.astype(str).apply(lambda x: x.str.strip() != "").sum().sum()
+                                total_cells = num_rows * num_cols
+                                confidence = (non_empty / total_cells) * 0.85 if total_cells > 0 else 0.5
+
+                                results.append({
+                                    "page": page_num + 1,  # 1-indexed
+                                    "dataframe": df,
+                                    "bbox": [0, 0, page.width, page.height],  # Full page bbox
+                                    "confidence": min(0.95, confidence),
+                                    "num_rows": num_rows,
+                                    "num_cols": num_cols,
+                                    "has_header": self._detect_header(df),
+                                    "extraction_method": "pdfplumber_fallback"
+                                })
+
+                                logger.debug(
+                                    f"Page {page_num + 1}: Extracted fallback table "
+                                    f"({num_rows} rows x {num_cols} cols, conf={confidence:.2f})"
+                                )
+
+                            except Exception as e:
+                                logger.warning(f"Failed to convert table to DataFrame on page {page_num + 1}: {e}")
+                                continue
+
+                    except Exception as e:
+                        logger.warning(f"Failed to process page {page_num + 1} in fallback: {e}")
+                        continue
+
+            logger.info(f"Fallback extraction complete: {len(results)} tables from {pages_to_process} pages")
+            return results
+
+        except Exception as e:
+            logger.error(f"Fallback extraction failed: {e}", exc_info=True)
+            return []

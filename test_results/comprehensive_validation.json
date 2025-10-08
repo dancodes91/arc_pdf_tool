@@ -3,15 +3,15 @@
     "pdf": "2025-select-hinges-price-book.pdf",
     "parser": "SELECT Hinges",
     "custom_products": 238,
-    "universal_products": 0,
-    "product_accuracy": 0.0,
+    "universal_products": 103,
+    "product_accuracy": 43.27731092436975,
     "custom_options": 22,
     "universal_options": 0,
     "option_accuracy": 0.0,
-    "confidence": 0.0,
+    "confidence": 0.8709677419354848,
     "passed": false,
-    "custom_time": 50.057178258895874,
-    "universal_time": 29.409873247146606
+    "custom_time": 32.56916856765747,
+    "universal_time": 32.31764030456543
   },
   {
     "pdf": "2025-hager-price-book.pdf",
@@ -24,27 +24,7 @@
     "option_accuracy": 100,
     "confidence": 0.9771643663739018,
     "passed": true,
-    "custom_time": 169.47351479530334,
-    "universal_time": 73.00178337097168
-  },
-  {
-    "pdf": "2025-securitech-trident-price-book.pdf",
-    "parser": "Universal Only",
-    "products": 86,
-    "tables": 19,
-    "confidence": 0.8710280373831782,
-    "manufacturer": "Unknown",
-    "success": true,
-    "time": 15.813632726669312
-  },
-  {
-    "pdf": "2025-schlage-price-book.pdf",
-    "parser": "Universal Only",
-    "products": 6,
-    "tables": 8,
-    "confidence": 0.7493243243243252,
-    "manufacturer": "Schlage",
-    "success": true,
-    "time": 59.59159207344055
+    "custom_time": 116.91591095924377,
+    "universal_time": 60.72536563873291
   }
 ]

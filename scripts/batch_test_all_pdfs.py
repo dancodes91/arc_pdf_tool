@@ -18,19 +18,22 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from parsers.universal import UniversalParser
 
 
-def test_single_pdf(pdf_path: Path, max_pages: int = 10) -> Dict[str, Any]:
+def test_single_pdf(pdf_path: Path, max_pages: int = None) -> Dict[str, Any]:
     """
     Test universal parser on a single PDF.
 
     Args:
         pdf_path: Path to PDF file
-        max_pages: Maximum pages to process
+        max_pages: Maximum pages to process (None = all pages)
 
     Returns:
         Dict with results or error info
     """
     print(f"\nTesting: {pdf_path.name}")
-    print(f"  Processing first {max_pages} pages...")
+    if max_pages:
+        print(f"  Processing first {max_pages} pages...")
+    else:
+        print(f"  Processing ALL pages...")
 
     start = time.time()
     try:
@@ -121,7 +124,7 @@ def main():
     for i, pdf_path in enumerate(all_pdfs, 1):
         print(f"\n[{i}/{len(all_pdfs)}]", end=" ")
 
-        result = test_single_pdf(pdf_path, max_pages=10)
+        result = test_single_pdf(pdf_path, max_pages=None)  # Process ALL pages
         results.append(result)
 
         # Track stats (excluding known custom parser PDFs)
