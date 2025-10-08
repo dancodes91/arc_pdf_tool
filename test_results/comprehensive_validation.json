@@ -1,0 +1,46 @@
+[
+  {
+    "pdf": "2025-hager-price-book.pdf",
+    "parser": "Hager",
+    "custom_products": 778,
+    "universal_products": 776,
+    "product_accuracy": 99.74293059125964,
+    "custom_options": 0,
+    "universal_options": 0,
+    "option_accuracy": 100,
+    "confidence": 0.9771643663739018,
+    "passed": true,
+    "custom_time": 170.69249939918518,
+    "universal_time": 65.27590847015381
+  },
+  {
+    "pdf": "2025-norton-rixson-price-book-effective-3-3-2025.pdf",
+    "parser": "Universal Only",
+    "products": 61,
+    "tables": 16,
+    "confidence": 0.8536585365853661,
+    "manufacturer": "Unknown",
+    "success": true,
+    "time": 34.179182291030884
+  },
+  {
+    "pdf": "2024-ilco-peaks-preferred-price-book.pdf",
+    "parser": "Universal Only",
+    "products": 60,
+    "tables": 31,
+    "confidence": 0.7937500000000007,
+    "manufacturer": "Schlage",
+    "success": true,
+    "time": 22.366015672683716
+  },
+  {
+    "pdf": "2025-camden-price-book-updated-5-1-2025.pdf",
+    "parser": "Universal Only",
+    "products": 78,
+    "tables": 18,
+    "confidence": 0.866666666666667,
+    "manufacturer": "Unknown",
+    "success": true,
+    "time": 18.563211917877197
+  }
+]

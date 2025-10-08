@@ -62,12 +62,10 @@ dependencies = [
     "structlog>=23.2.0",
     "sentry-sdk>=2.39.0",
     "pytest-asyncio>=1.2.0",
-    # ML-based table extraction (Universal Parser)
-    "torch>=2.0.0",
-    "torchvision>=0.15.0",
-    "transformers>=4.30.0",
-    "timm>=0.9.0",
-    "pdf2image>=1.16.3",
+    # ML-based table extraction (Universal Parser) - OPTION B
+    "img2table>=1.2.0",
+    "paddleocr>=2.8.0",
+    "paddlepaddle>=2.6.0",
 ]
 
 [project.optional-dependencies]

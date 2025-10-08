@@ -271,6 +271,7 @@ class SmartPatternExtractor:
 
     def _extract_price(self, text: str) -> Optional[float]:
         """Extract price using patterns."""
+        # First try regex patterns
         for pattern in self.price_patterns:
             match = re.search(pattern, text)
             if match:
@@ -282,6 +283,19 @@ class SmartPatternExtractor:
                         return price
                 except ValueError:
                     continue
+
+        # Fallback: try to parse as plain number (for table cells like "255", "1234")
+        # This handles cases where img2table extracts clean numeric values
+        # Try to find any standalone number in the text
+        standalone_number = re.search(r'\b(\d{1,6}(?:\.\d{1,2})?)\b', text)
+        if standalone_number:
+            try:
+                price = float(standalone_number.group(1))
+                if 10 <= price <= 100000:  # Reasonable price range
+                    return price
+            except ValueError:
+                pass
+
         return None
 
     def _extract_finish(self, text: str) -> Optional[str]:
