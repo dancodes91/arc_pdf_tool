@@ -79,8 +79,9 @@ class SmartPatternExtractor:
 
         # Date patterns
         self.date_patterns = [
-            r"Effective(?:\s+Date)?:?\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})",  # Effective: December 1, 2024
-            r"Effective:?\s*(\d{1,2}/\d{1,2}/\d{2,4})",  # Effective: 12/01/2024
+            r"(?:AS OF|Effective(?:\s+Date)?):?\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})",  # AS OF MARCH 9 2020, Effective: December 1, 2024
+            r"(?:AS OF|Effective):?\s*(\d{1,2}/\d{1,2}/\d{2,4})",  # AS OF 3/9/2020, Effective: 12/01/2024
+            r"(?:AS OF|Effective):?\s*(\d{1,2}\.\d{1,2}\.\d{4})",  # AS OF 3.31.2025, Effective 3.31.2025
             r"Valid\s+from:?\s*(\d{1,2}-[A-Z][a-z]+-\d{4})",  # Valid from: 01-Dec-2024
             r"(\d{1,2}/\d{1,2}/\d{4})\s+(?:effective|price)",  # 12/01/2024 effective
         ]
@@ -115,6 +116,11 @@ class SmartPatternExtractor:
             # Try to extract SKU
             sku = self._extract_sku(line)
             if not sku:
+                continue
+
+            # Validate SKU (filter out garbage)
+            if not self._is_valid_sku(sku):
+                logger.debug(f"Filtered invalid SKU from text: {sku}")
                 continue
 
             # Extract price for this SKU
@@ -169,23 +175,38 @@ class SmartPatternExtractor:
         if table_df.empty:
             return products
 
-        # Try to identify columns
-        columns = self._identify_table_columns(table_df)
+        # NEW: Detect true header row (skip title/section rows)
+        header_row_idx = self._detect_true_header_row(table_df)
 
-        # Assess table quality for confidence boosting
-        table_quality = self._assess_table_quality(table_df, columns)
+        # Recreate DataFrame with correct header if needed
+        if header_row_idx > 0:
+            # Use detected row as header, skip previous rows
+            df = pd.DataFrame(
+                table_df.iloc[header_row_idx + 1:].values,  # Data starts after header
+                columns=table_df.iloc[header_row_idx].values  # Header row as column names
+            )
+            logger.info(f"Skipped {header_row_idx} title rows, using row {header_row_idx} as header")
+            df = df.reset_index(drop=True)
+        else:
+            df = table_df
+
+        # Try to identify columns
+        columns = self._identify_table_columns(df)
+
+        # Assess table quality for confidence boosting (use fixed df, not original table_df)
+        table_quality = self._assess_table_quality(df, columns)
 
         # Check if this is a melted table (model × finish matrix)
         # Heuristic: table has a model column + multiple short columns (CL, BR, BK, etc)
         potential_model_col = columns.get("sku")
-        melted_format = self._detect_melted_format(table_df, potential_model_col)
+        melted_format = self._detect_melted_format(df, potential_model_col)
 
         if melted_format:
             # Extract using melt strategy (for SELECT-style tables)
-            products = self._extract_from_melted_table(table_df, page_num, columns)
+            products = self._extract_from_melted_table(df, page_num, columns)
         else:
             # Standard row-by-row extraction
-            products = self._extract_from_standard_table(table_df, page_num, columns)
+            products = self._extract_from_standard_table(df, page_num, columns)
 
         # Apply table quality confidence boost (Phase 3)
         for product in products:
@@ -341,9 +362,13 @@ class SmartPatternExtractor:
             if columns.get("description") is not None:
                 description = str(row.iloc[columns["description"]]).strip()
 
-            # Relaxed requirements: Just need SKU OR price
-            # This allows more products through for analysis
+            # Validate and create product
             if (sku or price) and price and price > 0:
+                # Validate SKU (filter out garbage like "MARCH 9")
+                if sku and not self._is_valid_sku(sku):
+                    logger.debug(f"Filtered invalid SKU: {sku}")
+                    continue
+
                 # If no SKU found, generate one from row index
                 if not sku:
                     sku = f"ITEM-{page_num}-{idx}"
@@ -465,10 +490,24 @@ class SmartPatternExtractor:
         return None
 
     def _extract_price(self, text: str) -> Optional[float]:
-        """Extract price using patterns."""
-        # First try regex patterns
+        """
+        Extract price using patterns, handling spaces and formatting issues.
+
+        Examples:
+        - "$ 1 ,145.00" → 1145.00
+        - "$ 900.00" → 900.00
+        - "$120.37" → 120.37
+        - "1234" → 1234.00
+        """
+        if not text:
+            return None
+
+        # Remove ALL spaces from price string first (handles "$ 1 ,145.00")
+        cleaned = re.sub(r'\s+', '', str(text))
+
+        # Try regex patterns on cleaned text
         for pattern in self.price_patterns:
-            match = re.search(pattern, text)
+            match = re.search(pattern, cleaned)
             if match:
                 price_str = match.group(1).replace(",", "").replace("$", "").strip()
                 try:
@@ -481,8 +520,7 @@ class SmartPatternExtractor:
 
         # Fallback: try to parse as plain number (for table cells like "255", "1234")
         # This handles cases where img2table extracts clean numeric values
-        # Try to find any standalone number in the text
-        standalone_number = re.search(r'\b(\d{1,6}(?:\.\d{1,2})?)\b', text)
+        standalone_number = re.search(r'\b(\d{1,6}(?:\.\d{1,2})?)\b', cleaned)
         if standalone_number:
             try:
                 price = float(standalone_number.group(1))
@@ -508,6 +546,80 @@ class SmartPatternExtractor:
             if match:
                 return match.group(0).strip()
         return None
+
+    def _detect_true_header_row(self, df: pd.DataFrame) -> int:
+        """
+        Detect the actual header row (not title/section headers).
+
+        Real headers contain keywords like: sku, model, price, description, part, item
+
+        Returns:
+            Row index of true header (0-based)
+        """
+        header_keywords = [
+            'sku', 'model', 'part', 'item', 'product', 'catalog', 'number',  # SKU column
+            'price', 'list', 'msrp', 'cost', 'retail',                        # Price column
+            'description', 'desc', 'name', 'title',                          # Description
+            'weight', 'size', 'finish', 'options', 'complete'                # Other common columns
+        ]
+
+        for row_idx in range(min(5, len(df))):  # Check first 5 rows
+            row_text = ' '.join(str(cell).lower() for cell in df.iloc[row_idx] if pd.notna(cell))
+
+            # Count how many header keywords match
+            matches = sum(1 for keyword in header_keywords if keyword in row_text)
+
+            # If row has 2+ header keywords, it's likely the real header
+            if matches >= 2:
+                logger.debug(f"Detected header row at index {row_idx}: {df.iloc[row_idx].tolist()}")
+                return row_idx
+
+        # Default: assume first row is header
+        return 0
+
+    def _is_valid_sku(self, sku: str) -> bool:
+        """
+        Validate SKU to filter out garbage/fragments.
+
+        Valid SKU must:
+        - Be 3-30 characters long
+        - Have alphanumeric content (not just spaces/symbols)
+        - NOT be common garbage words (month names, generic words)
+        - NOT match date patterns
+
+        Returns:
+            True if SKU appears valid
+        """
+        if not sku or not isinstance(sku, str):
+            return False
+
+        sku_clean = sku.strip()
+        if len(sku_clean) < 3 or len(sku_clean) > 30:
+            return False
+
+        # Blacklist: Common garbage SKUs and month names
+        blacklist = [
+            'per', 'of', 'to', 'lock', 'pin', 'sold', 'bag', 'box',
+            'uncombinated', 'housing', 'cams', 'cores', 'n/a', 'na',
+            'january', 'february', 'march', 'april', 'may', 'june',
+            'july', 'august', 'september', 'october', 'november', 'december',
+            'model', 'item', 'product', 'description', 'price', 'list'
+        ]
+
+        if sku_clean.lower() in blacklist:
+            return False
+
+        # Reject date-like patterns (e.g., "MARCH 9", "JAN 12", "2020")
+        if re.match(r'^[A-Z]{3,9}\s+\d{1,2}$', sku_clean, re.IGNORECASE):  # "MARCH 9"
+            return False
+        if re.match(r'^\d{4}$', sku_clean):  # Just a year "2020"
+            return False
+
+        # Must have at least some alphanumeric content
+        if not any(c.isalnum() for c in sku_clean):
+            return False
+
+        return True
 
     def extract_prices(self, text: str) -> List[float]:
         """Extract all prices from text."""
