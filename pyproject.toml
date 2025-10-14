@@ -66,6 +66,7 @@ dependencies = [
     "img2table>=1.2.0",
     "paddleocr>=2.8.0",
     "paddlepaddle>=2.6.0",
+    "gunicorn>=23.0.0",
 ]
 
 [project.optional-dependencies]
