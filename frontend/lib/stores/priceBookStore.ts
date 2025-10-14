@@ -13,7 +13,7 @@ interface PriceBook {
   edition: string
   effective_date: string
   upload_date: string
-  status: 'processing' | 'completed' | 'failed'
+  status: 'processing' | 'processed' | 'completed' | 'failed'
   product_count: number
   option_count: number
   file_path: string
