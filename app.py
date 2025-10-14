@@ -20,7 +20,11 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 Config.init_app(app)
-CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://127.0.0.1:3002'])
+
+# CORS configuration - supports both local development and production
+cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:3001,http://localhost:3002,http://127.0.0.1:3000')
+allowed_origins = [origin.strip() for origin in cors_origins.split(',')]
+CORS(app, origins=allowed_origins)
 
 # Register API blueprint
 app.register_blueprint(api)
