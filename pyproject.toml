@@ -67,6 +67,7 @@ dependencies = [
     "paddleocr>=2.8.0",
     "paddlepaddle>=2.6.0",
     "gunicorn>=23.0.0",
+    "waitress>=3.0.2",
 ]
 
 [project.optional-dependencies]
