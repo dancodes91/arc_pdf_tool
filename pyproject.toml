@@ -35,8 +35,7 @@ dependencies = [
     "pandera>=0.17.2",
     # Database
     "sqlalchemy>=2.0.23",
-    "psycopg2-binary>=2.9.9",
-    "pymysql>=1.1.0",
+    "mysqlclient>=2.2.0",
     "alembic>=1.13.1",
     # FastAPI Stack
     "fastapi>=0.104.1",
