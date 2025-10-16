@@ -76,9 +76,17 @@ def get_products(price_book_id):
         logger.error(f"Error fetching products for price book {price_book_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
-@api.route('/upload', methods=['POST'])
+@api.route('/upload', methods=['POST', 'OPTIONS'])
 def upload_pdf():
     """Upload and parse PDF file"""
+    # Handle CORS preflight request
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        return response, 200
+
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400

@@ -20,7 +20,21 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 Config.init_app(app)
-CORS(app, origins=['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001', 'http://127.0.0.1:3002'])
+# CORS: Allow Vercel frontend + local development
+CORS(app,
+     origins=[
+         'https://arcpdftool.vercel.app',  # Production frontend
+         'http://localhost:3000',
+         'http://localhost:3001',
+         'http://localhost:3002',
+         'http://127.0.0.1:3000',
+         'http://127.0.0.1:3001',
+         'http://127.0.0.1:3002'
+     ],
+     supports_credentials=True,
+     allow_headers=['Content-Type', 'Authorization'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+)
 
 # Register API blueprint
 app.register_blueprint(api)
