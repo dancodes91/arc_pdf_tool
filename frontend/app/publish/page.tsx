@@ -33,62 +33,61 @@ type PublishRun = {
 }
 
 export default function PublishPage() {
-  const { priceBooks, loading, fetchPriceBooks } = usePriceBookStore()
+  const {
+    priceBooks,
+    publishHistory,
+    loading,
+    fetchPriceBooks,
+    publishToBaserow,
+    fetchPublishHistory
+  } = usePriceBookStore()
   const [selectedBookId, setSelectedBookId] = useState<number | null>(null)
   const [isDryRun, setIsDryRun] = useState(true)
-  const [publishHistory, setPublishHistory] = useState<PublishRun[]>([])
   const [isPublishing, setIsPublishing] = useState(false)
   const [dryRunResult, setDryRunResult] = useState<PublishRun | null>(null)
 
   useEffect(() => {
     fetchPriceBooks()
-
-    // Load publish history from localStorage
-    const savedHistory = localStorage.getItem('publish-history')
-    if (savedHistory) {
-      const parsed = JSON.parse(savedHistory)
-      setPublishHistory(parsed.map((h: any) => ({
-        ...h,
-        timestamp: new Date(h.timestamp)
-      })))
-    }
-  }, [fetchPriceBooks])
+    fetchPublishHistory()
+  }, [fetchPriceBooks, fetchPublishHistory])
 
   const handlePublish = async () => {
     if (!selectedBookId) return
 
     setIsPublishing(true)
-    const book = priceBooks.find(b => b.id === selectedBookId)
 
-    // Simulate publish/dry-run (replace with actual API call)
-    setTimeout(() => {
-      if (book) {
-        const result: PublishRun = {
-          id: `${Date.now()}-${selectedBookId}`,
-          priceBookId: selectedBookId,
-          manufacturer: book.manufacturer,
-          timestamp: new Date(),
-          status: isDryRun ? 'dry-run' : 'success',
-          duration: '12.3s',
-          created: Math.floor(book.product_count * 0.3),
-          updated: Math.floor(book.product_count * 0.5),
-          unchanged: Math.floor(book.product_count * 0.2),
-          warnings: Math.floor(Math.random() * 5),
-          logs: 'Sample log output...'
-        }
+    try {
+      const result = await publishToBaserow(selectedBookId, isDryRun)
 
-        if (isDryRun) {
-          setDryRunResult(result)
-        } else {
-          const updatedHistory = [result, ...publishHistory].slice(0, 10)
-          setPublishHistory(updatedHistory)
-          localStorage.setItem('publish-history', JSON.stringify(updatedHistory))
-          setDryRunResult(null)
-        }
+      // Convert backend result to match UI format
+      const book = priceBooks.find(b => b.id === selectedBookId)
+      const unchanged = result.rows_processed - result.rows_created - result.rows_updated
+
+      const publishRun: PublishRun = {
+        id: result.id,
+        priceBookId: result.price_book_id,
+        manufacturer: result.manufacturer || book?.manufacturer || 'Unknown',
+        timestamp: new Date(result.started_at),
+        status: isDryRun ? 'dry-run' : (result.status === 'completed' ? 'success' : 'failed'),
+        duration: `${result.duration_seconds?.toFixed(1) || '0'}s`,
+        created: result.rows_created,
+        updated: result.rows_updated,
+        unchanged: unchanged,
+        warnings: result.warnings?.length || 0,
+        logs: 'View logs...'
       }
 
+      if (isDryRun) {
+        setDryRunResult(publishRun)
+      } else {
+        setDryRunResult(null)
+        // History is automatically fetched by the store
+      }
+    } catch (error) {
+      console.error('Publish failed:', error)
+    } finally {
       setIsPublishing(false)
-    }, 2000)
+    }
   }
 
   const completedBooks = priceBooks.filter(
@@ -333,7 +332,13 @@ export default function PublishPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {publishHistory.map((run) => (
+              {publishHistory.map((run: any) => {
+                // Calculate values for display
+                const book = priceBooks.find(b => b.id === run.price_book_id)
+                const unchanged = (run.rows_processed || 0) - (run.rows_created || 0) - (run.rows_updated || 0)
+                const displayStatus = run.dry_run ? 'dry-run' : run.status
+
+                return (
                 <div
                   key={run.id}
                   className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted transition-colors"
@@ -345,29 +350,29 @@ export default function PublishPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-1">
-                        <h3 className="font-semibold">{run.manufacturer}</h3>
+                        <h3 className="font-semibold">{run.manufacturer || book?.manufacturer || 'Unknown'}</h3>
                         <Badge
                           variant={
-                            run.status === 'success'
+                            displayStatus === 'completed' || displayStatus === 'success'
                               ? 'success'
-                              : run.status === 'failed'
+                              : displayStatus === 'failed'
                               ? 'error'
-                              : run.status === 'running'
+                              : displayStatus === 'running'
                               ? 'warning'
                               : 'brand'
                           }
                         >
-                          {run.status === 'success' ? (
+                          {displayStatus === 'completed' || displayStatus === 'success' ? (
                             <>
                               <CheckCircle2 className="h-3 w-3 mr-1" />
                               Success
                             </>
-                          ) : run.status === 'failed' ? (
+                          ) : displayStatus === 'failed' ? (
                             <>
                               <AlertCircle className="h-3 w-3 mr-1" />
                               Failed
                             </>
-                          ) : run.status === 'running' ? (
+                          ) : displayStatus === 'running' ? (
                             <>
                               <Clock className="h-3 w-3 mr-1" />
                               Running
@@ -381,16 +386,16 @@ export default function PublishPage() {
                         </Badge>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>{run.timestamp.toLocaleString()}</span>
+                        <span>{new Date(run.started_at).toLocaleString()}</span>
                         <span>•</span>
-                        <span>Duration: {run.duration}</span>
+                        <span>Duration: {run.duration_seconds?.toFixed(1)}s</span>
                         <span>•</span>
-                        <span className="text-success">{run.created} created</span>
-                        <span className="text-warning">{run.updated} updated</span>
-                        {run.warnings > 0 && (
+                        <span className="text-success">{run.rows_created} created</span>
+                        <span className="text-warning">{run.rows_updated} updated</span>
+                        {run.warnings && run.warnings.length > 0 && (
                           <>
                             <span>•</span>
-                            <span className="text-error">{run.warnings} warnings</span>
+                            <span className="text-error">{run.warnings.length} warnings</span>
                           </>
                         )}
                       </div>
@@ -402,7 +407,7 @@ export default function PublishPage() {
                     View Logs
                   </Button>
                 </div>
-              ))}
+              )})}
             </div>
           </CardContent>
         </Card>
