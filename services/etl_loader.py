@@ -90,21 +90,43 @@ class ETLLoader:
     def _load_manufacturer(self, results: Dict[str, Any], session: Session) -> Manufacturer:
         """Load or get manufacturer."""
         manufacturer_name = results.get("manufacturer", "Unknown")
+        manufacturer_code = self._generate_manufacturer_code(manufacturer_name)
 
-        # Check if manufacturer exists
-        manufacturer = session.query(Manufacturer).filter_by(name=manufacturer_name).first()
+        # Check if manufacturer exists by name OR code
+        manufacturer = (
+            session.query(Manufacturer)
+            .filter(
+                (Manufacturer.name == manufacturer_name) | (Manufacturer.code == manufacturer_code)
+            )
+            .first()
+        )
 
         if not manufacturer:
+            # Create new manufacturer
             manufacturer = Manufacturer(
                 name=manufacturer_name,
-                code=self._generate_manufacturer_code(manufacturer_name),
+                code=manufacturer_code,
                 created_at=datetime.utcnow(),
             )
             session.add(manufacturer)
-            session.flush()  # Get ID
-            self.logger.info(f"Created new manufacturer: {manufacturer_name}")
+            try:
+                session.flush()  # Get ID
+                self.logger.info(f"Created new manufacturer: {manufacturer_name} ({manufacturer_code})")
+            except Exception as e:
+                # If still fails, try to get existing one (race condition)
+                session.rollback()
+                manufacturer = (
+                    session.query(Manufacturer)
+                    .filter(
+                        (Manufacturer.name == manufacturer_name) | (Manufacturer.code == manufacturer_code)
+                    )
+                    .first()
+                )
+                if not manufacturer:
+                    raise
+                self.logger.info(f"Using existing manufacturer after conflict: {manufacturer_name}")
         else:
-            self.logger.info(f"Using existing manufacturer: {manufacturer_name}")
+            self.logger.info(f"Using existing manufacturer: {manufacturer_name} ({manufacturer.code})")
 
         return manufacturer
 
