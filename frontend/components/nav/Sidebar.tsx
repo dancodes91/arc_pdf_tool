@@ -33,7 +33,7 @@ const navigationItems = [
   },
   {
     name: 'Exports',
-    href: '/exports',
+    href: '/export-center',
     icon: Download,
   },
   {
