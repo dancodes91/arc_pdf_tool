@@ -25,14 +25,21 @@ Config.init_app(app)
 cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:3001,http://localhost:3002,http://127.0.0.1:3000')
 allowed_origins = [origin.strip() for origin in cors_origins.split(',')]
 
-# Add Vercel frontend URL for production
-if os.getenv('ENV') == 'production' or os.getenv('FLASK_ENV') == 'production':
-    allowed_origins.extend([
-        'https://frontend-39ev3gfux-vatchets-projects.vercel.app',
-        'https://frontend-h61o33ihq-vatchets-projects.vercel.app'
-    ])
+# Configure CORS to support all Vercel deployments
+def verify_origin(origin):
+    """Allow localhost and all vercel.app domains"""
+    if not origin:
+        return False
+    # Allow all localhost origins
+    if 'localhost' in origin or '127.0.0.1' in origin:
+        return True
+    # Allow all vercel.app domains
+    if 'vercel.app' in origin:
+        return True
+    # Allow explicitly configured origins
+    return origin in allowed_origins
 
-CORS(app, origins=allowed_origins, supports_credentials=True)
+CORS(app, origins=verify_origin, supports_credentials=True)
 
 # Register API blueprint
 app.register_blueprint(api)
