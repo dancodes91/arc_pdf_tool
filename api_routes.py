@@ -337,8 +337,8 @@ def get_publish_history():
 
                 # Add manufacturer info
                 book = session.query(PriceBook).get(sync.price_book_id)
-                if book:
-                    sync_dict['manufacturer'] = book.manufacturer
+                if book and book.manufacturer:
+                    sync_dict['manufacturer'] = book.manufacturer.name
                     sync_dict['edition'] = book.edition
 
                 result.append(sync_dict)

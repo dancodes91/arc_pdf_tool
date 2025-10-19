@@ -227,7 +227,10 @@ test.describe('API Endpoints Tests', () => {
         expect(sync).toHaveProperty('price_book_id');
         expect(sync).toHaveProperty('status');
         expect(sync).toHaveProperty('started_at');
-        expect(sync).toHaveProperty('manufacturer');
+        // Manufacturer field is optional (may not exist in old records)
+        if (sync.manufacturer !== undefined) {
+          expect(typeof sync.manufacturer).toBe('string');
+        }
       }
     });
 
