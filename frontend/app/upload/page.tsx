@@ -117,8 +117,8 @@ export default function UploadPage() {
           optionCount: 112,
           finishCount: 23,
         })
-        if (result && 'id' in result) {
-          setUploadedBookId(result.id as string)
+        if (result) {
+          setUploadedBookId(result.toString())
         }
       }, 6000)
     } catch (err) {

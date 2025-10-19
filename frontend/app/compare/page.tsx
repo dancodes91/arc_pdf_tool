@@ -61,12 +61,12 @@ export default function ComparePage() {
 
   const getChangeBadge = (changeType: string) => {
     const variants = {
-      'new_product': 'default',
-      'retired_product': 'destructive',
-      'price_change': 'secondary',
+      'new_product': 'brand',
+      'retired_product': 'error',
+      'price_change': 'warning',
       'description_change': 'outline',
       'status_change': 'outline',
-      'fuzzy_match': 'secondary'
+      'fuzzy_match': 'neutral'
     } as const
 
     return (
@@ -289,7 +289,7 @@ export default function ComparePage() {
                         </TableCell>
                         <TableCell>
                           {change.change_percentage ? (
-                            <Badge variant={change.change_percentage > 0 ? "default" : "secondary"}>
+                            <Badge variant={change.change_percentage > 0 ? "success" : "error"}>
                               {change.change_percentage > 0 ? '+' : ''}{change.change_percentage.toFixed(1)}%
                             </Badge>
                           ) : (

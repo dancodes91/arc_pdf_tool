@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -20,12 +20,12 @@ export default function SettingsPage() {
   }
 
   // Load density preference on mount
-  useState(() => {
+  useEffect(() => {
     const saved = localStorage.getItem('table-density')
     if (saved === 'dense' || saved === 'comfortable') {
       setDensity(saved)
     }
-  })
+  }, [])
 
   const themeOptions = [
     { value: 'light' as const, label: 'Light', icon: Sun, description: 'Clean and bright interface' },

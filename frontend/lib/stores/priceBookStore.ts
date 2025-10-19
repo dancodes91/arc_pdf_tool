@@ -82,7 +82,7 @@ interface PriceBookState {
   fetchProducts: (priceBookId: number) => Promise<void>
   setCurrentPriceBook: (book: PriceBook) => void
   uploadPriceBook: (file: File, manufacturer: string) => Promise<number>
-  exportPriceBook: (priceBookId: number, format: 'excel' | 'csv') => Promise<void>
+  exportPriceBook: (priceBookId: number, format: 'excel' | 'csv' | 'json') => Promise<void>
   deletePriceBook: (priceBookId: number) => Promise<void>
   comparePriceBooks: (oldId: number, newId: number) => Promise<void>
   publishToBaserow: (priceBookId: number, dryRun: boolean) => Promise<PublishResult>
@@ -164,7 +164,7 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
     }
   },
 
-  exportPriceBook: async (priceBookId: number, format: 'excel' | 'csv') => {
+  exportPriceBook: async (priceBookId: number, format: 'excel' | 'csv' | 'json') => {
     set({ loading: true, error: null })
     try {
       const response = await axios.get(`${API_BASE_URL}/export/${priceBookId}`, {
@@ -179,7 +179,8 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
 
       // Extract filename from content-disposition header or use default
       const contentDisposition = response.headers['content-disposition']
-      let filename = `price_book_${priceBookId}.${format === 'excel' ? 'xlsx' : 'csv'}`
+      const ext = format === 'excel' ? 'xlsx' : format
+      let filename = `price_book_${priceBookId}.${ext}`
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?(.+)"?/)
         if (filenameMatch) {

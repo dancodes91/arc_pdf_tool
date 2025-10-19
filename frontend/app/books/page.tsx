@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { ColumnDef } from '@tanstack/react-table'
 
 type PriceBook = {
-  id: string
+  id: number
   manufacturer: string
   edition: string | null
   effective_date: string | null
