@@ -1,0 +1,170 @@
+/**
+ * Semantic Color Aliases
+ * Maps design tokens to semantic roles
+ * Following ARC UI Design Guide v1.0
+ */
+
+:root {
+  /* ========================================
+     BACKGROUND COLORS
+     ======================================== */
+  --color-bg-base: #FFFFFF;
+  --color-bg-surface: var(--color-neutral-50);
+  --color-bg-muted: var(--color-neutral-100);
+  --color-bg-subtle: var(--color-neutral-200);
+
+  /* ========================================
+     TEXT COLORS
+     ======================================== */
+  --color-text-primary: #0B0C0E;
+  --color-text-secondary: var(--color-neutral-600);
+  --color-text-tertiary: var(--color-neutral-500);
+  --color-text-disabled: var(--color-neutral-400);
+  --color-text-inverse: #FFFFFF;
+
+  /* ========================================
+     BORDER COLORS
+     ======================================== */
+  --color-border-default: var(--color-neutral-300);
+  --color-border-subtle: var(--color-neutral-200);
+  --color-border-strong: var(--color-neutral-400);
+  --color-border-focus: var(--color-brand-primary);
+
+  /* ========================================
+     FOCUS RING
+     ======================================== */
+  --color-focus-ring: var(--color-brand-primary);
+  --size-focus-ring: 3px;
+  --offset-focus-ring: 2px;
+
+  /* ========================================
+     INTERACTIVE ELEMENTS
+     ======================================== */
+
+  /* Primary Button */
+  --color-button-primary-bg: var(--color-brand-primary);
+  --color-button-primary-text: #FFFFFF;
+  --color-button-primary-hover: var(--color-brand-dark);
+  --color-button-primary-active: #1E3A8A;
+
+  /* Secondary Button */
+  --color-button-secondary-bg: transparent;
+  --color-button-secondary-text: var(--color-brand-primary);
+  --color-button-secondary-border: var(--color-brand-primary);
+  --color-button-secondary-hover-bg: var(--color-brand-light);
+
+  /* Tertiary/Text Button */
+  --color-button-tertiary-text: var(--color-brand-primary);
+  --color-button-tertiary-hover-bg: var(--color-neutral-100);
+
+  /* Destructive Button */
+  --color-button-destructive-bg: var(--color-error);
+  --color-button-destructive-text: #FFFFFF;
+  --color-button-destructive-hover: var(--color-error-dark);
+
+  /* Disabled State */
+  --color-button-disabled-bg: var(--color-neutral-200);
+  --color-button-disabled-text: var(--color-neutral-400);
+
+  /* ========================================
+     FORM ELEMENTS
+     ======================================== */
+  --color-input-bg: #FFFFFF;
+  --color-input-border: var(--color-neutral-300);
+  --color-input-border-hover: var(--color-neutral-400);
+  --color-input-border-focus: var(--color-brand-primary);
+  --color-input-text: var(--color-text-primary);
+  --color-input-placeholder: var(--color-neutral-400);
+
+  --color-input-error-border: var(--color-error);
+  --color-input-error-bg: var(--color-error-light);
+  --color-input-error-text: var(--color-error-dark);
+
+  /* ========================================
+     STATUS & FEEDBACK
+     ======================================== */
+
+  /* Success */
+  --color-status-success-bg: var(--color-success-light);
+  --color-status-success-border: var(--color-success);
+  --color-status-success-text: var(--color-success-dark);
+
+  /* Warning */
+  --color-status-warning-bg: var(--color-warning-light);
+  --color-status-warning-border: var(--color-warning);
+  --color-status-warning-text: var(--color-warning-dark);
+
+  /* Error */
+  --color-status-error-bg: var(--color-error-light);
+  --color-status-error-border: var(--color-error);
+  --color-status-error-text: var(--color-error-dark);
+
+  /* Info */
+  --color-status-info-bg: var(--color-info-light);
+  --color-status-info-border: var(--color-info);
+  --color-status-info-text: var(--color-info-dark);
+
+  /* ========================================
+     TABLE COLORS
+     ======================================== */
+  --color-table-header-bg: var(--color-neutral-50);
+  --color-table-header-text: var(--color-text-primary);
+  --color-table-border: var(--color-neutral-200);
+  --color-table-row-hover: var(--color-neutral-50);
+  --color-table-row-selected: var(--color-brand-light);
+  --color-table-row-selected-border: var(--color-brand-primary);
+  --color-table-zebra: var(--color-neutral-50);
+
+  /* ========================================
+     NAVIGATION
+     ======================================== */
+  --color-nav-bg: #FFFFFF;
+  --color-nav-text: var(--color-text-secondary);
+  --color-nav-text-active: var(--color-brand-primary);
+  --color-nav-bg-active: var(--color-brand-light);
+  --color-nav-border: var(--color-neutral-200);
+
+  /* ========================================
+     CARD & PANEL
+     ======================================== */
+  --color-card-bg: #FFFFFF;
+  --color-card-border: var(--color-neutral-200);
+  --color-card-header-border: var(--color-neutral-200);
+
+  --color-panel-bg: #FFFFFF;
+  --color-panel-border: var(--color-neutral-300);
+  --color-panel-overlay: rgba(0, 0, 0, 0.5);
+
+  /* ========================================
+     DIFF SEMANTIC COLORS
+     ======================================== */
+  --color-diff-added-bg: var(--color-diff-added-bg);
+  --color-diff-added-text: #065F46;
+  --color-diff-added-border: var(--color-diff-added);
+
+  --color-diff-removed-bg: var(--color-diff-removed-bg);
+  --color-diff-removed-text: #991B1B;
+  --color-diff-removed-border: var(--color-diff-removed);
+
+  --color-diff-changed-bg: var(--color-diff-changed-bg);
+  --color-diff-changed-text: #92400E;
+  --color-diff-changed-border: var(--color-diff-changed);
+
+  /* ========================================
+     BADGE & LOZENGE
+     ======================================== */
+  --color-badge-neutral-bg: var(--color-neutral-100);
+  --color-badge-neutral-text: var(--color-neutral-700);
+
+  --color-badge-brand-bg: var(--color-brand-light);
+  --color-badge-brand-text: var(--color-brand-dark);
+
+  --color-badge-success-bg: var(--color-success-light);
+  --color-badge-success-text: var(--color-success-dark);
+
+  --color-badge-warning-bg: var(--color-warning-light);
+  --color-badge-warning-text: var(--color-warning-dark);
+
+  --color-badge-error-bg: var(--color-error-light);
+  --color-badge-error-text: var(--color-error-dark);
+}

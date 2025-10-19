@@ -1,59 +1,193 @@
+/* Import design tokens and theme files */
+@import '../styles/tokens.css';
+@import '../styles/semantic.css';
+@import '../styles/dark.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
-  }
-}
+/* ========================================
+   BASE STYLES
+   ======================================== */
 
 @layer base {
   * {
     @apply border-border;
   }
+
+  html {
+    @apply antialiased;
+    font-feature-settings: 'liga' 1, 'calt' 1;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-size: var(--text-body-16-size);
+    line-height: var(--text-body-16-line);
+  }
+
+  /* Typography base */
+  h1 {
+    font-size: var(--text-h1-size);
+    line-height: var(--text-h1-line);
+    font-weight: var(--text-h1-weight);
+  }
+
+  h2 {
+    font-size: var(--text-h2-size);
+    line-height: var(--text-h2-line);
+    font-weight: var(--text-h2-weight);
+  }
+
+  h3 {
+    font-size: var(--text-h3-size);
+    line-height: var(--text-h3-line);
+    font-weight: var(--text-h3-weight);
+  }
+
+  /* Focus styles - visible and accessible */
+  *:focus-visible {
+    outline: var(--size-focus-ring) solid var(--color-focus-ring);
+    outline-offset: var(--offset-focus-ring);
+    border-radius: var(--radius-sm);
+  }
+
+  /* Remove default button focus for keyboard users (we use :focus-visible) */
+  button:focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+@layer utilities {
+  /* Text truncation with ellipsis */
+  .truncate-ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Accessible screen reader only content */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Skeleton loading state */
+  .skeleton {
+    @apply animate-pulse bg-neutral-200 dark:bg-neutral-700;
+  }
+
+  /* Table density utilities */
+  .table-dense {
+    --table-row-height: var(--size-table-row-dense);
+  }
+
+  .table-comfortable {
+    --table-row-height: var(--size-table-row-comfortable);
+  }
+
+  /* Focus ring utility */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  /* Container max width */
+  .container-max {
+    max-width: var(--size-container-xl);
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* ========================================
+   COMPONENT PATTERNS
+   ======================================== */
+
+@layer components {
+  /* Card component base */
+  .card-base {
+    background-color: var(--color-card-bg);
+    border: 1px solid var(--color-card-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Panel component */
+  .panel-base {
+    background-color: var(--color-panel-bg);
+    border: 1px solid var(--color-panel-border);
+    border-radius: var(--radius-lg);
+  }
+
+  /* Status badge base */
+  .badge-base {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: var(--radius-full);
+    font-size: var(--text-body-14-size);
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  /* Diff highlight styles */
+  .diff-added {
+    background-color: var(--color-diff-added-bg);
+    color: var(--color-diff-added-text);
+    border-left: 3px solid var(--color-diff-added-border);
+  }
+
+  .diff-removed {
+    background-color: var(--color-diff-removed-bg);
+    color: var(--color-diff-removed-text);
+    border-left: 3px solid var(--color-diff-removed-border);
+  }
+
+  .diff-changed {
+    background-color: var(--color-diff-changed-bg);
+    color: var(--color-diff-changed-text);
+    border-left: 3px solid var(--color-diff-changed-border);
+  }
+
+  /* Table row states */
+  .table-row-hover:hover {
+    background-color: var(--color-table-row-hover);
+  }
+
+  .table-row-selected {
+    background-color: var(--color-table-row-selected);
+    border-left: 3px solid var(--color-table-row-selected-border);
+  }
+
+  /* Scrollbar styling (webkit browsers) */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--color-bg-muted);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--color-border-default);
+    border-radius: var(--radius-full);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-strong);
   }
 }
