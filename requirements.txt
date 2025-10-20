@@ -68,7 +68,7 @@ pydantic==2.11.9
 pydantic-core==2.33.2
 pygments==2.19.2
 pymupdf==1.26.4
-pypdf==3.17.4
+pypdf==6.1.2
 pypdfium2==4.30.0
 pytesseract==0.3.13
 pytest==8.4.2
