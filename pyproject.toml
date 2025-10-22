@@ -67,6 +67,8 @@ dependencies = [
     "paddlepaddle>=2.6.0",
     "gunicorn>=23.0.0",
     "waitress>=3.0.2",
+    "markdown>=3.9",
+    "weasyprint>=66.0",
 ]
 
 [project.optional-dependencies]

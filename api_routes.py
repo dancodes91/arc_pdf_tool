@@ -389,6 +389,48 @@ def health_check():
         'version': '1.0.0'
     })
 
+@api.route('/files/<path:filename>', methods=['GET'])
+def serve_file(filename):
+    """Serve uploaded files (PDFs)"""
+    try:
+        # Construct the file path
+        file_path = os.path.join(os.getcwd(), filename)
+
+        # Check if file exists
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
+
+        # Send the file
+        return send_file(
+            file_path,
+            mimetype='application/pdf',
+            as_attachment=False  # Display in browser instead of download
+        )
+    except Exception as e:
+        logger.error(f"Error serving file {filename}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@api.route('/meta', methods=['GET'])
+def get_meta():
+    """Get application metadata and statistics"""
+    try:
+        # Get database stats
+        total_books = len(price_book_manager.list_price_books())
+
+        # Get recent uploads (last 5)
+        recent_books = price_book_manager.list_price_books()[:5]
+
+        return jsonify({
+            'app_name': 'ARC PDF Tool',
+            'version': '1.0.0',
+            'total_price_books': total_books,
+            'recent_uploads': recent_books,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error fetching metadata: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # Error handlers
 @api.errorhandler(404)
 def not_found(error):
