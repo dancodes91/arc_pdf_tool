@@ -356,3 +356,10 @@ Thumbs.db
 
 test_data/
 .vercel
+
+# Temporary utility files
+kill_backend.py
+kill_port_5000.py
+kill_and_restart.bat
+temp_article.txt
+nul

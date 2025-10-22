@@ -21,25 +21,22 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 Config.init_app(app)
 
-# CORS configuration - supports both local development and production
-cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:3001,http://localhost:3002,http://127.0.0.1:3000')
-allowed_origins = [origin.strip() for origin in cors_origins.split(',')]
+# CORS configuration - COMMENTED OUT FOR LOCAL TESTING
+# cors_origins = os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:3001,http://localhost:3002,http://127.0.0.1:3000')
+# allowed_origins = [origin.strip() for origin in cors_origins.split(',')]
 
-# Configure CORS to support all Vercel deployments
-def verify_origin(origin):
-    """Allow localhost and all vercel.app domains"""
-    if not origin:
-        return False
-    # Allow all localhost origins
-    if 'localhost' in origin or '127.0.0.1' in origin:
-        return True
-    # Allow all vercel.app domains
-    if 'vercel.app' in origin:
-        return True
-    # Allow explicitly configured origins
-    return origin in allowed_origins
+# Configure CORS to support all Vercel deployments and localhost
+# Use regex patterns to match localhost and vercel.app domains
+# CORS(app,
+#      origins=[
+#          r"http://localhost:\d+",      # Match any localhost port
+#          r"http://127\.0\.0\.1:\d+",   # Match any 127.0.0.1 port
+#          r"https?://.*\.vercel\.app",  # Match all vercel.app domains
+#      ] + allowed_origins,  # Include explicitly configured origins
+#      supports_credentials=True)
 
-CORS(app, origins=verify_origin, supports_credentials=True)
+# Temporary: Allow all origins for local development
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Register API blueprint
 app.register_blueprint(api)
