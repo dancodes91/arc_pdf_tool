@@ -13,7 +13,7 @@ interface PriceBook {
   edition: string
   effective_date: string
   upload_date: string
-  status: 'processing' | 'completed' | 'failed'
+  status: 'processing' | 'processed' | 'completed' | 'failed'
   product_count: number
   option_count: number
   file_path: string
@@ -52,11 +52,28 @@ interface ComparisonResult {
   changes: ComparisonChange[]
 }
 
+interface PublishResult {
+  id: string
+  price_book_id: number
+  status: string
+  dry_run: boolean
+  rows_created: number
+  rows_updated: number
+  rows_processed: number
+  duration_seconds: number
+  started_at: string
+  completed_at: string | null
+  warnings: any[]
+  manufacturer?: string
+  edition?: string
+}
+
 interface PriceBookState {
   priceBooks: PriceBook[]
   currentPriceBook: PriceBook | null
   products: Product[]
   comparisonResult: ComparisonResult | null
+  publishHistory: PublishResult[]
   loading: boolean
   error: string | null
 
@@ -65,9 +82,11 @@ interface PriceBookState {
   fetchProducts: (priceBookId: number) => Promise<void>
   setCurrentPriceBook: (book: PriceBook) => void
   uploadPriceBook: (file: File, manufacturer: string) => Promise<number>
-  exportPriceBook: (priceBookId: number, format: 'excel' | 'csv') => Promise<void>
+  exportPriceBook: (priceBookId: number, format: 'excel' | 'csv' | 'json') => Promise<void>
   deletePriceBook: (priceBookId: number) => Promise<void>
   comparePriceBooks: (oldId: number, newId: number) => Promise<void>
+  publishToBaserow: (priceBookId: number, dryRun: boolean) => Promise<PublishResult>
+  fetchPublishHistory: () => Promise<void>
   setError: (error: string | null) => void
   clearError: () => void
 }
@@ -77,6 +96,7 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
   currentPriceBook: null,
   products: [],
   comparisonResult: null,
+  publishHistory: [],
   loading: false,
   error: null,
 
@@ -144,7 +164,7 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
     }
   },
 
-  exportPriceBook: async (priceBookId: number, format: 'excel' | 'csv') => {
+  exportPriceBook: async (priceBookId: number, format: 'excel' | 'csv' | 'json') => {
     set({ loading: true, error: null })
     try {
       const response = await axios.get(`${API_BASE_URL}/export/${priceBookId}`, {
@@ -159,7 +179,8 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
 
       // Extract filename from content-disposition header or use default
       const contentDisposition = response.headers['content-disposition']
-      let filename = `price_book_${priceBookId}.${format === 'excel' ? 'xlsx' : 'csv'}`
+      const ext = format === 'excel' ? 'xlsx' : format
+      let filename = `price_book_${priceBookId}.${ext}`
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?(.+)"?/)
         if (filenameMatch) {
@@ -211,6 +232,43 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
       const errorMessage = error.response?.data?.error || error.message || 'Failed to compare price books'
       set({ error: errorMessage, loading: false })
       console.error('Error comparing price books:', error)
+    }
+  },
+
+  publishToBaserow: async (priceBookId: number, dryRun: boolean) => {
+    set({ loading: true, error: null })
+    try {
+      const response = await axios.post(`${API_BASE_URL}/publish`, {
+        price_book_id: priceBookId,
+        dry_run: dryRun,
+      })
+
+      // Refresh publish history
+      await get().fetchPublishHistory()
+
+      set({ loading: false })
+      return response.data
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to publish to Baserow'
+      set({ error: errorMessage, loading: false })
+      console.error('Error publishing to Baserow:', error)
+      throw new Error(errorMessage)
+    }
+  },
+
+  fetchPublishHistory: async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/publish/history`, {
+        params: {
+          limit: 20
+        }
+      })
+
+      set({ publishHistory: response.data })
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to fetch publish history'
+      console.error('Error fetching publish history:', error)
+      // Don't set loading/error state for background fetch
     }
   },
 

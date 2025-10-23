@@ -2,8 +2,8 @@ services:
   - type: web
     name: arc-pdf-api
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    buildCommand: chmod +x render-build.sh && ./render-build.sh
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -15,3 +15,11 @@ services:
         generateValue: true
       - key: FLASK_ENV
         value: production
+      - key: ENV
+        value: production
+      - key: DEBUG
+        value: false
+      - key: TESSERACT_CMD
+        value: /usr/bin/tesseract
+      - key: CORS_ORIGINS
+        sync: false

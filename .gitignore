@@ -326,6 +326,9 @@ logs/
 *.sqlite3
 .ruff_cache/
 .claude/
+# Generated dependency directories/files
+node_modules/
+package-lock.json
 # Test files
 test_upload.py
 test_export.py
@@ -339,6 +342,8 @@ frontend/.next/
 frontend/node_modules/
 frontend/next-env.d.ts
 frontend/package-lock.json
+playwright-report/
+test-results/
 
 # Temporary analysis files
 samples/extracted/*.json
@@ -350,3 +355,11 @@ MILESTONE_2_STATUS.md
 Thumbs.db
 
 test_data/
+.vercel
+
+# Temporary utility files
+kill_backend.py
+kill_port_5000.py
+kill_and_restart.bat
+temp_article.txt
+nul

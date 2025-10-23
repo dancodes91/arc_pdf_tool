@@ -247,7 +247,7 @@ export default function PreviewPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Status</CardTitle>
-            <Badge variant="secondary">
+            <Badge variant="neutral">
               {currentPriceBook?.status || 'Unknown'}
             </Badge>
           </CardHeader>
@@ -354,7 +354,7 @@ export default function PreviewPage() {
                     </TableCell>
                     <TableCell>
                       {product.base_price ? (
-                        <Badge variant="secondary">
+                        <Badge variant="neutral">
                           ${product.base_price.toFixed(2)}
                         </Badge>
                       ) : (
@@ -365,7 +365,7 @@ export default function PreviewPage() {
                       {product.effective_date || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={product.is_active ? "default" : "secondary"}>
+                      <Badge variant={product.is_active ? "success" : "neutral"}>
                         {product.is_active ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>

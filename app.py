@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 Config.init_app(app)
+
 # CORS: Allow Vercel frontend + local development
 CORS(app,
      origins=[

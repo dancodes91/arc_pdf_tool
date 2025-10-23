@@ -35,8 +35,7 @@ dependencies = [
     "pandera>=0.17.2",
     # Database
     "sqlalchemy>=2.0.23",
-    "psycopg2-binary>=2.9.9",
-    "pymysql>=1.1.0",
+    "mysqlclient>=2.2.0",
     "alembic>=1.13.1",
     # FastAPI Stack
     "fastapi>=0.104.1",
@@ -66,6 +65,10 @@ dependencies = [
     "img2table>=1.2.0",
     "paddleocr>=2.8.0",
     "paddlepaddle>=2.6.0",
+    "gunicorn>=23.0.0",
+    "waitress>=3.0.2",
+    "markdown>=3.9",
+    "weasyprint>=66.0",
 ]
 
 [project.optional-dependencies]
