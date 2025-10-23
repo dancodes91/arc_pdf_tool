@@ -247,6 +247,125 @@ class UniversalParser:
                     layer3_options
                 )
 
+        # PHASE 3: FIELD-SPECIFIC CONFIDENCE RECALCULATION
+        self.logger.info("Phase 3: Field-specific confidence scoring...")
+        from parsers.shared.confidence_models import FieldSpecificConfidenceModel
+
+        confidence_model = FieldSpecificConfidenceModel()
+
+        # Recalculate confidence for each product field
+        for product in self.products:
+            # Get extraction method from provenance
+            extraction_method = getattr(product.provenance, 'extraction_method', 'unknown')
+
+            # Recalculate confidence for critical fields
+            for field_name in ['sku', 'base_price', 'description']:
+                if field_name in product.value:
+                    value = product.value[field_name]
+
+                    # Calculate field-specific confidence
+                    field_confidence = confidence_model.calculate_confidence(
+                        field_name=field_name,
+                        value=value,
+                        extraction_method=extraction_method,
+                        ocr_confidence=product.confidence
+                    )
+
+                    # Store field confidence
+                    product.value[f'{field_name}_confidence'] = field_confidence
+
+            # Update overall product confidence to average of field confidences
+            field_confidences = [
+                product.value.get('sku_confidence', product.confidence),
+                product.value.get('base_price_confidence', product.confidence),
+                product.value.get('description_confidence', product.confidence)
+            ]
+            product.confidence = sum(field_confidences) / len(field_confidences)
+
+        self.logger.info(f"Phase 3 complete: Recalculated confidence for {len(self.products)} products")
+
+        # PHASE 5: ADAPTIVE PATTERN LEARNING
+        self.logger.info("Phase 5: Adaptive pattern learning...")
+        from parsers.shared.pattern_learner import AdaptivePatternLearner
+
+        pattern_learner = AdaptivePatternLearner()
+
+        # Learn patterns from high-confidence products
+        high_confidence_products = [
+            p.value for p in self.products
+            if p.confidence >= 0.9 and p.value.get('sku')
+        ]
+
+        if high_confidence_products:
+            # Try to detect manufacturer from document
+            manufacturer = self._detect_manufacturer()
+
+            if manufacturer:
+                pattern_learner.learn_from_extraction(manufacturer, high_confidence_products)
+                self.logger.info(f"Learned patterns from {len(high_confidence_products)} products for {manufacturer}")
+
+                # Apply pattern validation boost to remaining products
+                for product in self.products:
+                    sku = product.value.get('sku')
+                    if sku:
+                        boost = pattern_learner.validate_sku(manufacturer, sku)
+                        if boost > 0:
+                            product.confidence = min(product.confidence + boost, 1.0)
+                            product.value['pattern_validated'] = True
+
+        # PHASE 6: POST-PROCESSING & AUTO-CORRECTION
+        self.logger.info("Phase 6: Post-processing validation and error correction...")
+        from parsers.shared.error_corrector import PostProcessingValidator
+
+        post_validator = PostProcessingValidator()
+
+        # Validate and auto-correct products
+        validation_results = post_validator.validate_and_correct(self.products)
+
+        # Update products with validated/corrected versions
+        self.products = validation_results['valid_products']
+
+        self.logger.info(
+            f"Phase 6 complete: {validation_results['corrected_count']} corrections, "
+            f"{len(validation_results['errors'])} errors, "
+            f"{len(validation_results['warnings'])} warnings"
+        )
+
+        # PHASE 7: FEEDBACK-BASED IMPROVEMENTS
+        self.logger.info("Phase 7: Applying feedback-based improvements...")
+        from parsers.shared.feedback_collector import FeedbackCollector
+
+        feedback_collector = FeedbackCollector()
+
+        # Get manufacturer
+        manufacturer = self._detect_manufacturer()
+
+        # Apply learned corrections to products
+        suggestions_applied = 0
+        for product in self.products:
+            for field_name in ['sku', 'base_price', 'description']:
+                if field_name in product.value:
+                    value = product.value[field_name]
+
+                    # Get correction suggestion from feedback
+                    suggestion = feedback_collector.get_correction_suggestions(
+                        value, field_name, manufacturer
+                    )
+
+                    if suggestion and suggestion != value:
+                        product.value[f'{field_name}_original'] = value
+                        product.value[field_name] = suggestion
+                        product.value[f'{field_name}_feedback_corrected'] = True
+                        suggestions_applied += 1
+
+        if suggestions_applied > 0:
+            self.logger.info(f"Phase 7 complete: Applied {suggestions_applied} feedback-based corrections")
+        else:
+            self.logger.info("Phase 7 complete: No feedback corrections available yet")
+
+        # Store feedback collector for later use (e.g., API can use it for recording corrections)
+        self.feedback_collector = feedback_collector
+
         # Log validation statistics
         stats = validator.get_validation_stats(self.products)
         self.logger.info(
@@ -496,6 +615,34 @@ class UniversalParser:
         """Decide if Layer 3 (ML) is needed."""
         # Use Layer 3 only if Layers 1+2 yielded very few products
         return products_per_page < 5
+
+    def _detect_manufacturer(self) -> str:
+        """
+        Detect manufacturer from document text.
+
+        Returns:
+            Manufacturer name (lowercase) or 'unknown'
+        """
+        if not self.document:
+            return "unknown"
+
+        # Combine first few pages of text
+        text = ""
+        for page in self.document.pages[:3]:
+            if page.text:
+                text += page.text.lower() + "\n"
+
+        # Known manufacturers
+        manufacturers = [
+            "select", "hager", "continental", "lockey", "alarlock",
+            "dorma", "assa abloy", "yale", "schlage", "kwikset"
+        ]
+
+        for mfr in manufacturers:
+            if mfr in text:
+                return mfr
+
+        return "unknown"
 
     def _identify_weak_pages(self) -> List[int]:
         """Identify pages with low product yield from Layer 1."""
