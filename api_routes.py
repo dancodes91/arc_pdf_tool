@@ -118,7 +118,7 @@ def upload_pdf():
             from parsers.hager.parser import HagerParser
             parser = HagerParser(filepath)
             logger.info(f"Using HagerParser for {filename}")
-        elif manufacturer == 'select_hinges':
+        elif manufacturer in ['select', 'select_hinges']:
             from parsers.select.parser import SelectHingesParser
             parser = SelectHingesParser(filepath)
             logger.info(f"Using SelectHingesParser for {filename}")

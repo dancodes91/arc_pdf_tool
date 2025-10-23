@@ -312,10 +312,28 @@ class PriceBookManager:
             price_book = session.query(PriceBook).filter(PriceBook.id == price_book_id).first()
             if not price_book:
                 return {}
-            
+
+            # Count products
             product_count = session.query(Product).filter(Product.price_book_id == price_book_id).count()
-            option_count = session.query(ProductOption).join(Product).filter(Product.price_book_id == price_book_id).count()
-            
+
+            # Count options for this price book
+            # This includes both:
+            # 1. Product-specific options (linked via product_id)
+            # 2. Generic/manufacturer options (product_id=None) - we count all of these
+            option_count = session.query(ProductOption).outerjoin(Product).filter(
+                (Product.price_book_id == price_book_id) | (ProductOption.product_id == None)
+            ).count()
+
+            # Count finishes for this manufacturer
+            finish_count = session.query(Finish).filter(
+                Finish.manufacturer_id == price_book.manufacturer_id
+            ).count()
+
+            # Count rules (stored as ChangeLogs with new_price_book_id)
+            rule_count = session.query(ChangeLog).filter(
+                ChangeLog.new_price_book_id == price_book_id
+            ).count()
+
             return {
                 'id': price_book.id,
                 'manufacturer': price_book.manufacturer.name,
@@ -325,6 +343,8 @@ class PriceBookManager:
                 'status': price_book.status,
                 'product_count': product_count,
                 'option_count': option_count,
+                'finish_count': finish_count,
+                'rule_count': rule_count,
                 'file_path': price_book.file_path
             }
             
