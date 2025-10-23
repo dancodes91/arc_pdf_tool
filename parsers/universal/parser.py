@@ -221,13 +221,39 @@ class UniversalParser:
         else:
             self.logger.info("LAYER 3: Skipped (Layers 1+2 yield sufficient)")
 
-        # MERGE & DEDUPLICATE
-        self.logger.info("Merging and deduplicating products from all layers...")
-        self.products = self._merge_and_deduplicate()
+        # PHASE 2: MULTI-SOURCE VALIDATION
+        self.logger.info("Phase 2: Multi-source validation...")
+        from parsers.shared.multi_source_validator import MultiSourceValidator
 
-        # BOOST CONFIDENCE for multi-source agreement
-        self.logger.info("Boosting confidence for multi-source agreement...")
-        self._boost_confidence_for_multi_source()
+        validator = MultiSourceValidator(confidence_threshold=self.confidence_threshold)
+
+        # Validate products across all 3 layers
+        self.products = validator.validate_products(
+            self.layer1_products,
+            self.layer2_products,
+            self.layer3_products
+        )
+
+        # Validate options if present
+        if self.options or hasattr(self, 'layer1_options'):
+            layer1_options = getattr(self, 'layer1_options', [])
+            layer2_options = getattr(self, 'layer2_options', [])
+            layer3_options = getattr(self, 'layer3_options', [])
+
+            if layer1_options or layer2_options or layer3_options:
+                self.options = validator.validate_options(
+                    layer1_options,
+                    layer2_options,
+                    layer3_options
+                )
+
+        # Log validation statistics
+        stats = validator.get_validation_stats(self.products)
+        self.logger.info(
+            f"Multi-source validation complete: {stats['total_items']} products, "
+            f"{stats['multi_source_validated']} multi-source ({stats['multi_source_rate']:.1%}), "
+            f"Avg confidence: {stats['average_confidence']:.1%}"
+        )
 
         avg_confidence = self._calculate_avg_confidence(self.products)
         self.logger.info(
