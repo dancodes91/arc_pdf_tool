@@ -110,22 +110,32 @@ def upload_pdf():
         
         # Get file size
         file_size = os.path.getsize(filepath)
-        
-        # Parse PDF using Universal Parser with hybrid approach
-        # This works for ANY manufacturer (Hager, Select, Continental, Lockey, etc.)
-        from parsers.universal import UniversalParser
 
-        parser = UniversalParser(
-            filepath,
-            config={
-                'use_hybrid': True,  # Enable 3-layer hybrid approach
-                'use_ml_detection': True,
-                'confidence_threshold': 0.6,
-                'max_pages': None  # Process all pages
-            }
-        )
+        # Parse PDF based on manufacturer using manufacturer-specific parsers
+        # Use Universal Parser as fallback for unknown manufacturers
+        if manufacturer == 'hager':
+            from parsers.hager.parser import HagerParser
+            parser = HagerParser(filepath)
+            logger.info(f"Using HagerParser for {filename}")
+        elif manufacturer == 'select_hinges':
+            from parsers.select.parser import SelectHingesParser
+            parser = SelectHingesParser(filepath)
+            logger.info(f"Using SelectHingesParser for {filename}")
+        else:
+            # Use Universal Parser for unknown manufacturers
+            from parsers.universal import UniversalParser
+            parser = UniversalParser(
+                filepath,
+                config={
+                    'use_hybrid': True,  # Enable 3-layer hybrid approach
+                    'use_ml_detection': True,
+                    'confidence_threshold': 0.6,
+                    'max_pages': None  # Process all pages
+                }
+            )
+            logger.info(f"Using UniversalParser for {filename} (manufacturer: {manufacturer})")
 
-        # Parse the PDF with Universal Parser (96% avg confidence)
+        # Parse the PDF with selected parser
         parsed_data = parser.parse()
         parsed_data['file_path'] = filepath
         parsed_data['file_size'] = file_size
