@@ -42,14 +42,19 @@ class PaddleOCRProcessor:
         try:
             from paddleocr import PaddleOCR
 
-            self.ocr = PaddleOCR(
-                use_angle_cls=True,  # Detect text rotation
-                lang=self.config.get('ocr_lang', 'en'),  # English language
-                use_gpu=self.config.get('use_gpu', False),  # CPU mode by default
-                show_log=False,  # Suppress verbose logs
-                det_db_thresh=self.config.get('det_threshold', 0.3),  # Lower for better recall
-                det_db_box_thresh=self.config.get('box_threshold', 0.6),  # Higher for precision
-            )
+            # Build config with only supported parameters
+            ocr_config = {
+                'use_angle_cls': True,  # Detect text rotation
+                'lang': self.config.get('ocr_lang', 'en'),  # English language
+                'det_db_thresh': self.config.get('det_threshold', 0.3),  # Lower for better recall
+                'det_db_box_thresh': self.config.get('box_threshold', 0.6),  # Higher for precision
+            }
+
+            # Only add use_gpu if explicitly requested (not all versions support it)
+            if self.config.get('use_gpu'):
+                ocr_config['use_gpu'] = True
+
+            self.ocr = PaddleOCR(**ocr_config)
 
             self.logger.info("PaddleOCR initialized successfully")
 
