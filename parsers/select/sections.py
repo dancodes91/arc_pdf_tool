@@ -223,21 +223,24 @@ class SelectSectionExtractor:
                     if sku and sku not in seen_skus:
                         products.append(p)
                         seen_skus.add(sku)
+                # Structured extraction succeeded - skip fallback methods for this table
+                continue
 
             # If structured didn't work, try pattern-based extraction for complex layouts
-            if not structured_products:
-                pattern_products = self._extract_products_from_table_simple(
-                    df, table_idx, page_number
-                )
-                if pattern_products:
-                    for p in pattern_products:
-                        sku = p.value.get("sku")
-                        if sku and sku not in seen_skus:
-                            products.append(p)
-                            seen_skus.add(sku)
+            pattern_products = self._extract_products_from_table_simple(
+                df, table_idx, page_number
+            )
+            if pattern_products:
+                for p in pattern_products:
+                    sku = p.value.get("sku")
+                    if sku and sku not in seen_skus:
+                        products.append(p)
+                        seen_skus.add(sku)
+                # Pattern extraction succeeded - skip grid extraction for this table
+                continue
 
-            # ENHANCEMENT: ALWAYS run grid extraction to catch any missed price cells
-            # This adds products that structured/pattern methods may have missed
+            # If both structured and pattern failed, try aggressive grid extraction as last resort
+            # This extracts every valid price cell and infers model/finish from context
             grid_products = self._extract_all_price_cells(
                 df, table_idx, page_number, existing_skus=seen_skus
             )
@@ -248,171 +251,269 @@ class SelectSectionExtractor:
                         products.append(p)
                         seen_skus.add(sku)
 
-        self.logger.info(f"Extracted {len(products)} products from model tables")
-        return products
+        # Post-processing: Filter out invalid products for SELECT pricing guides
+        # Valid products MUST have length specifications (79", 83", 95", 120", etc.)
+        valid_products = []
+        for p in products:
+            sku = p.value.get("sku", "")
+            specs = p.value.get("specifications", {})
+            price = p.value.get("base_price", 0)
+
+            # Check if product has length specification
+            has_length = False
+            if specs and specs.get("length"):
+                has_length = True
+            # Also check SKU for length pattern (ends with digits like -79, -83, -95, -120)
+            elif re.search(r'-\d{2,3}$', sku):
+                has_length = True
+
+            # Skip products without length specs (invalid for SELECT pricing guides)
+            if not has_length:
+                self.logger.debug(f"Skipping product without length: {sku}")
+                continue
+
+            # Additional price validation (SELECT prices are typically $50-$5000)
+            if price < 50 or price > 10000:
+                self.logger.debug(f"Skipping product with invalid price: {sku} ${price}")
+                continue
+
+            valid_products.append(p)
+
+        self.logger.info(f"Extracted {len(valid_products)} valid products from model tables ({len(products) - len(valid_products)} filtered)")
+        return valid_products
 
     def _extract_products_structured(
         self, df: pd.DataFrame, table_idx: int, page_number: int = None
     ) -> List[ParsedItem]:
-        """Extract products using comprehensive table melting - extracts ALL row×finish combinations."""
+        """Extract products from SELECT tables with newline-separated lengths/prices in cells.
+
+        Camelot extracts these tables with:
+        - Column 0 header: "Model #\n79"\n83"/85"\n95"\n120"" (all lengths newline-separated)
+        - Column 0 data: Model descriptor (e.g., "SL11 CL HD600")
+        - Columns 1+: Prices newline-separated (e.g., "193\n193" for 79" and 83" prices)
+        """
         products = []
 
         try:
-            # Clean header row
+            # Get header row and data
             header = [str(cell).strip() for cell in df.iloc[0]]
-            df.columns = header
-            df = df.iloc[1:]  # Remove header row
+            data_rows = df.iloc[1:]
 
             # Drop completely empty rows
-            df = df.dropna(how="all")
+            data_rows = data_rows.dropna(how="all")
 
-            if df.empty:
+            if data_rows.empty:
                 return []
 
-            # Identify all columns
-            [h.upper() for h in header]
+            # Parse lengths from first column header (contains newline-separated lengths)
+            # Example: "Model #\n79" \n83" / 85"\n95"\n120""
+            first_col_header = str(header[0])
 
-            # Find model column (first column with model codes)
-            model_col = None
-            for idx, col in enumerate(df.columns):
-                # Check if column contains SL## patterns
-                sample = df[col].dropna().head(10)
-                if any(re.match(r"SL\s*\d{2}", str(val), re.IGNORECASE) for val in sample):
-                    model_col = col
-                    break
+            # Extract all length values (look for patterns like 79", 83", 95", 120")
+            lengths = []
+            for line in first_col_header.split('\n'):
+                line = line.strip()
+                # Match patterns like: 79", 83", 83"/85", 95", 120"
+                matches = re.findall(r'(\d+)\s*["\']?\s*(?:/\s*(\d+)\s*["\']?)?', line)
+                for match in matches:
+                    if match[0]:  # First number
+                        lengths.append(match[0])
+                    # Note: We ignore the second number in patterns like "83/85" for now
 
-            if not model_col:
+            # Remove duplicates while preserving order
+            seen = set()
+            lengths = [x for x in lengths if not (x in seen or seen.add(x))]
+
+            if not lengths:
+                self.logger.debug(f"No lengths found in table {table_idx} header: {first_col_header}")
                 return []
 
-            # Look for finish columns (CL, BR, BK) - these contain prices
-            finish_cols = []
-            for col in header:
-                col_upper = col.upper().strip()
-                if col_upper in ["CL", "BR", "BK"]:
-                    finish_cols.append(col)
+            self.logger.debug(f"Extracted lengths from header: {lengths}")
 
-            if not finish_cols:
-                return []
+            # Process each data row
+            for row_idx, row in data_rows.iterrows():
+                # Get model descriptor from first column
+                model_descriptor = str(row.iloc[0]).strip()
 
-            # Identify descriptor columns (keep these as id_vars)
-            id_vars = [model_col]
-            desc_col = None
-            length_col = None
-            duty_col = None
-
-            for col in header:
-                col_upper = col.upper()
-                if col in finish_cols or col == model_col:
-                    continue
-                if "DESC" in col_upper or "NAME" in col_upper:
-                    desc_col = col
-                    id_vars.append(col)
-                elif "LENGTH" in col_upper or "SIZE" in col_upper or '"' in col_upper:
-                    length_col = col
-                    id_vars.append(col)
-                elif "DUTY" in col_upper or "WEIGHT" in col_upper or "TYPE" in col_upper:
-                    duty_col = col
-                    id_vars.append(col)
-
-            # Melt finish columns to create one row per (model × finish) combination
-            long_df = df.melt(
-                id_vars=id_vars, value_vars=finish_cols, var_name="Finish", value_name="Price"
-            )
-
-            # Keep only rows with prices
-            long_df = long_df.dropna(subset=["Price"])
-            long_df = long_df[long_df["Price"].astype(str).str.strip() != ""]
-            long_df = long_df[long_df["Price"].astype(str).str.upper() != "NAN"]
-
-            # Extract products from melted table
-            for _, row in long_df.iterrows():
-                model = str(row[model_col]).strip()
-                finish = str(row["Finish"]).strip().upper()
-                price_str = str(row["Price"]).strip()
-
-                # Skip invalid models
-                if not model or model.lower() in ["nan", "none", "model", ""]:
+                # Skip header/empty rows
+                if not model_descriptor or model_descriptor.lower() in ["nan", "none", "model", "model #", ""]:
                     continue
 
-                # Extract clean model code (remove any suffixes)
-                model_match = re.match(r"(SL\s*\d{2})", model, re.IGNORECASE)
-                if not model_match:
+                # Skip rows that look like headers/garbage
+                if "WEB" in model_descriptor.upper() or "METRIC" in model_descriptor.upper():
                     continue
 
-                base_model = model_match.group(1).replace(" ", "")
-
-                # Build comprehensive SKU with all attributes
-                sku_parts = [base_model, finish]
-                specs = {}
-
-                if length_col and pd.notna(row.get(length_col)):
-                    length_val = str(row[length_col]).strip()
-                    if length_val and length_val.upper() not in ["NAN", "NONE", ""]:
-                        # Clean length value
-                        length_clean = re.sub(r"[^\d\-/]", "", length_val)
-                        if length_clean:
-                            sku_parts.append(length_clean)
-                            specs["length"] = length_val
-
-                if duty_col and pd.notna(row.get(duty_col)):
-                    duty_val = str(row[duty_col]).strip()
-                    if duty_val and duty_val.upper() not in ["NAN", "NONE", ""]:
-                        duty_clean = re.sub(r"[^\w\d]", "", duty_val)
-                        if duty_clean:
-                            sku_parts.append(duty_clean)
-                            specs["duty"] = duty_val
-
-                sku = "-".join(sku_parts).replace(" ", "")
-
-                # Normalize price
-                price_normalized = data_normalizer.normalize_price(price_str)
-                if not price_normalized["value"]:
+                # Parse model descriptor (e.g., "SL11 CL HD600")
+                parsed = self._parse_select_model_descriptor(model_descriptor)
+                if not parsed:
                     continue
 
-                price_val = float(price_normalized["value"])
+                base_model = parsed["base_model"]
+                finish = parsed["finish"]
+                duty = parsed["duty"]
 
-                # Sanity check price
-                if price_val < 1 or price_val > 10000:
+                # Collect all price cells from columns 1, 2, 3, etc.
+                price_cells = []
+                for col_idx in range(1, len(row)):
+                    cell = str(row.iloc[col_idx]).strip()
+                    if cell and cell.lower() not in ["nan", "none", ""]:
+                        price_cells.append(cell)
+
+                if not price_cells:
                     continue
 
-                # Build description
-                desc_parts = [base_model, finish]
-                if desc_col and pd.notna(row.get(desc_col)):
-                    desc_parts.append(str(row[desc_col]).strip())
-                elif specs:
-                    if "length" in specs:
-                        desc_parts.append(specs["length"])
-                    if "duty" in specs:
-                        desc_parts.append(specs["duty"])
+                # Split each cell by newlines and flatten into list of individual prices
+                all_prices = []
+                for cell in price_cells:
+                    # Split by newlines
+                    prices_in_cell = [p.strip() for p in cell.split('\n')]
+                    all_prices.extend(prices_in_cell)
 
-                product_data = {
-                    "sku": sku,
-                    "model": base_model,
-                    "series": base_model[:2] if len(base_model) >= 2 else base_model,
-                    "description": " ".join(desc_parts),
-                    "base_price": price_val,
-                    "finish_code": finish if finish in ["CL", "BR", "BK"] else None,
-                    "specifications": specs,
-                    "is_active": True,
-                    "manufacturer": "SELECT",
-                }
+                # Filter out non-price values (dashes, fractions, dimensions, text)
+                valid_prices = []
+                for price_str in all_prices:
+                    # Skip dashes and empty
+                    if not price_str or price_str == "-":
+                        valid_prices.append(None)
+                        continue
 
-                item = self.tracker.create_parsed_item(
-                    value=product_data,
-                    data_type="product",
-                    raw_text=f"{model} {finish} ${price_str}",
-                    row_index=None,
-                    confidence=safe_confidence_score(price_normalized["confidence"], 0.9),
-                    page_number=page_number,
-                    table_index=table_idx,
-                )
-                products.append(item)
+                    # Skip fractions (like "11/16", "1-9/16")
+                    if "/" in price_str:
+                        valid_prices.append(None)
+                        continue
+
+                    # Skip text/dimension indicators (mm, inches, clearance, etc.)
+                    skip_keywords = ['mm', 'bevel', 'edge', 'square', 'clearance', 'min', 'web', 'metric', 'brochure', 'site']
+                    if any(kw in price_str.lower() for kw in skip_keywords):
+                        valid_prices.append(None)
+                        continue
+
+                    # Must contain digits
+                    if not re.search(r'\d', price_str):
+                        valid_prices.append(None)
+                        continue
+
+                    # Try to extract numeric price
+                    price_normalized = data_normalizer.normalize_price(price_str)
+                    if price_normalized["value"]:
+                        price_val = float(price_normalized["value"])
+                        # Sanity check: SELECT hinge prices typically range from $50 to $5000
+                        # Values under $50 are likely dimensions (8.73mm, 1.59", etc.)
+                        if 50 <= price_val <= 10000:
+                            valid_prices.append(price_val)
+                        else:
+                            valid_prices.append(None)
+                    else:
+                        valid_prices.append(None)
+
+                # Match prices to lengths (zip them together)
+                # Handle case where we have more lengths than prices or vice versa
+                min_count = min(len(lengths), len(valid_prices))
+
+                for i in range(min_count):
+                    length = lengths[i]
+                    price = valid_prices[i]
+
+                    if price is None:
+                        continue
+
+                    # Build SKU: BASE_MODEL-FINISH-DUTY-LENGTH
+                    sku_parts = [base_model]
+                    if finish:
+                        sku_parts.append(finish)
+                    if duty:
+                        sku_parts.append(duty)
+                    sku_parts.append(length)
+                    sku = "-".join(sku_parts)
+
+                    # Build description
+                    desc_parts = [base_model]
+                    if finish:
+                        desc_parts.append(finish)
+                    if duty:
+                        desc_parts.append(duty)
+                    desc_parts.append(f'{length}"')
+                    description = " ".join(desc_parts)
+
+                    product_data = {
+                        "sku": sku,
+                        "model": base_model,
+                        "series": base_model[:2] if len(base_model) >= 2 else base_model,
+                        "description": description,
+                        "base_price": price,
+                        "finish_code": finish if finish and finish in ["CL", "BR", "BK"] else None,
+                        "specifications": {
+                            "length": f'{length}"',
+                            "duty": duty if duty else None,
+                        },
+                        "is_active": True,
+                        "manufacturer": "SELECT Hinges",
+                    }
+
+                    item = self.tracker.create_parsed_item(
+                        value=product_data,
+                        data_type="product",
+                        raw_text=f"{model_descriptor} {length}\" ${price}",
+                        row_index=row_idx,
+                        confidence=0.95,
+                        page_number=page_number,
+                        table_index=table_idx,
+                    )
+                    products.append(item)
 
         except Exception as e:
-            self.logger.debug(f"Structured extraction failed on table {table_idx}: {e}")
+            self.logger.warning(f"Structured extraction failed on table {table_idx}: {e}")
+            import traceback
+            self.logger.debug(traceback.format_exc())
             return []
 
         return products
+
+    def _parse_select_model_descriptor(self, descriptor: str) -> Optional[Dict[str, str]]:
+        """Parse SELECT model descriptor like 'SL11 CL HD600' into components.
+
+        Returns dict with: base_model, finish, duty
+        Returns None if descriptor doesn't match expected patterns
+        """
+        descriptor = descriptor.strip()
+
+        # Skip descriptors that are just numbers (like "306", "310")
+        # These are likely part numbers, not model descriptors
+        if descriptor.isdigit():
+            return None
+
+        # Pattern: SL## [FINISH] [DUTY]
+        # Examples: "SL11 CL HD600", "SL11 BR LL", "SL14 BK HD300"
+        match = re.match(
+            r'(SL\s*\d{2,3})\s*([A-Z]{2})?\s*([A-Z]{2,6}\d*)?',
+            descriptor,
+            re.IGNORECASE
+        )
+
+        if not match:
+            return None
+
+        base_model = match.group(1).replace(" ", "")  # "SL11"
+        finish = match.group(2).upper() if match.group(2) else None  # "CL"
+        duty = match.group(3).upper() if match.group(3) else None  # "HD600"
+
+        # Validate finish code if present
+        if finish and finish not in ["CL", "BR", "BK"]:
+            # Maybe finish and duty are swapped or concatenated
+            if finish in ["HD300", "HD600", "LL"]:
+                duty = finish
+                finish = None
+
+        # For valid SELECT products, we expect at least a finish OR duty
+        # Skip standalone model numbers without specifications
+        if not finish and not duty:
+            return None
+
+        return {
+            "base_model": base_model,
+            "finish": finish,
+            "duty": duty
+        }
 
     def _is_model_table(self, table: pd.DataFrame) -> bool:
         """Check if table contains model product data."""

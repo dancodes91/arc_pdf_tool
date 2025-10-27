@@ -1,11 +1,15 @@
 import { create } from 'zustand'
 import axios from 'axios'
 
-const DEFAULT_API_URL = 'http://localhost:5000/api'
+const DEFAULT_API_URL = '/api'
 const envApiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '')
 const API_BASE_URL = envApiUrl
   ? (envApiUrl.endsWith('/api') ? envApiUrl : `${envApiUrl}/api`)
   : DEFAULT_API_URL
+
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+})
 
 interface PriceBook {
   id: number
@@ -103,7 +107,7 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
   fetchPriceBooks: async () => {
     set({ loading: true, error: null })
     try {
-      const response = await axios.get(`${API_BASE_URL}/price-books`)
+      const response = await apiClient.get('price-books')
       set({ priceBooks: response.data, loading: false })
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || 'Failed to fetch price books'
@@ -116,11 +120,11 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
     set({ loading: true, error: null })
     try {
       // Fetch price book details
-      const bookResponse = await axios.get(`${API_BASE_URL}/price-books/${priceBookId}`)
+      const bookResponse = await apiClient.get(`price-books/${priceBookId}`)
       set({ currentPriceBook: bookResponse.data })
 
       // Fetch products with pagination support
-      const productsResponse = await axios.get(`${API_BASE_URL}/products/${priceBookId}`, {
+      const productsResponse = await apiClient.get(`products/${priceBookId}`, {
         params: {
           page: 1,
           per_page: 1000 // Fetch all products for now
@@ -145,7 +149,7 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
       formData.append('file', file)
       formData.append('manufacturer', manufacturer)
 
-      const response = await axios.post(`${API_BASE_URL}/upload`, formData, {
+      const response = await apiClient.post('upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -167,7 +171,7 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
   exportPriceBook: async (priceBookId: number, format: 'excel' | 'csv' | 'json') => {
     set({ loading: true, error: null })
     try {
-      const response = await axios.get(`${API_BASE_URL}/export/${priceBookId}`, {
+      const response = await apiClient.get(`export/${priceBookId}`, {
         params: { format },
         responseType: 'blob',
       })
@@ -205,7 +209,7 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
   deletePriceBook: async (priceBookId: number) => {
     set({ loading: true, error: null })
     try {
-      await axios.delete(`${API_BASE_URL}/price-books/${priceBookId}`)
+      await apiClient.delete(`price-books/${priceBookId}`)
 
       // Refresh price books list after deletion
       await get().fetchPriceBooks()
@@ -222,7 +226,7 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
   comparePriceBooks: async (oldId: number, newId: number) => {
     set({ loading: true, error: null })
     try {
-      const response = await axios.post(`${API_BASE_URL}/compare`, {
+      const response = await apiClient.post('compare', {
         old_price_book_id: oldId,
         new_price_book_id: newId,
       })
@@ -238,7 +242,7 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
   publishToBaserow: async (priceBookId: number, dryRun: boolean) => {
     set({ loading: true, error: null })
     try {
-      const response = await axios.post(`${API_BASE_URL}/publish`, {
+      const response = await apiClient.post('publish', {
         price_book_id: priceBookId,
         dry_run: dryRun,
       })
@@ -258,7 +262,7 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
 
   fetchPublishHistory: async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/publish/history`, {
+      const response = await apiClient.get('publish/history', {
         params: {
           limit: 20
         }

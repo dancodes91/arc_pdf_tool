@@ -11,6 +11,13 @@ import { Progress } from '@/components/ui/progress'
 import { FileText, Download, ArrowLeft, Eye, Filter, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 
+const getApiBaseUrl = () => {
+  const env = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '')
+  return env
+    ? (env.endsWith('/api') ? env : `${env}/api`)
+    : '/api'
+}
+
 export default function PreviewPage() {
   const params = useParams()
   const priceBookId = parseInt(params.id as string)
@@ -37,8 +44,8 @@ export default function PreviewPage() {
       // Fetch price book summary with confidence data
       const loadSummary = async () => {
         try {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
-          const res = await fetch(`${apiUrl}/api/price-books/${priceBookId}`)
+          const apiBaseUrl = getApiBaseUrl()
+          const res = await fetch(`${apiBaseUrl}/price-books/${priceBookId}`)
           const data = await res.json()
           setSummary(data)
           setCurrentPriceBook({
@@ -63,8 +70,8 @@ export default function PreviewPage() {
   async function handleExport(format: 'csv' | 'xlsx' | 'json') {
     setExporting(true)
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
-      const response = await fetch(`${apiUrl}/api/export/${priceBookId}?format=${format === 'xlsx' ? 'excel' : format}`)
+      const apiBaseUrl = getApiBaseUrl()
+      const response = await fetch(`${apiBaseUrl}/export/${priceBookId}?format=${format === 'xlsx' ? 'excel' : format}`)
 
       if (!response.ok) throw new Error('Export failed')
 
