@@ -133,16 +133,22 @@ class SelectHingesParser:
                 self.pdf_path, page_num, flavor="lattice"
             )
 
+            extraction_method = "lattice"
+
             # Use Camelot if available, otherwise fallback to pdfplumber
             page_tables = camelot_tables if camelot_tables else page.tables
 
             # If NO tables found but page has SL## text, try with stream flavor
+            # (Hager PDFs require stream flavor for SELECT grids)
             if not page_tables and "SL" in page_text.upper():
+                self.logger.debug(f"Page {page_num}: lattice returned 0 tables, trying stream flavor")
                 stream_tables = self.section_extractor.extract_tables_with_camelot(
                     self.pdf_path, page_num, flavor="stream"
                 )
                 if stream_tables:
                     page_tables = stream_tables
+                    extraction_method = "stream"
+                    self.logger.debug(f"Page {page_num}: stream flavor found {len(stream_tables)} tables")
 
             # Extract products from this page
             if page_tables:

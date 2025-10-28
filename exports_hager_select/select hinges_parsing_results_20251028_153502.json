@@ -1,0 +1,45 @@
+{
+  "manufacturer": "SELECT Hinges",
+  "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-hager-price-book.pdf",
+  "parsing_metadata": {
+    "parser_version": "2.0",
+    "extraction_method": "enhanced_pipeline",
+    "total_pages": 479,
+    "overall_confidence": 0.0,
+    "extraction_quality": {
+      "total_items": 0,
+      "quality_score": 0.0,
+      "method_breakdown": {},
+      "page_breakdown": {},
+      "confidence_distribution": {},
+      "issues": [
+        "No items to analyze"
+      ]
+    }
+  },
+  "effective_date": null,
+  "net_add_options": [],
+  "products": [],
+  "finish_symbols": [],
+  "summary": {
+    "total_products": 0,
+    "total_finishes": 0,
+    "total_options": 0,
+    "has_effective_date": false,
+    "confidence_distribution": {},
+    "recommendations": []
+  },
+  "validation": {
+    "is_valid": false,
+    "errors": [
+      "No products extracted"
+    ],
+    "warnings": [
+      "No effective date found",
+      "No net add options found"
+    ],
+    "accuracy_metrics": {
+      "overall_quality": "poor"
+    }
+  }
+}

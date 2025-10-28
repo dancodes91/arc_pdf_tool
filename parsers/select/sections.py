@@ -285,12 +285,16 @@ class SelectSectionExtractor:
     def _extract_products_structured(
         self, df: pd.DataFrame, table_idx: int, page_number: int = None
     ) -> List[ParsedItem]:
-        """Extract products from SELECT tables with newline-separated lengths/prices in cells.
+        """Extract products from SELECT tables (handles both newline-separated and column-separated).
 
-        Camelot extracts these tables with:
-        - Column 0 header: "Model #\n79"\n83"/85"\n95"\n120"" (all lengths newline-separated)
-        - Column 0 data: Model descriptor (e.g., "SL11 CL HD600")
-        - Columns 1+: Prices newline-separated (e.g., "193\n193" for 79" and 83" prices)
+        Two table structures supported:
+        1. Newline-separated (standalone SELECT PDF):
+           - Header: "Model #\n79"\n83"/85"\n95"\n120"" (all in column 0)
+           - Prices: "193\n193" (newlines in cells)
+
+        2. Column-separated (Hager PDF):
+           - Header: ['Model #', '79"', '83"/85"', '95"', '120"'] (proper columns)
+           - Prices: Each in its own column
         """
         products = []
 
@@ -305,32 +309,48 @@ class SelectSectionExtractor:
             if data_rows.empty:
                 return []
 
-            # Parse lengths from first column header (contains newline-separated lengths)
-            # Example: "Model #\n79" \n83" / 85"\n95"\n120""
-            first_col_header = str(header[0])
+            # STEP 1: Detect table structure and extract lengths
+            # Check if we have column-separated structure (Hager) or newline-separated (standalone)
 
-            # Extract all length values (look for patterns like 79", 83", 95", 120")
-            lengths = []
-            for line in first_col_header.split('\n'):
-                line = line.strip()
-                # Match patterns like: 79", 83", 83"/85", 95", 120"
-                matches = re.findall(r'(\d+)\s*["\']?\s*(?:/\s*(\d+)\s*["\']?)?', line)
-                for match in matches:
-                    if match[0]:  # First number
-                        lengths.append(match[0])
-                    # Note: We ignore the second number in patterns like "83/85" for now
+            # Try column-separated first (check if header[1:] contains length patterns)
+            column_lengths = []
+            for col_idx, col_header in enumerate(header[1:], start=1):
+                # Look for length patterns like 79", 83", 83"/85", 95", 120"
+                match = re.search(r'(\d+)\s*["\']', str(col_header))
+                if match:
+                    column_lengths.append((col_idx, match.group(1)))
 
-            # Remove duplicates while preserving order
-            seen = set()
-            lengths = [x for x in lengths if not (x in seen or seen.add(x))]
+            if column_lengths:
+                # COLUMN-SEPARATED structure (Hager PDF)
+                structure_type = "column-separated"
+                lengths = [length for _, length in column_lengths]
+                length_columns = {length: col_idx for col_idx, length in column_lengths}
+                self.logger.debug(f"Detected COLUMN-SEPARATED structure with lengths: {lengths}")
+            else:
+                # NEWLINE-SEPARATED structure (standalone SELECT PDF)
+                structure_type = "newline-separated"
+                first_col_header = str(header[0])
 
-            if not lengths:
-                self.logger.debug(f"No lengths found in table {table_idx} header: {first_col_header}")
-                return []
+                # Extract all length values from first column header
+                lengths = []
+                for line in first_col_header.split('\n'):
+                    line = line.strip()
+                    matches = re.findall(r'(\d+)\s*["\']?\s*(?:/\s*(\d+)\s*["\']?)?', line)
+                    for match in matches:
+                        if match[0]:
+                            lengths.append(match[0])
 
-            self.logger.debug(f"Extracted lengths from header: {lengths}")
+                # Remove duplicates while preserving order
+                seen = set()
+                lengths = [x for x in lengths if not (x in seen or seen.add(x))]
 
-            # Process each data row
+                if not lengths:
+                    self.logger.debug(f"No lengths found in table {table_idx} header: {first_col_header}")
+                    return []
+
+                self.logger.debug(f"Detected NEWLINE-SEPARATED structure with lengths: {lengths}")
+
+            # STEP 2: Process each data row
             for row_idx, row in data_rows.iterrows():
                 # Get model descriptor from first column
                 model_descriptor = str(row.iloc[0]).strip()
@@ -352,114 +372,68 @@ class SelectSectionExtractor:
                 finish = parsed["finish"]
                 duty = parsed["duty"]
 
-                # Collect all price cells from columns 1, 2, 3, etc.
-                price_cells = []
-                for col_idx in range(1, len(row)):
-                    cell = str(row.iloc[col_idx]).strip()
-                    if cell and cell.lower() not in ["nan", "none", ""]:
-                        price_cells.append(cell)
+                # STEP 3: Extract prices based on structure type
+                if structure_type == "column-separated":
+                    # COLUMN-SEPARATED: Each length has its own column
+                    # Map length -> price by reading from specific column indices
+                    length_price_map = {}
 
-                if not price_cells:
-                    continue
+                    for length, col_idx in length_columns.items():
+                        if col_idx < len(row):
+                            cell = str(row.iloc[col_idx]).strip()
+                            price_val = self._extract_price_from_cell(cell)
+                            if price_val:
+                                length_price_map[length] = price_val
 
-                # Split each cell by newlines and flatten into list of individual prices
-                all_prices = []
-                for cell in price_cells:
-                    # Split by newlines
-                    prices_in_cell = [p.strip() for p in cell.split('\n')]
-                    all_prices.extend(prices_in_cell)
+                    # Create products for each length that has a valid price
+                    for length in lengths:
+                        price = length_price_map.get(length)
+                        if not price:
+                            continue
 
-                # Filter out non-price values (dashes, fractions, dimensions, text)
-                valid_prices = []
-                for price_str in all_prices:
-                    # Skip dashes and empty
-                    if not price_str or price_str == "-":
-                        valid_prices.append(None)
+                        self._create_product(
+                            products, base_model, finish, duty, length, price,
+                            model_descriptor, row_idx, page_number, table_idx
+                        )
+
+                else:
+                    # NEWLINE-SEPARATED: Prices are newline-separated across multiple cells
+                    # Collect all price cells from columns 1, 2, 3, etc.
+                    price_cells = []
+                    for col_idx in range(1, len(row)):
+                        cell = str(row.iloc[col_idx]).strip()
+                        if cell and cell.lower() not in ["nan", "none", ""]:
+                            price_cells.append(cell)
+
+                    if not price_cells:
                         continue
 
-                    # Skip fractions (like "11/16", "1-9/16")
-                    if "/" in price_str:
-                        valid_prices.append(None)
-                        continue
+                    # Split each cell by newlines and flatten into list
+                    all_prices = []
+                    for cell in price_cells:
+                        prices_in_cell = [p.strip() for p in cell.split('\n')]
+                        all_prices.extend(prices_in_cell)
 
-                    # Skip text/dimension indicators (mm, inches, clearance, etc.)
-                    skip_keywords = ['mm', 'bevel', 'edge', 'square', 'clearance', 'min', 'web', 'metric', 'brochure', 'site']
-                    if any(kw in price_str.lower() for kw in skip_keywords):
-                        valid_prices.append(None)
-                        continue
+                    # Filter and validate prices
+                    valid_prices = []
+                    for price_str in all_prices:
+                        price_val = self._extract_price_from_cell(price_str)
+                        valid_prices.append(price_val)
 
-                    # Must contain digits
-                    if not re.search(r'\d', price_str):
-                        valid_prices.append(None)
-                        continue
+                    # Match prices to lengths (zip them together)
+                    min_count = min(len(lengths), len(valid_prices))
 
-                    # Try to extract numeric price
-                    price_normalized = data_normalizer.normalize_price(price_str)
-                    if price_normalized["value"]:
-                        price_val = float(price_normalized["value"])
-                        # Sanity check: SELECT hinge prices typically range from $50 to $5000
-                        # Values under $50 are likely dimensions (8.73mm, 1.59", etc.)
-                        if 50 <= price_val <= 10000:
-                            valid_prices.append(price_val)
-                        else:
-                            valid_prices.append(None)
-                    else:
-                        valid_prices.append(None)
+                    for i in range(min_count):
+                        length = lengths[i]
+                        price = valid_prices[i]
 
-                # Match prices to lengths (zip them together)
-                # Handle case where we have more lengths than prices or vice versa
-                min_count = min(len(lengths), len(valid_prices))
+                        if price is None:
+                            continue
 
-                for i in range(min_count):
-                    length = lengths[i]
-                    price = valid_prices[i]
-
-                    if price is None:
-                        continue
-
-                    # Build SKU: BASE_MODEL-FINISH-DUTY-LENGTH
-                    sku_parts = [base_model]
-                    if finish:
-                        sku_parts.append(finish)
-                    if duty:
-                        sku_parts.append(duty)
-                    sku_parts.append(length)
-                    sku = "-".join(sku_parts)
-
-                    # Build description
-                    desc_parts = [base_model]
-                    if finish:
-                        desc_parts.append(finish)
-                    if duty:
-                        desc_parts.append(duty)
-                    desc_parts.append(f'{length}"')
-                    description = " ".join(desc_parts)
-
-                    product_data = {
-                        "sku": sku,
-                        "model": base_model,
-                        "series": base_model[:2] if len(base_model) >= 2 else base_model,
-                        "description": description,
-                        "base_price": price,
-                        "finish_code": finish if finish and finish in ["CL", "BR", "BK"] else None,
-                        "specifications": {
-                            "length": f'{length}"',
-                            "duty": duty if duty else None,
-                        },
-                        "is_active": True,
-                        "manufacturer": "SELECT Hinges",
-                    }
-
-                    item = self.tracker.create_parsed_item(
-                        value=product_data,
-                        data_type="product",
-                        raw_text=f"{model_descriptor} {length}\" ${price}",
-                        row_index=row_idx,
-                        confidence=0.95,
-                        page_number=page_number,
-                        table_index=table_idx,
-                    )
-                    products.append(item)
+                        self._create_product(
+                            products, base_model, finish, duty, length, price,
+                            model_descriptor, row_idx, page_number, table_idx
+                        )
 
         except Exception as e:
             self.logger.warning(f"Structured extraction failed on table {table_idx}: {e}")
@@ -468,6 +442,98 @@ class SelectSectionExtractor:
             return []
 
         return products
+
+    def _extract_price_from_cell(self, price_str: str) -> Optional[float]:
+        """Extract and validate a price from a cell string.
+
+        Returns price as float if valid, None otherwise.
+        Filters out dashes, fractions, dimensions, and invalid values.
+        """
+        # Skip dashes and empty
+        if not price_str or price_str == "-":
+            return None
+
+        # Skip fractions (like "11/16", "1-9/16")
+        if "/" in price_str:
+            return None
+
+        # Skip text/dimension indicators (mm, inches, clearance, etc.)
+        skip_keywords = ['mm', 'bevel', 'edge', 'square', 'clearance', 'min', 'web', 'metric', 'brochure', 'site']
+        if any(kw in price_str.lower() for kw in skip_keywords):
+            return None
+
+        # Must contain digits
+        if not re.search(r'\d', price_str):
+            return None
+
+        # Try to extract numeric price
+        price_normalized = data_normalizer.normalize_price(price_str)
+        if price_normalized["value"]:
+            price_val = float(price_normalized["value"])
+            # Sanity check: SELECT hinge prices typically range from $50 to $10000
+            # Values under $50 are likely dimensions (8.73mm, 1.59", etc.)
+            if 50 <= price_val <= 10000:
+                return price_val
+
+        return None
+
+    def _create_product(
+        self,
+        products: List[ParsedItem],
+        base_model: str,
+        finish: Optional[str],
+        duty: Optional[str],
+        length: str,
+        price: float,
+        model_descriptor: str,
+        row_idx: int,
+        page_number: Optional[int],
+        table_idx: int
+    ) -> None:
+        """Create a product item and add it to the products list."""
+        # Build SKU: BASE_MODEL-FINISH-DUTY-LENGTH
+        sku_parts = [base_model]
+        if finish:
+            sku_parts.append(finish)
+        if duty:
+            sku_parts.append(duty)
+        sku_parts.append(length)
+        sku = "-".join(sku_parts)
+
+        # Build description
+        desc_parts = [base_model]
+        if finish:
+            desc_parts.append(finish)
+        if duty:
+            desc_parts.append(duty)
+        desc_parts.append(f'{length}"')
+        description = " ".join(desc_parts)
+
+        product_data = {
+            "sku": sku,
+            "model": base_model,
+            "series": base_model[:2] if len(base_model) >= 2 else base_model,
+            "description": description,
+            "base_price": price,
+            "finish_code": finish if finish and finish in ["CL", "BR", "BK"] else None,
+            "specifications": {
+                "length": f'{length}"',
+                "duty": duty if duty else None,
+            },
+            "is_active": True,
+            "manufacturer": "SELECT Hinges",
+        }
+
+        item = self.tracker.create_parsed_item(
+            value=product_data,
+            data_type="product",
+            raw_text=f"{model_descriptor} {length}\" ${price}",
+            row_index=row_idx,
+            confidence=0.95,
+            page_number=page_number,
+            table_index=table_idx,
+        )
+        products.append(item)
 
     def _parse_select_model_descriptor(self, descriptor: str) -> Optional[Dict[str, str]]:
         """Parse SELECT model descriptor like 'SL11 CL HD600' into components.

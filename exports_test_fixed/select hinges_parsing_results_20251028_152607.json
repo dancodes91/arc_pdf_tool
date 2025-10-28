@@ -1,0 +1,4680 @@
+{
+  "manufacturer": "SELECT Hinges",
+  "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+  "parsing_metadata": {
+    "parser_version": "2.0",
+    "extraction_method": "enhanced_pipeline",
+    "total_pages": 20,
+    "overall_confidence": 0.5424193548387104,
+    "extraction_quality": {
+      "total_items": 124,
+      "quality_score": 0.5424193548387104,
+      "average_confidence": 0.9060483870967759,
+      "method_breakdown": {
+        "text_extraction": 1,
+        "pattern_matching": 22,
+        "table_extraction": 101
+      },
+      "page_breakdown": {
+        "1": 23,
+        "7": 76,
+        "9": 13,
+        "11": 12
+      },
+      "confidence_distribution": {
+        "high": 102,
+        "medium": 22
+      },
+      "issues": [],
+      "recommendations": []
+    }
+  },
+  "effective_date": {
+    "value": "2025-04-07",
+    "data_type": "effective_date",
+    "normalized_value": null,
+    "confidence": 1.0,
+    "provenance": {
+      "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+      "page_number": 1,
+      "extraction_method": "text_extraction",
+      "bbox": null,
+      "section": "Header",
+      "table_index": null,
+      "row_index": null,
+      "column_index": null,
+      "raw_text": "APRIL 7, 2025",
+      "context_text": null,
+      "confidence": 1.0,
+      "timestamp": "2025-10-28T11:55:38.160537",
+      "metadata": {}
+    },
+    "validation_errors": []
+  },
+  "net_add_options": [
+    {
+      "value": {
+        "option_code": "CTW-4",
+        "option_name": "CTW-4",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 108.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$108 net add per CTW-4",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.162745",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "CTW-5",
+        "option_name": "CTW-5",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 113.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$113 net add per CTW-5",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.162745",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "CTW-8",
+        "option_name": "CTW-8",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 126.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$126 net add per CTW-8",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.162745",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "CTW-10",
+        "option_name": "CTW-10",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 137.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$137 net add per CTW-10",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.162745",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "CTW-12",
+        "option_name": "CTW-12",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 156.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$156 net add per CTW-12",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163374",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "EPT",
+        "option_name": "Electroplated Prep",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 41.0,
+        "constraints": {
+          "excludes": [
+            "CTW"
+          ]
+        },
+        "availability": "Standard electroplated preparation"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$41 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163374",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "EPT",
+        "option_name": "Electroplated Prep",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 93.0,
+        "constraints": {
+          "excludes": [
+            "CTW"
+          ]
+        },
+        "availability": "Standard electroplated preparation"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$93 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163374",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "EPT",
+        "option_name": "Electroplated Prep",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 93.0,
+        "constraints": {
+          "excludes": [
+            "CTW"
+          ]
+        },
+        "availability": "Standard electroplated preparation"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$93 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163374",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "EPT",
+        "option_name": "Electroplated Prep",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 43.0,
+        "constraints": {
+          "excludes": [
+            "CTW"
+          ]
+        },
+        "availability": "Standard electroplated preparation"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$43 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163374",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "EMS",
+        "option_name": "Electromagnetic Shielding",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 46.0,
+        "constraints": {
+          "excludes": [
+            "CTW",
+            "EPT"
+          ]
+        },
+        "availability": "Electromagnetic shielding option"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$46 net add per EMS",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163374",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "ATW-4",
+        "option_name": "ATW-4",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 176.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$176 net add per ATW-4",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163374",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "ATW-8",
+        "option_name": "ATW-8",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 188.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$188 net add per ATW-8",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163891",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "ATW-12",
+        "option_name": "ATW-12",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 204.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$204 net add per ATW-12",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163891",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "CMG",
+        "option_name": "CMG",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 100.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$100 net add per CMG",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163891",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "AP",
+        "option_name": "AP",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 41.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$41 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163891",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "AP",
+        "option_name": "AP",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 93.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$93 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163891",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "AP",
+        "option_name": "AP",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 93.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$93 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163891",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "AP",
+        "option_name": "AP",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 43.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$43 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163891",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "RP",
+        "option_name": "RP",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 41.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$41 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163891",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "RP",
+        "option_name": "RP",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 93.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$93 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163891",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "RP",
+        "option_name": "RP",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 93.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$93 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.163891",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "option_code": "RP",
+        "option_name": "RP",
+        "size_variant": "",
+        "adder_type": "net_add",
+        "adder_value": 43.0,
+        "constraints": {},
+        "availability": "Contact for availability"
+      },
+      "data_type": "net_add_option",
+      "normalized_value": null,
+      "confidence": 0.7,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "pattern_matching",
+        "bbox": null,
+        "section": "Options",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "$43 net add per prep",
+        "context_text": null,
+        "confidence": 0.7,
+        "timestamp": "2025-10-28T11:55:38.164423",
+        "metadata": {}
+      },
+      "validation_errors": []
+    }
+  ],
+  "products": [
+    {
+      "value": {
+        "sku": "SL11-CL-HD300-95",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 CL HD300 95\"",
+        "base_price": 167.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 1,
+        "column_index": null,
+        "raw_text": "SL11 CL HD300 95\" $167.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.235429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-CL-HD600-79",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 CL HD600 79\"",
+        "base_price": 193.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "79\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL11 CL HD600 79\" $193.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.235429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-CL-HD600-83",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 CL HD600 83\"",
+        "base_price": 193.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL11 CL HD600 83\" $193.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.235429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-CL-HD600-95",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 CL HD600 95\"",
+        "base_price": 246.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL11 CL HD600 95\" $246.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.235429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-CL-HD600-120",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 CL HD600 120\"",
+        "base_price": 383.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "120\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL11 CL HD600 120\" $383.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.235429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-CL-LL-83",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 CL LL 83\"",
+        "base_price": 226.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "83\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL11 CL LL 83\" $226.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.235429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-CL-LL-120",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 CL LL 120\"",
+        "base_price": 331.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "120\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL11 CL LL 120\" $331.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.235429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BR-HD300-83",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BR HD300 83\"",
+        "base_price": 203.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL11 BR HD300 83\" $203.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.235429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BR-HD300-120",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BR HD300 120\"",
+        "base_price": 265.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "120\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL11 BR HD300 120\" $265.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.235429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BR-HD600-83",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BR HD600 83\"",
+        "base_price": 249.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL11 BR HD600 83\" $249.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.235429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BR-HD600-95",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BR HD600 95\"",
+        "base_price": 312.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL11 BR HD600 95\" $312.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.235429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BR-HD600-120",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BR HD600 120\"",
+        "base_price": 501.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "120\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL11 BR HD600 120\" $501.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.236430",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BR-LL-120",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BR LL 120\"",
+        "base_price": 312.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "120\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 6,
+        "column_index": null,
+        "raw_text": "SL11 BR LL 120\" $312.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.236430",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BK-HD300-95",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BK HD300 95\"",
+        "base_price": 212.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 7,
+        "column_index": null,
+        "raw_text": "SL11 BK HD300 95\" $212.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.236430",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BK-HD300-120",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BK HD300 120\"",
+        "base_price": 278.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "120\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 7,
+        "column_index": null,
+        "raw_text": "SL11 BK HD300 120\" $278.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.236430",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BK-HD600-95",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BK HD600 95\"",
+        "base_price": 261.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 8,
+        "column_index": null,
+        "raw_text": "SL11 BK HD600 95\" $261.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.236430",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BK-LL-83",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BK LL 83\"",
+        "base_price": 328.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "83\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 9,
+        "column_index": null,
+        "raw_text": "SL11 BK LL 83\" $328.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.236430",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BK-LL-95",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BK LL 95\"",
+        "base_price": 403.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "95\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 9,
+        "column_index": null,
+        "raw_text": "SL11 BK LL 95\" $403.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.236430",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL11-BK-LL-120",
+        "model": "SL11",
+        "series": "SL",
+        "description": "SL11 BK LL 120\"",
+        "base_price": 605.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "120\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 9,
+        "column_index": null,
+        "raw_text": "SL11 BK LL 120\" $605.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.236430",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-CL-HD300-85",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 CL HD300 85\"",
+        "base_price": 169.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "85\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 1,
+        "column_index": null,
+        "raw_text": "SL14 CL HD300 85\" $169.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-CL-HD300-95",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 CL HD300 95\"",
+        "base_price": 169.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 1,
+        "column_index": null,
+        "raw_text": "SL14 CL HD300 95\" $169.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-CL-HD300-120",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 CL HD300 120\"",
+        "base_price": 205.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "120\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 1,
+        "column_index": null,
+        "raw_text": "SL14 CL HD300 120\" $205.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-CL-HD600-95",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 CL HD600 95\"",
+        "base_price": 210.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL14 CL HD600 95\" $210.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-BR-HD300-83",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 BR HD300 83\"",
+        "base_price": 203.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL14 BR HD300 83\" $203.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-BR-HD300-85",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 BR HD300 85\"",
+        "base_price": 203.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "85\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL14 BR HD300 85\" $203.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-BR-HD300-95",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 BR HD300 95\"",
+        "base_price": 256.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL14 BR HD300 95\" $256.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-BR-HD600-85",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 BR HD600 85\"",
+        "base_price": 257.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "85\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL14 BR HD600 85\" $257.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-BR-HD600-95",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 BR HD600 95\"",
+        "base_price": 257.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL14 BR HD600 95\" $257.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-BR-HD600-120",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 BR HD600 120\"",
+        "base_price": 326.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "120\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL14 BR HD600 120\" $326.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-BK-HD300-120",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 BK HD300 120\"",
+        "base_price": 212.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "120\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL14 BK HD300 120\" $212.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL14-BK-HD600-85",
+        "model": "SL14",
+        "series": "SL",
+        "description": "SL14 BK HD600 85\"",
+        "base_price": 271.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "85\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 6,
+        "column_index": null,
+        "raw_text": "SL14 BK HD600 85\" $271.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.238429",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-CL-HD300-83",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 CL HD300 83\"",
+        "base_price": 169.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 1,
+        "column_index": null,
+        "raw_text": "SL18 CL HD300 83\" $169.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-CL-HD300-85",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 CL HD300 85\"",
+        "base_price": 169.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "85\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 1,
+        "column_index": null,
+        "raw_text": "SL18 CL HD300 85\" $169.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-CL-HD600-5",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 CL HD600 5\"",
+        "base_price": 211.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "5\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL18 CL HD600 5\" $211.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-CL-HD600-12",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 CL HD600 12\"",
+        "base_price": 211.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "12\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL18 CL HD600 12\" $211.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-CL-HD600-83",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 CL HD600 83\"",
+        "base_price": 256.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL18 CL HD600 83\" $256.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-CL-HD600-85",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 CL HD600 85\"",
+        "base_price": 384.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "85\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL18 CL HD600 85\" $384.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-CL-LL-12",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 CL LL 12\"",
+        "base_price": 285.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "12\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL18 CL LL 12\" $285.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-CL-LL-83",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 CL LL 83\"",
+        "base_price": 285.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "83\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL18 CL LL 83\" $285.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-CL-LL-95",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 CL LL 95\"",
+        "base_price": 328.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "95\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL18 CL LL 95\" $328.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-CL-LL-120",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 CL LL 120\"",
+        "base_price": 457.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "120\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL18 CL LL 120\" $457.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-BR-HD300-85",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 BR HD300 85\"",
+        "base_price": 202.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "85\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL18 BR HD300 85\" $202.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-BR-HD300-95",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 BR HD300 95\"",
+        "base_price": 202.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL18 BR HD300 95\" $202.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-BR-HD300-120",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 BR HD300 120\"",
+        "base_price": 256.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "120\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL18 BR HD300 120\" $256.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-BR-HD600-5",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 BR HD600 5\"",
+        "base_price": 257.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "5\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL18 BR HD600 5\" $257.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-BR-HD600-12",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 BR HD600 12\"",
+        "base_price": 257.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "12\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL18 BR HD600 12\" $257.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-BR-HD600-83",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 BR HD600 83\"",
+        "base_price": 323.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL18 BR HD600 83\" $323.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-BR-HD600-85",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 BR HD600 85\"",
+        "base_price": 488.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "85\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL18 BR HD600 85\" $488.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-BR-LL-12",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 BR LL 12\"",
+        "base_price": 329.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "12\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 6,
+        "column_index": null,
+        "raw_text": "SL18 BR LL 12\" $329.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-BR-LL-83",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 BR LL 83\"",
+        "base_price": 329.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "83\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 6,
+        "column_index": null,
+        "raw_text": "SL18 BR LL 83\" $329.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.239432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-BR-LL-120",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 BR LL 120\"",
+        "base_price": 561.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "120\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 6,
+        "column_index": null,
+        "raw_text": "SL18 BR LL 120\" $561.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.240432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL18-BK-HD600-83",
+        "model": "SL18",
+        "series": "SL",
+        "description": "SL18 BK HD600 83\"",
+        "base_price": 271.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 2,
+        "row_index": 7,
+        "column_index": null,
+        "raw_text": "SL18 BK HD600 83\" $271.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.240432",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 2
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-CL-HD300-120",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 CL HD300 120\"",
+        "base_price": 169.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "120\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 1,
+        "column_index": null,
+        "raw_text": "SL24 CL HD300 120\" $169.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-CL-HD300-5",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 CL HD300 5\"",
+        "base_price": 169.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "5\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 1,
+        "column_index": null,
+        "raw_text": "SL24 CL HD300 5\" $169.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-CL-HD600-24",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 CL HD600 24\"",
+        "base_price": 201.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "24\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL24 CL HD600 24\" $201.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-CL-HD600-79",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 CL HD600 79\"",
+        "base_price": 201.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "79\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL24 CL HD600 79\" $201.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-CL-HD600-83",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 CL HD600 83\"",
+        "base_price": 201.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL24 CL HD600 83\" $201.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-CL-HD600-85",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 CL HD600 85\"",
+        "base_price": 256.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "85\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL24 CL HD600 85\" $256.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-CL-HD600-95",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 CL HD600 95\"",
+        "base_price": 384.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL24 CL HD600 95\" $384.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-CL-LL-79",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 CL LL 79\"",
+        "base_price": 227.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "79\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL24 CL LL 79\" $227.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-CL-LL-83",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 CL LL 83\"",
+        "base_price": 227.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "83\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL24 CL LL 83\" $227.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-CL-LL-85",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 CL LL 85\"",
+        "base_price": 328.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "85\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL24 CL LL 85\" $328.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-CL-LL-120",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 CL LL 120\"",
+        "base_price": 457.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "120\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL24 CL LL 120\" $457.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BR-HD300-83",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BR HD300 83\"",
+        "base_price": 202.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL24 BR HD300 83\" $202.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BR-HD300-85",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BR HD300 85\"",
+        "base_price": 202.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "85\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL24 BR HD300 85\" $202.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BR-HD300-95",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BR HD300 95\"",
+        "base_price": 256.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL24 BR HD300 95\" $256.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BR-HD600-95",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BR HD600 95\"",
+        "base_price": 251.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL24 BR HD600 95\" $251.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BR-HD600-11",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BR HD600 11\"",
+        "base_price": 251.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "11\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL24 BR HD600 11\" $251.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BR-HD600-5",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BR HD600 5\"",
+        "base_price": 316.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "5\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL24 BR HD600 5\" $316.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BR-LL-83",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BR LL 83\"",
+        "base_price": 322.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "83\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 6,
+        "column_index": null,
+        "raw_text": "SL24 BR LL 83\" $322.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BR-LL-85",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BR LL 85\"",
+        "base_price": 322.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "85\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 6,
+        "column_index": null,
+        "raw_text": "SL24 BR LL 85\" $322.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BR-LL-95",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BR LL 95\"",
+        "base_price": 387.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "95\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 6,
+        "column_index": null,
+        "raw_text": "SL24 BR LL 95\" $387.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BR-LL-120",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BR LL 120\"",
+        "base_price": 561.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "120\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 6,
+        "column_index": null,
+        "raw_text": "SL24 BR LL 120\" $561.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BK-HD600-79",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BK HD600 79\"",
+        "base_price": 263.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "79\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 7,
+        "column_index": null,
+        "raw_text": "SL24 BK HD600 79\" $263.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BK-HD600-95",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BK HD600 95\"",
+        "base_price": 332.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "95\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 7,
+        "column_index": null,
+        "raw_text": "SL24 BK HD600 95\" $332.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL24-BK-HD600-120",
+        "model": "SL24",
+        "series": "SL",
+        "description": "SL24 BK HD600 120\"",
+        "base_price": 513.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "120\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 7,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 3,
+        "row_index": 7,
+        "column_index": null,
+        "raw_text": "SL24 BK HD600 120\" $513.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:46.241455",
+        "metadata": {
+          "page_number": 7,
+          "table_index": 3
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL84-CL-HD600-1",
+        "model": "SL84",
+        "series": "SL",
+        "description": "SL84 CL HD600 1\"",
+        "base_price": 212.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "1\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 1,
+        "column_index": null,
+        "raw_text": "SL84 CL HD600 1\" $212.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.354800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL84-CL-HD600-11",
+        "model": "SL84",
+        "series": "SL",
+        "description": "SL84 CL HD600 11\"",
+        "base_price": 264.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "11\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 1,
+        "column_index": null,
+        "raw_text": "SL84 CL HD600 11\" $264.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.354800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL84-CL-HD600-83",
+        "model": "SL84",
+        "series": "SL",
+        "description": "SL84 CL HD600 83\"",
+        "base_price": 391.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 1,
+        "column_index": null,
+        "raw_text": "SL84 CL HD600 83\" $391.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.354800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL84-BR-LL-1",
+        "model": "SL84",
+        "series": "SL",
+        "description": "SL84 BR LL 1\"",
+        "base_price": 333.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "1\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL84 BR LL 1\" $333.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.355800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL84-BR-LL-11",
+        "model": "SL84",
+        "series": "SL",
+        "description": "SL84 BR LL 11\"",
+        "base_price": 402.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "11\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL84 BR LL 11\" $402.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.355800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL84-BR-LL-83",
+        "model": "SL84",
+        "series": "SL",
+        "description": "SL84 BR LL 83\"",
+        "base_price": 71.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "83\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL84 BR LL 83\" $71.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.355800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL84-BR-LL-95",
+        "model": "SL84",
+        "series": "SL",
+        "description": "SL84 BR LL 95\"",
+        "base_price": 564.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "95\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL84 BR LL 95\" $564.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.355800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL41-CL-LL-41",
+        "model": "SL41",
+        "series": "SL",
+        "description": "SL41 CL LL 41\"",
+        "base_price": 419.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "41\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL41 CL LL 41\" $419.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.356800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL41-CL-LL-1",
+        "model": "SL41",
+        "series": "SL",
+        "description": "SL41 CL LL 1\"",
+        "base_price": 520.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "1\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL41 CL LL 1\" $520.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.356800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL41-CL-LL-7",
+        "model": "SL41",
+        "series": "SL",
+        "description": "SL41 CL LL 7\"",
+        "base_price": 773.0,
+        "finish_code": "CL",
+        "specifications": {
+          "length": "7\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 2,
+        "column_index": null,
+        "raw_text": "SL41 CL LL 7\" $773.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.356800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL41-BR-LL-40",
+        "model": "SL41",
+        "series": "SL",
+        "description": "SL41 BR LL 40\"",
+        "base_price": 523.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "40\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL41 BR LL 40\" $523.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.356800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL41-BR-LL-41",
+        "model": "SL41",
+        "series": "SL",
+        "description": "SL41 BR LL 41\"",
+        "base_price": 643.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "41\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL41 BR LL 41\" $643.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.356800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL41-BR-LL-7",
+        "model": "SL41",
+        "series": "SL",
+        "description": "SL41 BR LL 7\"",
+        "base_price": 1003.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "7\"",
+          "duty": "LL"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 9,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL41 BR LL 7\" $1003.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:52.356800",
+        "metadata": {
+          "page_number": 9,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL21-BR-HD300-19",
+        "model": "SL21",
+        "series": "SL",
+        "description": "SL21 BR HD300 19\"",
+        "base_price": 297.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "19\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL21 BR HD300 19\" $297.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.340697",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL21-BR-HD300-05",
+        "model": "SL21",
+        "series": "SL",
+        "description": "SL21 BR HD300 05\"",
+        "base_price": 371.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "05\"",
+          "duty": "HD300"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 3,
+        "column_index": null,
+        "raw_text": "SL21 BR HD300 05\" $371.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.340697",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL21-BR-HD600-05",
+        "model": "SL21",
+        "series": "SL",
+        "description": "SL21 BR HD600 05\"",
+        "base_price": 332.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "05\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL21 BR HD600 05\" $332.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.341980",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL21-BR-HD600-15",
+        "model": "SL21",
+        "series": "SL",
+        "description": "SL21 BR HD600 15\"",
+        "base_price": 416.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "15\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL21 BR HD600 15\" $416.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.341980",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL21-BR-HD600-10",
+        "model": "SL21",
+        "series": "SL",
+        "description": "SL21 BR HD600 10\"",
+        "base_price": 680.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "10\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 0,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL21 BR HD600 10\" $680.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.341980",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 0
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL57-BR-HD600-77",
+        "model": "SL57",
+        "series": "SL",
+        "description": "SL57 BR HD600 77\"",
+        "base_price": 332.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "77\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL57 BR HD600 77\" $332.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.342981",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL57-BR-HD600-1",
+        "model": "SL57",
+        "series": "SL",
+        "description": "SL57 BR HD600 1\"",
+        "base_price": 332.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "1\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL57 BR HD600 1\" $332.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.342981",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL57-BR-HD600-83",
+        "model": "SL57",
+        "series": "SL",
+        "description": "SL57 BR HD600 83\"",
+        "base_price": 415.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL57 BR HD600 83\" $415.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.342981",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL57-BR-HD600-85",
+        "model": "SL57",
+        "series": "SL",
+        "description": "SL57 BR HD600 85\"",
+        "base_price": 681.0,
+        "finish_code": "BR",
+        "specifications": {
+          "length": "85\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 4,
+        "column_index": null,
+        "raw_text": "SL57 BR HD600 85\" $681.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.342981",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL57-BK-HD600-77",
+        "model": "SL57",
+        "series": "SL",
+        "description": "SL57 BK HD600 77\"",
+        "base_price": 349.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "77\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL57 BK HD600 77\" $349.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.342981",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL57-BK-HD600-7",
+        "model": "SL57",
+        "series": "SL",
+        "description": "SL57 BK HD600 7\"",
+        "base_price": 437.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "7\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL57 BK HD600 7\" $437.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.342981",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "sku": "SL57-BK-HD600-83",
+        "model": "SL57",
+        "series": "SL",
+        "description": "SL57 BK HD600 83\"",
+        "base_price": 716.0,
+        "finish_code": "BK",
+        "specifications": {
+          "length": "83\"",
+          "duty": "HD600"
+        },
+        "is_active": true,
+        "manufacturer": "SELECT Hinges"
+      },
+      "data_type": "product",
+      "normalized_value": null,
+      "confidence": 0.95,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 11,
+        "extraction_method": "table_extraction",
+        "bbox": null,
+        "section": "Model Tables",
+        "table_index": 1,
+        "row_index": 5,
+        "column_index": null,
+        "raw_text": "SL57 BK HD600 83\" $716.0",
+        "context_text": null,
+        "confidence": 0.95,
+        "timestamp": "2025-10-28T11:55:55.342981",
+        "metadata": {
+          "page_number": 11,
+          "table_index": 1
+        }
+      },
+      "validation_errors": []
+    }
+  ],
+  "finish_symbols": [
+    {
+      "value": {
+        "code": "CL",
+        "label": "Clear Anodized",
+        "bhma": null,
+        "manufacturer": "SELECT"
+      },
+      "data_type": "finish_symbol",
+      "normalized_value": null,
+      "confidence": 0.9,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "text_extraction",
+        "bbox": null,
+        "section": "Finishes",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "Clear [CL]",
+        "context_text": null,
+        "confidence": 0.9,
+        "timestamp": "2025-10-28T11:55:38.161094",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "code": "BR",
+        "label": "Bronze Anodized",
+        "bhma": null,
+        "manufacturer": "SELECT"
+      },
+      "data_type": "finish_symbol",
+      "normalized_value": null,
+      "confidence": 0.9,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "text_extraction",
+        "bbox": null,
+        "section": "Finishes",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "Dark Bronze [BR]",
+        "context_text": null,
+        "confidence": 0.9,
+        "timestamp": "2025-10-28T11:55:38.161094",
+        "metadata": {}
+      },
+      "validation_errors": []
+    },
+    {
+      "value": {
+        "code": "BK",
+        "label": "Black Anodized",
+        "bhma": null,
+        "manufacturer": "SELECT"
+      },
+      "data_type": "finish_symbol",
+      "normalized_value": null,
+      "confidence": 0.9,
+      "provenance": {
+        "source_file": "C:\\Users\\Vache\\projects\\arc_pdf_tool\\test_data\\pdfs\\2025-select-hinges-price-book.pdf",
+        "page_number": 1,
+        "extraction_method": "text_extraction",
+        "bbox": null,
+        "section": "Finishes",
+        "table_index": null,
+        "row_index": null,
+        "column_index": null,
+        "raw_text": "Black [BK]",
+        "context_text": null,
+        "confidence": 0.9,
+        "timestamp": "2025-10-28T11:55:38.161094",
+        "metadata": {}
+      },
+      "validation_errors": []
+    }
+  ],
+  "summary": {
+    "total_products": 101,
+    "total_finishes": 3,
+    "total_options": 22,
+    "has_effective_date": true,
+    "confidence_distribution": {
+      "high": 102,
+      "medium": 22
+    },
+    "recommendations": []
+  },
+  "validation": {
+    "is_valid": true,
+    "errors": [],
+    "warnings": [],
+    "accuracy_metrics": {
+      "confidence_rate": 0.8211382113821138,
+      "overall_quality": "good"
+    }
+  }
+}
