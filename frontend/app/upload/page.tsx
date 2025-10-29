@@ -416,7 +416,7 @@ export default function UploadPage() {
                   <Button
                     variant="outline"
                     className="justify-start"
-                    onClick={() => router.push('/exports')}
+                    onClick={() => router.push('/export-center')}
                   >
                     <Download className="h-4 w-4" />
                     Export to CSV/XLSX

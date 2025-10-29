@@ -37,7 +37,6 @@ class SmartPatternExtractor:
             r"(\d+[,\d]*\.\d{2})\s*USD",  # 123.45 USD
             r"Price:\s*\$?\s*(\d+[,\d]*\.?\d{2})",  # Price: $123.45
             r"(\d+[,\d]*\.\d{2})",  # Simple: 123.45 (must have 2 decimals)
-            r"(\d{2,5})",  # Just numbers (255, 1234) - very permissive
         ]
 
         # SKU/Model patterns (manufacturer-specific but common) - EXPANDED
@@ -520,11 +519,11 @@ class SmartPatternExtractor:
 
         # Fallback: try to parse as plain number (for table cells like "255", "1234")
         # This handles cases where img2table extracts clean numeric values
-        standalone_number = re.search(r'\b(\d{1,6}(?:\.\d{1,2})?)\b', cleaned)
+        standalone_number = re.search(r'(?<![A-Za-z])(\d{1,6}(?:\.\d{1,2})?)(?![A-Za-z])', cleaned)
         if standalone_number:
             try:
                 price = float(standalone_number.group(1))
-                if 10 <= price <= 100000:  # Reasonable price range
+                if 5 <= price <= 100000:  # Reasonable price range
                     return price
             except ValueError:
                 pass
@@ -721,11 +720,12 @@ class SmartPatternExtractor:
 
         # Common SKU patterns in hardware catalogs
         patterns = [
-            r'^[A-Z]{2,4}[-\s]?\d{3,}',      # AB-1234, ABC1234
-            r'^\d{4,8}[A-Z]{0,3}$',           # 12345, 12345AB
-            r'^[A-Z]\d{4,}',                  # A12345
-            r'^[A-Z]{2,}\d+[A-Z\d]*',         # ABC123XYZ
-        ]
+        r'^[A-Z]{2,4}[-\s]?\d{3,}',      # AB-1234, ABC1234
+        r'^\d{4,8}[A-Z]{0,3}$',           # 12345, 12345AB
+        r'^[A-Z]\d{4,}',                  # A12345
+        r'^[A-Z]{2,}\d+[A-Z\d]*',         # ABC123XYZ
+        r'^\d{3,}[-A-Z0-9]+$',            # 206-X-XXX, 123-ABC
+    ]
 
         for pattern in patterns:
             if re.match(pattern, sku, re.IGNORECASE):

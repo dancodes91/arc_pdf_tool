@@ -10,6 +10,7 @@ Expected accuracy: 99%+, 3-5x faster than ML-only approach.
 """
 
 import logging
+import re
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 from datetime import datetime
@@ -70,6 +71,9 @@ class UniversalParser:
         self.options: List[ParsedItem] = []
         self.finishes: List[ParsedItem] = []
         self.effective_date: Optional[ParsedItem] = None
+
+        # Cache for page geometry metadata
+        self._page_dimensions_cache: Dict[int, Dict[str, float]] = {}
 
         # Layer tracking for provenance
         self.layer1_products: List[ParsedItem] = []
@@ -426,6 +430,10 @@ class UniversalParser:
 
         # Convert to ParsedItems
         for product_data in products_data:
+            sku_value = product_data.get("sku")
+            if sku_value and not self.pattern_extractor._validate_sku_pattern(sku_value):
+                continue
+
             product_item = self.provenance_tracker.create_parsed_item(
                 value=product_data,
                 data_type="product",
@@ -462,37 +470,49 @@ class UniversalParser:
         products_data = []
 
         for page_num in weak_pages:
-            # Try lattice first (bordered tables)
-            try:
-                tables = camelot.read_pdf(
-                    self.pdf_path,
-                    pages=str(page_num),
-                    flavor='lattice',
-                    line_scale=40,
-                    suppress_stdout=True
-                )
+            configs = self._camelot_configurations(page_num)
+            page_tables = None
 
-                # If lattice failed, try stream (borderless tables)
-                if len(tables) == 0:
+            for cfg in configs:
+                params = cfg.copy()
+                flavor = params.pop("flavor")
+                try:
                     tables = camelot.read_pdf(
                         self.pdf_path,
                         pages=str(page_num),
-                        flavor='stream',
-                        edge_tol=50,
-                        suppress_stdout=True
+                        flavor=flavor,
+                        suppress_stdout=True,
+                        **params
                     )
 
-                # Parse each table
-                for table in tables:
-                    df = table.df
-                    if df.empty:
-                        continue
+                    if tables and tables.n > 0:
+                        self.logger.debug(
+                            f"Camelot ({flavor}) succeeded on page {page_num} with {tables.n} tables "
+                            f"using params {params}"
+                        )
+                        page_tables = tables
+                        break
+                except Exception as e:
+                    self.logger.debug(
+                        f"Camelot {flavor} extraction failed on page {page_num} with params {params}: {e}"
+                    )
+                    continue
 
-                    table_products = self.pattern_extractor.extract_from_table(df, page_num)
-                    products_data.extend(table_products)
+            if not page_tables:
+                self.logger.debug(f"Camelot could not detect tables on page {page_num}")
+                continue
 
-            except Exception as e:
-                self.logger.debug(f"Camelot extraction failed on page {page_num}: {e}")
+            for table in page_tables:
+                df = table.df
+                if df.empty:
+                    continue
+
+                df = self._clean_camelot_dataframe(df)
+                if df.empty:
+                    continue
+
+                table_products = self.pattern_extractor.extract_from_table(df, page_num)
+                products_data.extend(table_products)
 
         # Convert to ParsedItems
         for product_data in products_data:
@@ -660,6 +680,122 @@ class UniversalParser:
                     weak_pages.append(page_num)
 
         return weak_pages
+
+    def _get_page_dimensions(self, page_num: int) -> Dict[str, float]:
+        """Return cached page width and height for Camelot configuration."""
+        if page_num in self._page_dimensions_cache:
+            return self._page_dimensions_cache[page_num]
+
+        import pdfplumber
+
+        with pdfplumber.open(self.pdf_path) as pdf:
+            page = pdf.pages[page_num - 1]
+            dims = {"width": float(page.width), "height": float(page.height)}
+            self._page_dimensions_cache[page_num] = dims
+            return dims
+
+    def _camelot_configurations(self, page_num: int) -> List[Dict[str, Any]]:
+        """Generate a list of Camelot read configurations to try for a page."""
+        dims = self._get_page_dimensions(page_num)
+        width, height = dims["width"], dims["height"]
+
+        # Margins from config or defaults (points)
+        left_margin = self.config.get("camelot_left_margin", 24)
+        right_margin = self.config.get("camelot_right_margin", 24)
+        top_margin = self.config.get("camelot_top_margin", 36)
+        bottom_margin = self.config.get("camelot_bottom_margin", 36)
+
+        x1 = max(0, left_margin)
+        y1 = max(0, bottom_margin)
+        x2 = max(x1 + 10, width - right_margin)
+        y2 = max(y1 + 10, height - top_margin)
+
+        table_area = f"{x1},{y1},{x2},{y2}"
+
+        return [
+            {
+                "flavor": "lattice",
+                "line_scale": 40,
+                "strip_text": "\n",
+                "table_areas": [table_area],
+            },
+            {
+                "flavor": "lattice",
+                "line_scale": 24,
+                "shift_text": ["l", "t"],
+                "strip_text": "\n",
+                "table_areas": [table_area],
+            },
+            {
+                "flavor": "stream",
+                "edge_tol": 50,
+                "row_tol": 8,
+                "strip_text": "\n",
+                "table_areas": [table_area],
+            },
+            {
+                "flavor": "stream",
+                "edge_tol": 95,
+                "row_tol": 12,
+                "column_tol": 20,
+                "flag_size": 24,
+                "strip_text": "\n",
+                "table_areas": [table_area],
+            },
+        ]
+
+    def _clean_camelot_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Normalize Camelot DataFrame before pattern extraction."""
+        if df.empty:
+            return df
+
+        cleaned = df.copy()
+
+        def _clean_cell(value: Any) -> Any:
+            if not isinstance(value, str):
+                return value
+            text = re.sub(r"\s+", " ", value)
+            text = text.replace(" | ", " ").strip()
+            # Normalize spaced currency markers: "$ 20.00" -> "$20.00"
+            text = re.sub(r"\$\s+(\d)", r"$\1", text)
+            return text
+
+        cleaned = cleaned.applymap(_clean_cell)
+        cleaned.replace("", np.nan, inplace=True)
+        cleaned.dropna(how="all", inplace=True)
+        cleaned.dropna(axis=1, how="all", inplace=True)
+        cleaned = cleaned.loc[:, ~cleaned.columns.duplicated()]
+        cleaned.reset_index(drop=True, inplace=True)
+
+        # Remove obvious section headers or footers without numeric data
+        drop_indices = []
+        noise_keywords = [
+            "list prices",
+            "price variance",
+            "effective",
+            "copyright",
+            "catalog",
+            "remove",
+            "august",
+            "page",
+        ]
+
+        for idx, row in cleaned.iterrows():
+            row_text = " ".join(str(val).lower() for val in row.dropna().tolist())
+            if not row_text:
+                drop_indices.append(idx)
+                continue
+
+            if any(keyword in row_text for keyword in noise_keywords):
+                # Keep if the row still contains a price-looking token
+                if not re.search(r"\$?\d+\.\d{2}", row_text):
+                    drop_indices.append(idx)
+
+        if drop_indices:
+            cleaned.drop(index=drop_indices, inplace=True, errors="ignore")
+            cleaned.reset_index(drop=True, inplace=True)
+
+        return cleaned
 
     def _identify_failed_pages(self) -> List[int]:
         """Identify pages with 0 products from Layers 1+2."""
