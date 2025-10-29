@@ -300,8 +300,19 @@ class SelectSectionExtractor:
 
         try:
             # Get header row and data
-            header = [str(cell).strip() for cell in df.iloc[0]]
-            data_rows = df.iloc[1:]
+            header_row_idx = 0
+            header_detected = False
+            # Detect the row that contains the actual column headers (look for "Model #" row)
+            for idx in range(len(df)):
+                row_values = [str(cell).strip() for cell in df.iloc[idx]]
+                combined = " ".join(row_values).lower()
+                if "model #" in combined and re.search(r'\d+\s*["\']', combined):
+                    header_row_idx = idx
+                    header_detected = True
+                    break
+
+            header = [str(cell).strip() for cell in df.iloc[header_row_idx]]
+            data_rows = df.iloc[header_row_idx + 1 :]
 
             # Drop completely empty rows
             data_rows = data_rows.dropna(how="all")
@@ -350,13 +361,42 @@ class SelectSectionExtractor:
 
                 self.logger.debug(f"Detected NEWLINE-SEPARATED structure with lengths: {lengths}")
 
+            current_descriptor = None
+            current_parsed = None
+
             # STEP 2: Process each data row
             for row_idx, row in data_rows.iterrows():
-                # Get model descriptor from first column
-                model_descriptor = str(row.iloc[0]).strip()
+                # Locate the cell that contains the model descriptor (may not always be column 0)
+                model_descriptor = None
+                parsed = None
+                for col_idx in range(len(row)):
+                    cell_value = str(row.iloc[col_idx]).strip()
+                    if not cell_value or cell_value.lower() in ["nan", "none", ""] or len(cell_value) < 3:
+                        continue
+                    parsed_candidate = self._parse_select_model_descriptor(cell_value)
+                    if parsed_candidate:
+                        model_descriptor = cell_value
+                        parsed = parsed_candidate
+                        current_descriptor = model_descriptor
+                        current_parsed = parsed
+                        break
+
+                if not parsed and current_parsed:
+                    # Use the most recent descriptor if this row only contains price cells
+                    has_numeric = any(
+                        self._extract_price_from_cell(str(row.iloc[col_idx]).strip())
+                        for col_idx in range(len(row))
+                    )
+                    if has_numeric:
+                        parsed = current_parsed
+                        model_descriptor = current_descriptor
+                    else:
+                        continue
+                elif not parsed:
+                    continue
 
                 # Skip header/empty rows
-                if not model_descriptor or model_descriptor.lower() in ["nan", "none", "model", "model #", ""]:
+                if not model_descriptor or model_descriptor.lower() in ["model", "model #"]:
                     continue
 
                 # Skip rows that look like headers/garbage
@@ -364,10 +404,6 @@ class SelectSectionExtractor:
                     continue
 
                 # Parse model descriptor (e.g., "SL11 CL HD600")
-                parsed = self._parse_select_model_descriptor(model_descriptor)
-                if not parsed:
-                    continue
-
                 base_model = parsed["base_model"]
                 finish = parsed["finish"]
                 duty = parsed["duty"]
@@ -449,31 +485,43 @@ class SelectSectionExtractor:
         Returns price as float if valid, None otherwise.
         Filters out dashes, fractions, dimensions, and invalid values.
         """
-        # Skip dashes and empty
-        if not price_str or price_str == "-":
+        if not price_str:
             return None
 
-        # Skip fractions (like "11/16", "1-9/16")
-        if "/" in price_str:
-            return None
+        skip_keywords = [
+            "mm",
+            "bevel",
+            "edge",
+            "square",
+            "clearance",
+            "min",
+            "web",
+            "metric",
+            "brochure",
+            "site",
+        ]
 
-        # Skip text/dimension indicators (mm, inches, clearance, etc.)
-        skip_keywords = ['mm', 'bevel', 'edge', 'square', 'clearance', 'min', 'web', 'metric', 'brochure', 'site']
-        if any(kw in price_str.lower() for kw in skip_keywords):
-            return None
+        # Examine each line within the cell separately to avoid discarding prices that share a cell
+        for part in re.split(r"[\r\n]+", price_str):
+            candidate = part.strip()
+            if not candidate or candidate in ["-", "—"]:
+                continue
 
-        # Must contain digits
-        if not re.search(r'\d', price_str):
-            return None
+            # Skip obvious fraction/dimension strings
+            if re.search(r"\d+\s*/\s*\d+", candidate):
+                continue
 
-        # Try to extract numeric price
-        price_normalized = data_normalizer.normalize_price(price_str)
-        if price_normalized["value"]:
-            price_val = float(price_normalized["value"])
-            # Sanity check: SELECT hinge prices typically range from $50 to $10000
-            # Values under $50 are likely dimensions (8.73mm, 1.59", etc.)
-            if 50 <= price_val <= 10000:
-                return price_val
+            if any(kw in candidate.lower() for kw in skip_keywords):
+                continue
+
+            if not re.search(r"\d", candidate):
+                continue
+
+            price_normalized = data_normalizer.normalize_price(candidate)
+            if price_normalized["value"]:
+                price_val = float(price_normalized["value"])
+                if 50 <= price_val <= 10000:
+                    return price_val
 
         return None
 

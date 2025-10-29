@@ -3,7 +3,8 @@ Enhanced SELECT Hinges parser using shared utilities.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+import re
+from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 
 from ..shared.pdf_io import EnhancedPDFExtractor, PDFDocument
@@ -128,27 +129,17 @@ class SelectHingesParser:
             page_text = page.text or ""
             page_num = page.page_number
 
-            # Always try Camelot first (prefer structured output)
-            camelot_tables = self.section_extractor.extract_tables_with_camelot(
+            # Try Camelot lattice and stream extractions
+            lattice_tables = self.section_extractor.extract_tables_with_camelot(
                 self.pdf_path, page_num, flavor="lattice"
             )
+            stream_tables = self.section_extractor.extract_tables_with_camelot(
+                self.pdf_path, page_num, flavor="stream"
+            )
 
-            extraction_method = "lattice"
-
-            # Use Camelot if available, otherwise fallback to pdfplumber
-            page_tables = camelot_tables if camelot_tables else page.tables
-
-            # If NO tables found but page has SL## text, try with stream flavor
-            # (Hager PDFs require stream flavor for SELECT grids)
-            if not page_tables and "SL" in page_text.upper():
-                self.logger.debug(f"Page {page_num}: lattice returned 0 tables, trying stream flavor")
-                stream_tables = self.section_extractor.extract_tables_with_camelot(
-                    self.pdf_path, page_num, flavor="stream"
-                )
-                if stream_tables:
-                    page_tables = stream_tables
-                    extraction_method = "stream"
-                    self.logger.debug(f"Page {page_num}: stream flavor found {len(stream_tables)} tables")
+            page_tables, extraction_method = self._choose_page_tables(
+                lattice_tables, stream_tables, page.tables
+            )
 
             # Extract products from this page
             if page_tables:
@@ -158,7 +149,9 @@ class SelectHingesParser:
                 if page_products:
                     self.products.extend(page_products)
                     pages_processed.append(page_num)
-                    self.logger.debug(f"Page {page_num}: extracted {len(page_products)} products")
+                    self.logger.debug(
+                        f"Page {page_num}: extracted {len(page_products)} products using {extraction_method}"
+                    )
 
         self.logger.info(
             f"Found {len(self.products)} products across {len(pages_processed)} pages: {pages_processed}"
@@ -213,6 +206,61 @@ class SelectHingesParser:
         results["validation"] = self._validate_results(results)
 
         return results
+
+    def _choose_page_tables(
+        self,
+        lattice_tables: List[Any],
+        stream_tables: List[Any],
+        fallback_tables: List[Any],
+    ) -> Tuple[List[Any], str]:
+        """
+        Decide which table extraction to use for a page.
+
+        Preference order:
+        1. Stream tables if they score better (more structured columns/numeric data)
+        2. Lattice tables
+        3. Fallback tables already present on the PDF page (pdfplumber)
+        """
+
+        stream_score = self._table_quality_score(stream_tables)
+        lattice_score = self._table_quality_score(lattice_tables)
+
+        if stream_tables and stream_score >= max(lattice_score, 1):
+            return stream_tables, "stream"
+
+        if lattice_tables:
+            return lattice_tables, "lattice"
+
+        if fallback_tables:
+            return fallback_tables, "pdfplumber"
+
+        return [], "none"
+
+    def _table_quality_score(self, tables: List[Any]) -> int:
+        """Heuristic score to determine how usable a set of tables is."""
+        if not tables:
+            return 0
+
+        score = 0
+        for table in tables:
+            try:
+                df = table if hasattr(table, "values") else None
+                if df is None:
+                    continue
+
+                num_cols = df.shape[1]
+                numeric_cells = 0
+                for cell in df.values.flatten():
+                    if isinstance(cell, str) and re.search(r"\d", cell):
+                        numeric_cells += 1
+
+                # Weighted score: favor tables with more columns and numeric entries
+                score += num_cols * 10 + numeric_cells
+
+            except Exception:
+                continue
+
+        return score
 
     def _build_error_results(self, error_message: str) -> Dict[str, Any]:
         """Build results when parsing fails."""
