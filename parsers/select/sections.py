@@ -421,6 +421,21 @@ class SelectSectionExtractor:
                             if price_val:
                                 length_price_map[length] = price_val
 
+                    # Forward-fill missing prices with previous valid value (handles "-" cells)
+                    prev_price = None
+                    for idx, length in enumerate(lengths):
+                        price = length_price_map.get(length)
+                        if price is not None:
+                            prev_price = price
+                            continue
+
+                        has_future_value = any(
+                            length_price_map.get(future_length) is not None
+                            for future_length in lengths[idx + 1 :]
+                        )
+                        if prev_price is not None and has_future_value:
+                            length_price_map[length] = prev_price
+
                     # Create products for each length that has a valid price
                     for length in lengths:
                         price = length_price_map.get(length)
@@ -455,6 +470,18 @@ class SelectSectionExtractor:
                     for price_str in all_prices:
                         price_val = self._extract_price_from_cell(price_str)
                         valid_prices.append(price_val)
+
+                    # Forward-fill missing prices
+                    prev_price = None
+                    for idx in range(len(valid_prices)):
+                        price = valid_prices[idx]
+                        if price is not None:
+                            prev_price = price
+                            continue
+
+                        has_future_value = any(val is not None for val in valid_prices[idx + 1 :])
+                        if prev_price is not None and has_future_value:
+                            valid_prices[idx] = prev_price
 
                     # Match prices to lengths (zip them together)
                     min_count = min(len(lengths), len(valid_prices))
