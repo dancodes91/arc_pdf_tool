@@ -411,35 +411,28 @@ class SelectSectionExtractor:
                 # STEP 3: Extract prices based on structure type
                 if structure_type == "column-separated":
                     # COLUMN-SEPARATED: Each length has its own column
-                    # Map length -> price by reading from specific column indices
-                    length_price_map = {}
+                    # Map length -> (price, original_cell_value)
+                    length_data_map = {}
 
                     for length, col_idx in length_columns.items():
                         if col_idx < len(row):
                             cell = str(row.iloc[col_idx]).strip()
+                            # Store both the extracted price AND the original cell value
                             price_val = self._extract_price_from_cell(cell)
-                            if price_val:
-                                length_price_map[length] = price_val
+                            length_data_map[length] = {
+                                "price": price_val,
+                                "original_cell": cell
+                            }
 
-                    # Forward-fill missing prices with previous valid value (handles "-" cells)
-                    prev_price = None
-                    for idx, length in enumerate(lengths):
-                        price = length_price_map.get(length)
-                        if price is not None:
-                            prev_price = price
-                            continue
-
-                        has_future_value = any(
-                            length_price_map.get(future_length) is not None
-                            for future_length in lengths[idx + 1 :]
-                        )
-                        if prev_price is not None and has_future_value:
-                            length_price_map[length] = prev_price
-
-                    # Create products for each length that has a valid price
+                    # Create products ONLY for cells that have valid prices
+                    # DO NOT forward-fill - if a cell is "-" or empty, that size is unavailable
                     for length in lengths:
-                        price = length_price_map.get(length)
-                        if not price:
+                        data = length_data_map.get(length, {})
+                        price = data.get("price")
+                        original_cell = data.get("original_cell", "")
+
+                        # Skip if no price OR if original cell was a dash (explicitly unavailable)
+                        if not price or original_cell in ["-", "—", "–"]:
                             continue
 
                         self._create_product(
@@ -460,37 +453,36 @@ class SelectSectionExtractor:
                         continue
 
                     # Split each cell by newlines and flatten into list
-                    all_prices = []
+                    all_price_strings = []
                     for cell in price_cells:
                         prices_in_cell = [p.strip() for p in cell.split('\n')]
-                        all_prices.extend(prices_in_cell)
+                        all_price_strings.extend(prices_in_cell)
 
-                    # Filter and validate prices
-                    valid_prices = []
-                    for price_str in all_prices:
-                        price_val = self._extract_price_from_cell(price_str)
-                        valid_prices.append(price_val)
-
-                    # Forward-fill missing prices
-                    prev_price = None
-                    for idx in range(len(valid_prices)):
-                        price = valid_prices[idx]
-                        if price is not None:
-                            prev_price = price
-                            continue
-
-                        has_future_value = any(val is not None for val in valid_prices[idx + 1 :])
-                        if prev_price is not None and has_future_value:
-                            valid_prices[idx] = prev_price
+                    # Extract prices and keep track of which ones were dashes
+                    # Map: index -> (price_value, was_dash)
+                    price_data = []
+                    for price_str in all_price_strings:
+                        # Check if this is an explicit dash (unavailable)
+                        is_dash = price_str in ["-", "—", "–", ""]
+                        price_val = None if is_dash else self._extract_price_from_cell(price_str)
+                        price_data.append({
+                            "price": price_val,
+                            "is_dash": is_dash,
+                            "original": price_str
+                        })
 
                     # Match prices to lengths (zip them together)
-                    min_count = min(len(lengths), len(valid_prices))
+                    # DO NOT forward-fill - dashes mean unavailable
+                    min_count = min(len(lengths), len(price_data))
 
                     for i in range(min_count):
                         length = lengths[i]
-                        price = valid_prices[i]
+                        data = price_data[i]
+                        price = data["price"]
+                        is_dash = data["is_dash"]
 
-                        if price is None:
+                        # Skip if no valid price OR if it was explicitly marked unavailable with dash
+                        if price is None or is_dash:
                             continue
 
                         self._create_product(
@@ -515,6 +507,11 @@ class SelectSectionExtractor:
         if not price_str:
             return None
 
+        # Explicitly reject dashes FIRST - they indicate unavailable sizes
+        # This includes various dash types and empty strings
+        if price_str.strip() in ["-", "—", "–", "", "n/a", "N/A"]:
+            return None
+
         skip_keywords = [
             "mm",
             "bevel",
@@ -531,7 +528,8 @@ class SelectSectionExtractor:
         # Examine each line within the cell separately to avoid discarding prices that share a cell
         for part in re.split(r"[\r\n]+", price_str):
             candidate = part.strip()
-            if not candidate or candidate in ["-", "—"]:
+            # Check for dashes again at line level
+            if not candidate or candidate in ["-", "—", "–", "n/a", "N/A"]:
                 continue
 
             # Skip obvious fraction/dimension strings
