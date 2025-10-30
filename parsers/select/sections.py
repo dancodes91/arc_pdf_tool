@@ -274,8 +274,6 @@ class SelectSectionExtractor:
                     if sku and sku not in seen_skus:
                         products.append(p)
                         seen_skus.add(sku)
-                # Structured extraction succeeded - no need for fallback methods on this table
-                continue
 
             # If structured didn't work, try pattern-based extraction for complex layouts
             pattern_products = self._extract_products_from_table_simple(
@@ -577,19 +575,11 @@ class SelectSectionExtractor:
 
                     # Match prices to lengths (zip them together)
                     # DO NOT forward-fill - dashes mean unavailable
-                    filtered_entries = [
-                        entry for entry in price_data if not (entry["price"] is None and not entry["is_dash"])
-                    ]
+                    min_count = min(len(lengths), len(price_data))
 
-                    if not filtered_entries:
-                        continue
-
-                    if len(filtered_entries) < len(lengths):
-                        aligned_lengths = lengths[-len(filtered_entries):]
-                    else:
-                        aligned_lengths = lengths[: len(filtered_entries)]
-
-                    for length, data in zip(aligned_lengths, filtered_entries):
+                    for i in range(min_count):
+                        length = lengths[i]
+                        data = price_data[i]
                         price = data["price"]
                         is_dash = data["is_dash"]
 
@@ -642,10 +632,6 @@ class SelectSectionExtractor:
             candidate = part.strip()
             # Check for dashes again at line level
             if not candidate or candidate in ["-", "—", "–", "n/a", "N/A"]:
-                continue
-
-            # Skip tokens that still contain alpha characters (e.g., "SL14")
-            if re.search(r"[A-Za-z]", candidate):
                 continue
 
             # Skip obvious fraction/dimension strings
@@ -939,10 +925,6 @@ class SelectSectionExtractor:
                     if not finish_code:
                         continue  # Skip this product entirely
 
-                if finish_code not in ["CL", "BR", "BK"]:
-                    continue
-
-
                 # If length still missing, try dedicated columns (e.g., "Length")
                 if not length_value:
                     possible_length = None
@@ -1092,10 +1074,8 @@ class SelectSectionExtractor:
 
         current_model = None
         current_duty = None
-        length_headers: List[str] = []
 
-        lines = text.splitlines()
-        for line_index, raw_line in enumerate(lines):
+        for line_index, raw_line in enumerate(text.splitlines()):
             line = raw_line.strip()
             if not line:
                 continue
@@ -1107,62 +1087,6 @@ class SelectSectionExtractor:
                 current_model = header_match.group(1).replace(" ", "")
                 duty_match = re.search(r"(LIGHT|MEDIUM|HEAVY)\s+DUTY", upper_line)
                 current_duty = duty_match.group(0).title() if duty_match else None
-                length_headers = []
-                continue
-
-            if upper_line.startswith("MODEL #"):
-                length_headers = []
-                continue
-
-            if re.fullmatch(r'\d{2,3}"(?:\s*/\s*\d{2,3}")?', line):
-                lengths_found = re.findall(r'\d{2,3}', line)
-                length_headers.extend(lengths_found)
-                continue
-
-            model_column_match = re.match(
-                r"^(SL\d{2})\s+([A-Z]{2})\s+((?:HD|LD)\d+|LL)$", upper_line
-            )
-            if model_column_match and length_headers:
-                base_model = model_column_match.group(1)
-                finish = model_column_match.group(2)
-                duty = model_column_match.group(3)
-
-                prices: List[float] = []
-                price_index = line_index + 1
-                while price_index < len(lines) and len(prices) < len(length_headers):
-                    price_line = lines[price_index].strip()
-                    if re.fullmatch(r"\d+(\.\d{2})?", price_line):
-                        prices.append(float(price_line))
-                        price_index += 1
-                    else:
-                        break
-
-                for length, price in zip(length_headers, prices):
-                    sku = f"{base_model}-{finish}-{duty}-{length}"
-                    description = f"{base_model} {finish} {duty} {length}"
-                    item = self.tracker.create_parsed_item(
-                        value={
-                            "sku": sku,
-                            "model": base_model,
-                            "series": base_model[:2],
-                            "description": description,
-                            "base_price": price,
-                            "finish_code": finish if finish in ["CL", "BR", "BK"] else finish,
-                            "specifications": {
-                                "length": f'{length}"',
-                                "duty": duty,
-                            },
-                            "is_active": True,
-                            "manufacturer": "SELECT Hinges",
-                        },
-                        data_type="product",
-                        raw_text=f"{base_model} {finish} {duty} {length} {price}",
-                        confidence=0.85,
-                        row_index=line_index,
-                        page_number=page_number,
-                    )
-                    products.append(item)
-
                 continue
 
             if not current_model:
@@ -1311,26 +1235,11 @@ class SelectSectionExtractor:
 
     def _find_column_by_pattern(self, table: pd.DataFrame, pattern: str) -> Optional[int]:
         """Find column index by content pattern."""
-        compiled = re.compile(pattern)
-
         for col_idx, col in enumerate(table.columns):
-            column_values = table[col]
-
-            # Handle MultiIndex columns where selection returns a DataFrame
-            if isinstance(column_values, pd.DataFrame):
-                sample_values = column_values.astype(str).fillna("").values.flatten()
-            else:
-                sample_values = column_values.fillna("").astype(str).values
-
-            # Quick skip: if everything is empty, continue
-            if not any(sample_values):
-                continue
-
-            match_count = 0
-            for val in sample_values[:10]:  # limit scanning
-                if compiled.search(str(val)):
-                    match_count += 1
-                if match_count >= 2:
+            if table[col].dtype == "object":
+                sample_values = table[col].dropna().head(5)
+                matches = sum(1 for val in sample_values if re.search(pattern, str(val)))
+                if matches >= 2:  # At least 2 matches
                     return col_idx
         return None
 
@@ -1495,9 +1404,6 @@ class SelectSectionExtractor:
                         finish_code = "BR"
                     elif re.search(r"\bBK\b", cell_str, re.IGNORECASE):
                         finish_code = "BK"
-
-                if finish_code not in ["CL", "BR", "BK"]:
-                    continue
 
                 # Extract length from column header
                 length_from_col = ""
