@@ -363,12 +363,15 @@ class SelectSectionExtractor:
 
             current_descriptor = None
             current_parsed = None
+            current_base_model = None
 
             # STEP 2: Process each data row
             for row_idx, row in data_rows.iterrows():
                 # Locate the cell that contains the model descriptor (may not always be column 0)
                 model_descriptor = None
                 parsed = None
+                found_new_model = False
+
                 for col_idx in range(len(row)):
                     cell_value = str(row.iloc[col_idx]).strip()
                     if not cell_value or cell_value.lower() in ["nan", "none", ""] or len(cell_value) < 3:
@@ -377,17 +380,40 @@ class SelectSectionExtractor:
                     if parsed_candidate:
                         model_descriptor = cell_value
                         parsed = parsed_candidate
+                        found_new_model = True
+
+                        # Check if we've moved to a DIFFERENT base model family
+                        new_base_model = parsed["base_model"]
+                        if current_base_model and new_base_model != current_base_model:
+                            # Moving to a different model family (e.g., SL11 -> SL12)
+                            # Reset the current descriptor to prevent contamination
+                            self.logger.debug(f"Model family changed: {current_base_model} -> {new_base_model}")
+
                         current_descriptor = model_descriptor
                         current_parsed = parsed
+                        current_base_model = new_base_model
                         break
 
                 if not parsed and current_parsed:
-                    # Use the most recent descriptor if this row only contains price cells
+                    # Use the most recent descriptor ONLY if this row contains prices
+                    # AND we haven't moved to a different model family
                     has_numeric = any(
                         self._extract_price_from_cell(str(row.iloc[col_idx]).strip())
                         for col_idx in range(len(row))
                     )
                     if has_numeric:
+                        # Check if this row might belong to a DIFFERENT model
+                        # by looking for model number patterns in the row
+                        row_text = " ".join(str(cell) for cell in row if str(cell).strip())
+                        # If we find a different SL## pattern, skip this row (don't use current_parsed)
+                        different_model_match = re.search(r'SL\s*(\d{2,3})', row_text, re.IGNORECASE)
+                        if different_model_match:
+                            possible_model = f"SL{different_model_match.group(1)}"
+                            if possible_model != current_base_model:
+                                # This row mentions a DIFFERENT model - skip it
+                                self.logger.debug(f"Skipping row mentioning {possible_model} (current: {current_base_model})")
+                                continue
+
                         parsed = current_parsed
                         model_descriptor = current_descriptor
                     else:

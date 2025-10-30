@@ -1,0 +1,23 @@
+manufacturer,code,label,add_type,amount,notes,constraints_json,page_ref
+select hinges,CTW-4,CTW-4,net_add,108.0,,{},1
+select hinges,CTW-5,CTW-5,net_add,113.0,,{},1
+select hinges,CTW-8,CTW-8,net_add,126.0,,{},1
+select hinges,CTW-10,CTW-10,net_add,137.0,,{},1
+select hinges,CTW-12,CTW-12,net_add,156.0,,{},1
+select hinges,EPT,Electroplated Prep,net_add,41.0,,"{""excludes"": [""CTW""]}",1
+select hinges,EPT,Electroplated Prep,net_add,93.0,,"{""excludes"": [""CTW""]}",1
+select hinges,EPT,Electroplated Prep,net_add,93.0,,"{""excludes"": [""CTW""]}",1
+select hinges,EPT,Electroplated Prep,net_add,43.0,,"{""excludes"": [""CTW""]}",1
+select hinges,EMS,Electromagnetic Shielding,net_add,46.0,,"{""excludes"": [""CTW"", ""EPT""]}",1
+select hinges,ATW-4,ATW-4,net_add,176.0,,{},1
+select hinges,ATW-8,ATW-8,net_add,188.0,,{},1
+select hinges,ATW-12,ATW-12,net_add,204.0,,{},1
+select hinges,CMG,CMG,net_add,100.0,,{},1
+select hinges,AP,AP,net_add,41.0,,{},1
+select hinges,AP,AP,net_add,93.0,,{},1
+select hinges,AP,AP,net_add,93.0,,{},1
+select hinges,AP,AP,net_add,43.0,,{},1
+select hinges,RP,RP,net_add,41.0,,{},1
+select hinges,RP,RP,net_add,93.0,,{},1
+select hinges,RP,RP,net_add,93.0,,{},1
+select hinges,RP,RP,net_add,43.0,,{},1
