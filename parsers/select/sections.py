@@ -170,6 +170,7 @@ class SelectSectionExtractor:
         """Extract net add options with pricing from SELECT PDF."""
         self.tracker.set_context(section="Options", method="pattern_matching")
         options = []
+        seen_entries = set()
 
         for option_code, patterns in self.net_add_patterns.items():
             for pattern in patterns:
@@ -211,6 +212,15 @@ class SelectSectionExtractor:
                                 "availability": self._get_option_availability(option_code),
                             }
 
+                            entry_key = (
+                                option_code,
+                                size_variant or None,
+                                option_data["adder_value"],
+                            )
+                            if entry_key in seen_entries:
+                                continue
+                            seen_entries.add(entry_key)
+
                             item = self.tracker.create_parsed_item(
                                 value=option_data,
                                 data_type="net_add_option",
@@ -249,16 +259,21 @@ class SelectSectionExtractor:
 
             self.tracker.set_context(table_index=table_idx, page_number=page_number)
 
+            has_price_column = any(str(col).strip().lower() == "price" for col in df.columns)
+            has_length_headers = any(
+                re.search(r'\d+\s*["\']', str(col)) for col in df.columns if isinstance(col, str)
+            )
+
             # Try structured extraction first (for proper tables with headers)
-            structured_products = self._extract_products_structured(df, table_idx, page_number)
+            structured_products = []
+            if not (has_price_column and not has_length_headers):
+                structured_products = self._extract_products_structured(df, table_idx, page_number)
             if structured_products:
                 for p in structured_products:
                     sku = p.value.get("sku")
                     if sku and sku not in seen_skus:
                         products.append(p)
                         seen_skus.add(sku)
-                # Structured extraction succeeded - skip fallback methods for this table
-                continue
 
             # If structured didn't work, try pattern-based extraction for complex layouts
             pattern_products = self._extract_products_from_table_simple(
@@ -285,10 +300,36 @@ class SelectSectionExtractor:
                         products.append(p)
                         seen_skus.add(sku)
 
+        # Fallback: parse textual sections if provided
+        if text:
+            text_products = self._extract_products_from_text_blocks(text, page_number=page_number)
+            for p in text_products:
+                sku = p.value.get("sku")
+                if sku and sku not in seen_skus:
+                    products.append(p)
+                    seen_skus.add(sku)
+
+        # Deduplicate products by normalized SKU, prefer entries with higher price/confidence
+        deduped_products: Dict[str, ParsedItem] = {}
+        for p in products:
+            sku = p.value.get("sku", "")
+            normalized_sku = re.sub(r"[^A-Za-z0-9]", "", sku).upper()
+            normalized_sku = normalized_sku or sku.upper()
+
+            existing = deduped_products.get(normalized_sku)
+            candidate_price = p.value.get("base_price") or 0
+
+            if existing:
+                existing_price = existing.value.get("base_price") or 0
+                if candidate_price >= existing_price:
+                    deduped_products[normalized_sku] = p
+            else:
+                deduped_products[normalized_sku] = p
+
         # Post-processing: Filter out invalid products for SELECT pricing guides
         # Valid products MUST have length specifications (79", 83", 95", 120", etc.)
         valid_products = []
-        for p in products:
+        for p in deduped_products.values():
             sku = p.value.get("sku", "")
             specs = p.value.get("specifications", {})
             price = p.value.get("base_price", 0)
@@ -298,7 +339,7 @@ class SelectSectionExtractor:
             if specs and specs.get("length"):
                 has_length = True
             # Also check SKU for length pattern (ends with digits like -79, -83, -95, -120)
-            elif re.search(r'-\d{2,3}$', sku):
+            elif re.search(r'(?:-\d{2,3}|\d{2,3}$)', sku):
                 has_length = True
 
             # Skip products without length specs (invalid for SELECT pricing guides)
@@ -307,7 +348,7 @@ class SelectSectionExtractor:
                 continue
 
             # Additional price validation (SELECT prices are typically $50-$5000)
-            if price < 50 or price > 10000:
+            if price is None or price < 10 or price > 10000:
                 self.logger.debug(f"Skipping product with invalid price: {sku} ${price}")
                 continue
 
@@ -331,6 +372,7 @@ class SelectSectionExtractor:
            - Prices: Each in its own column
         """
         products = []
+        seen_skus = set()  # Track SKUs to prevent duplicates
 
         try:
             # Get header row and data
@@ -605,7 +647,7 @@ class SelectSectionExtractor:
             price_normalized = data_normalizer.normalize_price(candidate)
             if price_normalized["value"]:
                 price_val = float(price_normalized["value"])
-                if 50 <= price_val <= 10000:
+                if 10 <= price_val <= 10000:
                     return price_val
 
         return None
@@ -813,12 +855,22 @@ class SelectSectionExtractor:
         """Simple robust extraction from SELECT tables - handles complex table formats with embedded SKUs."""
         products = []
         seen_entries = set()  # Track (sku, price) tuples to allow same SKU with different prices
+        columns = self._identify_table_columns(df)
+        price_col_idx = columns.get("price")
+        length_col_idx = columns.get("length")
+        description_col_idx = columns.get("description")
 
         # Iterate through all rows and columns
+        header_tokens = None
+
         for row_idx, row in df.iterrows():
-            # Skip first row (usually header)
             if row_idx == 0:
-                continue
+                header_tokens = [str(val).strip().lower() for val in row]
+                if any(
+                    token in ["model", "model #", "price", "description", "length"]
+                    for token in header_tokens
+                ):
+                    continue
 
             # Scan all cells in this row for SKU patterns
             for col_idx in range(len(row)):
@@ -830,7 +882,7 @@ class SelectSectionExtractor:
                 # Look for SELECT SKU pattern: SL## optionally followed by finish code and variant
                 # Examples: "SL21 CL HD300", "SL11 BR HD600", "SL14CL", or just "SL21"
                 sku_match = re.search(
-                    r'(SL\s*\d{2})(?:\s+([A-Z]{2}))?(?:\s+(HD\d+|LD\d+|LL|\d+"?))?',
+                    r'(SL\s*\d{2})(?:\s*([A-Z]{2}))?(?:\s*(HD\d+|LD\d+|LL|\d{2,3}"?))?',
                     cell_value,
                     re.IGNORECASE,
                 )
@@ -842,7 +894,16 @@ class SelectSectionExtractor:
                 finish_code = (
                     sku_match.group(2).upper() if sku_match.group(2) else None
                 )  # CL, BR, BK or None
-                variant = sku_match.group(3).upper() if sku_match.group(3) else ""  # HD300, etc
+                variant_raw = sku_match.group(3)
+                duty = None
+                length_value = None
+
+                if variant_raw:
+                    variant_norm = variant_raw.replace('"', "").upper()
+                    if re.match(r'^\d{2,3}$', variant_norm):
+                        length_value = variant_norm
+                    else:
+                        duty = variant_norm
 
                 # If finish code missing, check adjacent cells
                 if not finish_code:
@@ -864,48 +925,79 @@ class SelectSectionExtractor:
                     if not finish_code:
                         continue  # Skip this product entirely
 
+                # If length still missing, try dedicated columns (e.g., "Length")
+                if not length_value:
+                    possible_length = None
+                    if length_col_idx is not None and length_col_idx < len(row):
+                        possible_length = str(row.iloc[length_col_idx]).strip()
+                    elif col_idx + 1 < len(row):
+                        possible_length = str(row.iloc[col_idx + 1]).strip()
+                    if possible_length:
+                        length_match = re.search(r'(\d{2,3})', possible_length)
+                        if length_match:
+                            length_value = length_match.group(1)
+
                 # Build full SKU with position to make unique
-                sku = (
-                    f"{base_model}-{finish_code}-{variant}".replace(" ", "")
-                    if variant
-                    else f"{base_model}-{finish_code}"
-                )
+                sku_base = "".join(part for part in [base_model, finish_code or ""])
+                if duty:
+                    sku = "-".join(
+                        part for part in [base_model, finish_code, duty, length_value] if part
+                    )
+                else:
+                    sku = sku_base + (length_value or "")
 
                 # Now find price in the same cell or adjacent cells
                 price_val = None
 
-                # First try same cell
-                price_matches = re.findall(r"(\d+\.?\d{0,2})", cell_value)
-                for price_str in price_matches:
-                    try:
-                        pval = float(price_str)
-                        # Relaxed range: allow lower prices (20-40 range common in SELECT)
-                        if 10 <= pval <= 5000:
-                            price_val = pval
-                            break
-                    except:
-                        continue
+                # Prefer explicit price column if available
+                if price_col_idx is not None and price_col_idx < len(row):
+                    price_val = self._extract_price_from_cell(str(row.iloc[price_col_idx]))
 
-                # If no price in same cell, check adjacent cells
+                # If still missing, inspect the SKU cell itself
+                if price_val is None:
+                    price_matches = re.findall(r"(\d+\.?\d{0,2})", cell_value)
+                    for price_str in price_matches:
+                        try:
+                            pval = float(price_str)
+                            # Relaxed range: allow lower prices (20-40 range common in SELECT)
+                            if 10 <= pval <= 5000:
+                                price_val = pval
+                                break
+                        except:
+                            continue
+
+                # If no price yet, check nearby columns (skipping known length/description)
                 if price_val is None:
                     for offset in [1, -1, 2, -2]:  # Check more adjacent cells
                         adj_col = col_idx + offset
-                        if 0 <= adj_col < len(row):
-                            adj_cell = str(row.iloc[adj_col]).strip()
+                        if not (0 <= adj_col < len(row)):
+                            continue
+                        if price_col_idx is not None and adj_col == price_col_idx:
+                            continue
+                        if length_col_idx is not None and adj_col == length_col_idx:
+                            continue
+                        if description_col_idx is not None and adj_col == description_col_idx:
+                            continue
+
+                        adj_cell = str(row.iloc[adj_col]).strip()
+                        if not adj_cell:
+                            continue
+
+                        # Prefer cells that look like monetary values
+                        if "$" in adj_cell or re.search(r"\d+\.\d{2}", adj_cell):
                             price_matches = re.findall(
                                 r"(\d+\.?\d{0,2})", adj_cell.replace(",", "")
                             )
                             for price_str in price_matches:
                                 try:
                                     pval = float(price_str)
-                                    # Relaxed range here too
                                     if 10 <= pval <= 5000:
                                         price_val = pval
                                         break
                                 except:
                                     continue
-                            if price_val:
-                                break
+                        if price_val:
+                            break
 
                 # If still no price, skip this entry (was creating too many 0-price entries)
                 if price_val is None or price_val == 0:
@@ -920,6 +1012,22 @@ class SelectSectionExtractor:
                 # Clean up finish code for display
                 display_finish = finish_code if finish_code in ["CL", "BR", "BK"] else None
 
+                # Build specifications
+                specifications = {"column": col_idx}
+                if duty:
+                    specifications["duty"] = duty
+                if length_value:
+                    specifications["length"] = f'{length_value}"'
+
+                description_parts = [base_model]
+                if finish_code:
+                    description_parts.append(finish_code)
+                if duty:
+                    description_parts.append(duty)
+                if length_value:
+                    description_parts.append(length_value)
+                description = " ".join(description_parts)
+
                 # DEBUG: Log product creation for troubleshooting
                 self.logger.debug(
                     f"[SIMPLE] Creating {sku} = ${price_val} "
@@ -931,12 +1039,10 @@ class SelectSectionExtractor:
                     "sku": sku,
                     "model": base_model,
                     "series": base_model[:2] if len(base_model) >= 2 else base_model,
-                    "description": f"{base_model} {finish_code} {variant}".strip(),
+                    "description": description,
                     "base_price": price_val,
                     "finish_code": display_finish,
-                    "specifications": (
-                        {"duty": variant, "column": col_idx} if variant else {"column": col_idx}
-                    ),
+                    "specifications": specifications,
                     "is_active": True,
                     "manufacturer": "SELECT",
                 }
@@ -951,6 +1057,88 @@ class SelectSectionExtractor:
                     table_index=table_idx,
                 )
                 products.append(item)
+
+        return products
+
+    def _extract_products_from_text_blocks(
+        self, text: str, page_number: int = None
+    ) -> List[ParsedItem]:
+        """Extract products from plain text sections when no structured tables are available."""
+        products = []
+        if not text:
+            return products
+
+        self.tracker.set_context(
+            section="Model Tables", method="text_patterns", page_number=page_number
+        )
+
+        current_model = None
+        current_duty = None
+
+        for line_index, raw_line in enumerate(text.splitlines()):
+            line = raw_line.strip()
+            if not line:
+                continue
+
+            upper_line = line.upper()
+
+            header_match = re.search(r"(SL\s*\d{2})", upper_line)
+            if header_match and ("SERIES" in upper_line or "MODEL" in upper_line):
+                current_model = header_match.group(1).replace(" ", "")
+                duty_match = re.search(r"(LIGHT|MEDIUM|HEAVY)\s+DUTY", upper_line)
+                current_duty = duty_match.group(0).title() if duty_match else None
+                continue
+
+            if not current_model:
+                continue
+
+            product_match = re.search(
+                r"(?:MODEL\s+)?(?P<finish>[A-Z]{2})(?P<length>\d{2,3})"
+                r"\s*(?:\"|IN)?\s*(?:[:=-])?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+                upper_line,
+            )
+
+            if not product_match:
+                continue
+
+            finish = product_match.group("finish").upper()
+            length = product_match.group("length")
+            price = float(product_match.group("price"))
+
+            if price < 5:  # Ignore obvious noise
+                continue
+
+            sku = f"{current_model}{finish}{length}"
+            display_finish = finish if finish in ["CL", "BR", "BK"] else finish
+
+            description_parts = [current_model, finish, length]
+            if current_duty:
+                description_parts.append(current_duty)
+            description = " ".join(description_parts)
+
+            specifications = {"length": f'{length}"'}
+            if current_duty:
+                specifications["duty"] = current_duty
+
+            item = self.tracker.create_parsed_item(
+                value={
+                    "sku": sku,
+                    "model": current_model,
+                    "series": current_model[:2],
+                    "description": description,
+                    "base_price": price,
+                    "finish_code": display_finish,
+                    "specifications": specifications,
+                    "is_active": True,
+                    "manufacturer": "SELECT",
+                },
+                data_type="product",
+                raw_text=line,
+                confidence=0.85,
+                row_index=line_index,
+                page_number=page_number,
+            )
+            products.append(item)
 
         return products
 
