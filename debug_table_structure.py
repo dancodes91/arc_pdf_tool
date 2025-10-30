@@ -1,21 +1,24 @@
-"""Debug script to see the actual table structure from SELECT PDF."""
+"""Debug script to inspect specific rows of table 0 on page 7."""
+
 import camelot
 import pandas as pd
 
-pdf_path = r'C:\Users\Vache\projects\arc_pdf_tool\test_data\pdfs\2025-select-hinges-price-book.pdf'
+pdf_path = r"test_data\pdfs\2025-select-hinges-price-book.pdf"
+page = 7
 
-# Extract table from page 7 (first product page)
-print("Extracting tables from page 7...")
-tables = camelot.read_pdf(pdf_path, pages='7', flavor='lattice')
+print("Extracting page 7, table 0 with lattice...")
+tables = camelot.read_pdf(pdf_path, pages=str(page), flavor="lattice")
 
-print(f"\nFound {tables.n} tables on page 7\n")
+if tables.n > 0:
+    df = tables[0].df
+    print(f"\nTable shape: {df.shape}")
+    print(f"\nHeader row (row 0):")
+    print(f"  {list(df.iloc[0])}")
 
-for i, table in enumerate(tables):
-    df = table.df
-    print(f"=== TABLE {i} ===")
-    print(f"Shape: {df.shape}")
-    print(f"\nColumn headers (first row):")
-    print(df.iloc[0].tolist())
-    print(f"\nFirst 5 rows:")
-    print(df.head(5).to_string())
-    print("\n" + "="*80 + "\n")
+    print(f"\nInspecting specific rows:")
+    for row_idx in [25, 26, 27, 28, 29, 30, 31, 32, 33, 34]:
+        if row_idx < len(df):
+            row = df.iloc[row_idx]
+            print(f"\nRow {row_idx}:")
+            for col_idx, value in enumerate(row):
+                print(f"  Col {col_idx}: '{value}'")

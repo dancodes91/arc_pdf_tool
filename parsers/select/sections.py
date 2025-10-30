@@ -45,21 +45,43 @@ class SelectSectionExtractor:
             r"EFFECTIVE\s+DATE:?\s*([A-Z]+\s+\d{1,2},?\s+\d{4})",
         ]
 
-        # Net add option patterns with pricing - updated to match actual PDF format
+        # Net add option patterns with pricing - support both catalog prose and bullet listings
         self.net_add_patterns = {
-            "CTW-4": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-4"],
-            "CTW-5": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-5"],
-            "CTW-8": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-8"],
-            "CTW-10": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-10"],
-            "CTW-12": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CTW-12"],
-            "EPT": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep"],
-            "EMS": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+EMS"],
-            "ATW-4": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-4"],
-            "ATW-8": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-8"],
-            "ATW-12": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+ATW-12"],
-            "CMG": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+CMG"],
-            "AP": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep"],
-            "RP": [r"\$(\d+(?:\.\d{2})?)\s+net\s+add\s+per\s+prep"],
+            "CTW": [
+                r"CTW[-\s]*(?P<size>\d+)\s*(?:net\s+add\s+(?:per\s+)?CTW[-\s]*\d+)?\s*(?:[:=]|-)?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+                r"\$?(?P<price>\d+(?:\.\d{2})?)\s+net\s+add\s+(?:per\s+)?CTW[-\s]*(?P<size>\d+)",
+            ],
+            "ATW": [
+                r"ATW[-\s]*(?P<size>\d+)\s*(?:net\s+add\s+(?:per\s+)?ATW[-\s]*\d+)?\s*(?:[:=]|-)?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+                r"\$?(?P<price>\d+(?:\.\d{2})?)\s+net\s+add\s+(?:per\s+)?ATW[-\s]*(?P<size>\d+)",
+            ],
+            "EPT": [
+                r"EPT(?:\s+prep)?\s*(?:net\s+add\s+(?:per\s+)?prep)?\s*(?:[:=]|-)?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+                r"\$?(?P<price>\d+(?:\.\d{2})?)\s+net\s+add\s+(?:per\s+)?EPT(?:\s+prep)?",
+            ],
+            "EMS": [
+                r"EMS\s*(?:net\s+add\s+(?:per\s+)?EMS)?\s*(?:[:=]|-)?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+                r"\$?(?P<price>\d+(?:\.\d{2})?)\s+net\s+add\s+(?:per\s+)?EMS",
+            ],
+            "TIPIT": [
+                r"TIPIT\s+(?P<size>LEFT|RIGHT)\s*(?:net\s+add\s+(?:per\s+)?TIPIT)?\s*(?:[:=]|-)?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+                r"TIPIT\s*(?:net\s+add\s+(?:per\s+)?TIPIT)?\s*(?:[:=]|-)?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+            ],
+            "HT": [
+                r"(?:HOSPITAL\s+TIP|HT)\s*(?:net\s+add\s+(?:per\s+)?tip)?\s*(?:[:=]|-)?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+            ],
+            "FR3": [
+                r"FR3\s*(?:net\s+add\s+(?:per\s+)?FR3)?\s*(?:[:=]|-)?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+            ],
+            "CMG": [
+                r"CMG\s*(?:net\s+add\s+(?:per\s+)?CMG)?\s*(?:[:=]|-)?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+            ],
+            "AP": [
+                r"AP\s*(?:net\s+add\s+(?:per\s+)?prep)?\s*(?:[:=]|-)?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+            ],
+            "RP": [
+                r"RP\s*(?:net\s+add\s+(?:per\s+)?prep)?\s*(?:[:=]|-)?\s*\$?(?P<price>\d+(?:\.\d{2})?)",
+            ],
         }
 
         # Model table patterns for SL series
@@ -155,13 +177,25 @@ class SelectSectionExtractor:
 
                 for match in matches:
                     try:
-                        # Extract size/variant and price
-                        if len(match.groups()) == 2:
-                            size_variant = match.group(1)
-                            price_str = match.group(2)
+                        match_dict = match.groupdict()
+                        size_variant = match_dict.get("size") or match_dict.get("variant") or ""
+                        price_str = match_dict.get("price")
+
+                        # Fallback: use first captured group with digits as price
+                        if not price_str:
+                            for group_val in match.groups():
+                                if group_val and re.search(r"\d", group_val):
+                                    price_str = group_val
+                                    break
+
+                        if size_variant:
+                            size_variant = size_variant.strip().replace('"', "")
+                            if size_variant.upper() in ["LEFT", "RIGHT"]:
+                                size_variant = size_variant.title()
+                            else:
+                                size_variant = size_variant.upper()
                         else:
                             size_variant = ""
-                            price_str = match.group(1)
 
                         # Normalize price
                         price_normalized = data_normalizer.normalize_price(price_str)
@@ -599,6 +633,12 @@ class SelectSectionExtractor:
         sku_parts.append(length)
         sku = "-".join(sku_parts)
 
+        # DEBUG: Log product creation for troubleshooting
+        self.logger.debug(
+            f"[STRUCTURED] Creating {sku} = ${price} "
+            f"(pg={page_number}, tbl={table_idx}, row={row_idx}, desc='{model_descriptor}')"
+        )
+
         # Build description
         desc_parts = [base_model]
         if finish:
@@ -879,6 +919,12 @@ class SelectSectionExtractor:
 
                 # Clean up finish code for display
                 display_finish = finish_code if finish_code in ["CL", "BR", "BK"] else None
+
+                # DEBUG: Log product creation for troubleshooting
+                self.logger.debug(
+                    f"[SIMPLE] Creating {sku} = ${price_val} "
+                    f"(pg={page_number}, tbl={table_idx}, row={row_idx}, col={col_idx})"
+                )
 
                 # Create product
                 product_data = {
@@ -1197,6 +1243,12 @@ class SelectSectionExtractor:
                 # Skip duplicates (check both local and existing SKUs)
                 if sku in existing_skus:
                     continue
+
+                # DEBUG: Log product creation for troubleshooting
+                self.logger.debug(
+                    f"[GRID] Creating {sku} = ${price} "
+                    f"(pg={page_number}, tbl={table_idx}, row={row_idx}, col={col_idx})"
+                )
 
                 # Create product
                 product_data = {

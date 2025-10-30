@@ -124,34 +124,39 @@ class SelectHingesParser:
         self.products = []
         pages_processed = []
 
-        # Process EVERY page - try multiple extraction methods
+        camelot_settings = {
+            "quality_threshold": self.config.get("table_quality_threshold", 45),
+            "enable": self.config.get("enable_camelot", True),
+            "flavors": self.config.get("camelot_flavors", ["stream", "lattice"]),
+            "max_pages": self.config.get("max_camelot_pages"),
+        }
+        camelot_pages_used = 0
+
+        # Process EVERY page - prefer existing tables, fall back to Camelot when needed
         for page in self.document.pages:
             page_text = page.text or ""
             page_num = page.page_number
 
-            # Try Camelot lattice and stream extractions
-            lattice_tables = self.section_extractor.extract_tables_with_camelot(
-                self.pdf_path, page_num, flavor="lattice"
-            )
-            stream_tables = self.section_extractor.extract_tables_with_camelot(
-                self.pdf_path, page_num, flavor="stream"
+            page_tables, extraction_method, camelot_used = self._resolve_page_tables(
+                page, page_text, camelot_pages_used, camelot_settings
             )
 
-            page_tables, extraction_method = self._choose_page_tables(
-                lattice_tables, stream_tables, page.tables
-            )
+            if camelot_used:
+                camelot_pages_used += 1
 
-            # Extract products from this page
-            if page_tables:
-                page_products = self.section_extractor.extract_model_tables(
-                    page_text, page_tables, page_number=page_num
+            if not page_tables:
+                self.logger.debug(f"Page {page_num}: no usable tables found (method={extraction_method})")
+                continue
+
+            page_products = self.section_extractor.extract_model_tables(
+                page_text, page_tables, page_number=page_num
+            )
+            if page_products:
+                self.products.extend(page_products)
+                pages_processed.append(page_num)
+                self.logger.debug(
+                    f"Page {page_num}: extracted {len(page_products)} products using {extraction_method}"
                 )
-                if page_products:
-                    self.products.extend(page_products)
-                    pages_processed.append(page_num)
-                    self.logger.debug(
-                        f"Page {page_num}: extracted {len(page_products)} products using {extraction_method}"
-                    )
 
         self.logger.info(
             f"Found {len(self.products)} products across {len(pages_processed)} pages: {pages_processed}"
@@ -163,6 +168,73 @@ class SelectHingesParser:
                 sku = product.value.get("sku", "Unknown")
                 price = product.value.get("base_price", 0)
                 self.logger.debug(f"  {sku}: ${price}")
+
+    def _resolve_page_tables(
+        self,
+        page: Any,
+        page_text: str,
+        camelot_pages_used: int,
+        camelot_settings: Dict[str, Any],
+    ) -> Tuple[List[Any], str, bool]:
+        """
+        Determine the best table extraction for a page.
+
+        Prioritizes tables already extracted during PDF parsing and only falls back to
+        Camelot when required. Returns the tables, the method name chosen, and whether
+        Camelot was invoked for this page.
+        """
+
+        fallback_tables = list(page.tables) if page.tables else []
+        fallback_method = getattr(page, "extraction_method", "pdfplumber") or "pdfplumber"
+        fallback_score = self._table_quality_score(fallback_tables)
+
+        quality_threshold = camelot_settings.get("quality_threshold", 45)
+        camelot_enabled = camelot_settings.get("enable", True)
+        camelot_flavors = camelot_settings.get("flavors", ["stream", "lattice"])
+        camelot_max_pages = camelot_settings.get("max_pages")
+
+        if camelot_enabled and camelot_max_pages is not None:
+            camelot_enabled = camelot_pages_used < camelot_max_pages
+
+        # Use existing tables if they look good enough
+        if fallback_tables and fallback_score >= quality_threshold:
+            self.logger.debug(
+                f"Page {page.page_number}: using existing tables (score={fallback_score})"
+            )
+            return fallback_tables, fallback_method, False
+
+        best_tables = fallback_tables
+        best_method = fallback_method if fallback_tables else "none"
+        best_score = fallback_score
+        camelot_used = False
+
+        if camelot_enabled:
+            for flavor in camelot_flavors:
+                tables = self.section_extractor.extract_tables_with_camelot(
+                    self.pdf_path, page.page_number, flavor=flavor
+                )
+                if not tables:
+                    continue
+
+                camelot_used = True
+                tables_score = self._table_quality_score(tables)
+                self.logger.debug(
+                    f"Page {page.page_number}: Camelot {flavor} score={tables_score} "
+                    f"(fallback_score={best_score})"
+                )
+
+                if tables_score > best_score:
+                    best_tables = tables
+                    best_method = f"camelot_{flavor}"
+                    best_score = tables_score
+
+                if tables_score >= quality_threshold:
+                    break
+
+        if best_tables:
+            return best_tables, best_method, camelot_used
+
+        return [], "none", camelot_used
 
     def _build_results(self) -> Dict[str, Any]:
         """Build final parsing results."""
@@ -206,35 +278,6 @@ class SelectHingesParser:
         results["validation"] = self._validate_results(results)
 
         return results
-
-    def _choose_page_tables(
-        self,
-        lattice_tables: List[Any],
-        stream_tables: List[Any],
-        fallback_tables: List[Any],
-    ) -> Tuple[List[Any], str]:
-        """
-        Decide which table extraction to use for a page.
-
-        Preference order:
-        1. Stream tables if they score better (more structured columns/numeric data)
-        2. Lattice tables
-        3. Fallback tables already present on the PDF page (pdfplumber)
-        """
-
-        stream_score = self._table_quality_score(stream_tables)
-        lattice_score = self._table_quality_score(lattice_tables)
-
-        if stream_tables and stream_score >= max(lattice_score, 1):
-            return stream_tables, "stream"
-
-        if lattice_tables:
-            return lattice_tables, "lattice"
-
-        if fallback_tables:
-            return fallback_tables, "pdfplumber"
-
-        return [], "none"
 
     def _table_quality_score(self, tables: List[Any]) -> int:
         """Heuristic score to determine how usable a set of tables is."""
