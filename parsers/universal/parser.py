@@ -47,6 +47,7 @@ class UniversalParser:
         self.confidence_threshold = self.config.get("confidence_threshold", 0.6)
         self.use_ml_detection = self.config.get("use_ml_detection", True)
         self.use_hybrid = self.config.get("use_hybrid", True)  # NEW: Enable hybrid approach
+        self.always_run_layer2 = self.config.get("always_run_layer2", True)
 
         # Initialize components
         self.provenance_tracker = ProvenanceTracker(pdf_path)
@@ -424,9 +425,10 @@ class UniversalParser:
                         except Exception as e:
                             self.logger.debug(f"Error parsing table on page {page_num}: {e}")
 
-                # Parse text line-by-line for non-table products
-                text_products = self.pattern_extractor.extract_products_from_text(text, page_num)
-                products_data.extend(text_products)
+                if not getattr(self, "always_run_layer2", False):
+                    # Parse text line-by-line for non-table products
+                    text_products = self.pattern_extractor.extract_products_from_text(text, page_num)
+                    products_data.extend(text_products)
 
         # Convert to ParsedItems
         for product_data in products_data:
@@ -468,10 +470,12 @@ class UniversalParser:
         self.logger.info(f"Layer 2 targeting {len(weak_pages)} weak pages: {weak_pages}")
 
         products_data = []
+        pages_with_structured = set()
 
         for page_num in weak_pages:
             configs = self._camelot_configurations(page_num)
             page_tables = None
+            page_success = False
 
             for cfg in configs:
                 params = cfg.copy()
@@ -512,7 +516,12 @@ class UniversalParser:
                     continue
 
                 table_products = self.pattern_extractor.extract_from_table(df, page_num)
-                products_data.extend(table_products)
+                if table_products:
+                    page_success = True
+                    products_data.extend(table_products)
+
+            if page_success:
+                pages_with_structured.add(page_num)
 
         # Convert to ParsedItems
         for product_data in products_data:
@@ -525,6 +534,14 @@ class UniversalParser:
             )
             product_item.provenance.extraction_method = "layer2_camelot"
             self.layer2_products.append(product_item)
+
+        if pages_with_structured:
+            pages_with_structured = set(pages_with_structured)
+            self.layer1_products = [
+                product
+                for product in self.layer1_products
+                if getattr(product.provenance, "page_number", None) not in pages_with_structured
+            ]
 
     def _layer3_ml_extraction(self):
         """
@@ -624,12 +641,35 @@ class UniversalParser:
             product_item.provenance.extraction_method = extraction_method
             self.layer3_products.append(product_item)
 
+    def _layer1_invalid_ratio(self) -> float:
+        """Calculate ratio of Layer 1 products with invalid SKUs."""
+        total = len(self.layer1_products)
+        if total == 0:
+            return 1.0
+
+        invalid = 0
+        for product in self.layer1_products:
+            sku = product.value.get("sku") if isinstance(product.value, dict) else None
+            if not sku or not self.pattern_extractor._validate_sku_pattern(sku):
+                invalid += 1
+
+        return invalid / total
+
     def _should_use_layer2(self, products_per_page: float, confidence: float) -> bool:
         """Decide if Layer 2 (camelot) is needed."""
-        # Use Layer 2 if:
-        # - Low product yield (< 10 products per page)
-        # - OR low confidence (< 70%)
-        return products_per_page < 10 or confidence < 0.7
+        if getattr(self, "always_run_layer2", False):
+            return True
+
+        invalid_ratio = self._layer1_invalid_ratio()
+        pp_threshold = self.config.get("layer2_products_per_page_threshold", 12)
+        confidence_threshold = self.config.get("layer2_confidence_threshold", 0.8)
+        invalid_threshold = self.config.get("layer2_invalid_ratio_threshold", 0.25)
+
+        return (
+            products_per_page < pp_threshold
+            or confidence < confidence_threshold
+            or invalid_ratio >= invalid_threshold
+        )
 
     def _should_use_layer3(self, products_per_page: float) -> bool:
         """Decide if Layer 3 (ML) is needed."""
@@ -665,19 +705,27 @@ class UniversalParser:
         return "unknown"
 
     def _identify_weak_pages(self) -> List[int]:
-        """Identify pages with low product yield from Layer 1."""
-        page_counts = {}
+        """Identify pages that should be revisited by Camelot."""
+        page_counts: Dict[int, int] = {}
         for product in self.layer1_products:
-            page_num = product.provenance.page_number
+            page_num = getattr(product.provenance, "page_number", None)
+            if page_num is None:
+                continue
             page_counts[page_num] = page_counts.get(page_num, 0) + 1
 
-        # Weak pages = pages with < 5 products
-        weak_pages = []
+        weak_pages: List[int] = []
         if self.document:
             for page in self.document.pages:
                 page_num = page.page_number
                 if page_counts.get(page_num, 0) < 5:
                     weak_pages.append(page_num)
+
+            if not weak_pages:
+                fallback_limit = self.config.get(
+                    "layer2_fallback_pages",
+                    min(10, len(self.document.pages)),
+                )
+                weak_pages = [page.page_number for page in self.document.pages[:fallback_limit]]
 
         return weak_pages
 
@@ -758,9 +806,14 @@ class UniversalParser:
             text = text.replace(" | ", " ").strip()
             # Normalize spaced currency markers: "$ 20.00" -> "$20.00"
             text = re.sub(r"\$\s+(\d)", r"$\1", text)
+            text = re.sub(r"(\d+)\s+TO\s+(\d+[A-Z0-9]*)", r"\1-\2", text, flags=re.IGNORECASE)
             return text
 
         cleaned = cleaned.applymap(_clean_cell)
+        if cleaned.shape[1] > 0:
+            cleaned.iloc[:, 0] = cleaned.iloc[:, 0].apply(
+                lambda v: v.upper() if isinstance(v, str) else v
+            )
         cleaned.replace("", np.nan, inplace=True)
         cleaned.dropna(how="all", inplace=True)
         cleaned.dropna(axis=1, how="all", inplace=True)

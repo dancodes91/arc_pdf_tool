@@ -718,22 +718,32 @@ class SmartPatternExtractor:
         if not sku or len(sku) < 3:
             return False
 
+        candidate = sku.strip()
+        if candidate != candidate.upper():
+            candidate = candidate.upper()
+
         # Common SKU patterns in hardware catalogs
         patterns = [
-        r'^[A-Z]{2,4}[-\s]?\d{3,}',      # AB-1234, ABC1234
-        r'^\d{4,8}[A-Z]{0,3}$',           # 12345, 12345AB
-        r'^[A-Z]\d{4,}',                  # A12345
-        r'^[A-Z]{2,}\d+[A-Z\d]*',         # ABC123XYZ
-        r'^\d{3,}[-A-Z0-9]+$',            # 206-X-XXX, 123-ABC
-    ]
+            r'^[A-Z]{2,4}[-\s]?\d{3,}',      # AB-1234, ABC1234
+            r'^\d{4,8}[A-Z]{0,3}$',          # 12345, 12345AB
+            r'^[A-Z]\d{4,}',                 # A12345
+            r'^[A-Z]{2,}\d+[A-Z\d]*',        # ABC123XYZ
+            r'^\d{3,}[-A-Z0-9]+$',           # 206-X-XXX, 123-ABC
+        ]
 
         for pattern in patterns:
-            if re.match(pattern, sku, re.IGNORECASE):
+            if re.match(pattern, candidate, re.IGNORECASE):
                 return True
 
+        if " " in candidate:
+            return False
+
+        if not re.match(r'^[A-Z0-9\-/]+$', candidate):
+            return False
+
         # At minimum, must have alphanumeric mix
-        has_letter = any(c.isalpha() for c in sku)
-        has_number = any(c.isdigit() for c in sku)
+        has_letter = any(c.isalpha() for c in candidate)
+        has_number = any(c.isdigit() for c in candidate)
 
         return has_letter and has_number
 
