@@ -291,11 +291,20 @@ class SelectHingesParser:
                 if df is None:
                     continue
 
-                num_cols = df.shape[1]
+                num_rows, num_cols = df.shape
+                if num_rows == 0 or num_cols == 0:
+                    continue
+
                 numeric_cells = 0
+                total_cells = num_rows * num_cols
                 for cell in df.values.flatten():
                     if isinstance(cell, str) and re.search(r"\d", cell):
                         numeric_cells += 1
+
+                # Discard tables that don't have enough numeric content (likely text blobs)
+                density = numeric_cells / total_cells if total_cells else 0
+                if numeric_cells < max(5, num_cols) or density < 0.4:
+                    continue
 
                 # Weighted score: favor tables with more columns and numeric entries
                 score += num_cols * 10 + numeric_cells

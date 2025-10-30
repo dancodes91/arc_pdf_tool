@@ -274,6 +274,8 @@ class SelectSectionExtractor:
                     if sku and sku not in seen_skus:
                         products.append(p)
                         seen_skus.add(sku)
+                # Structured extraction succeeded - no need for fallback methods on this table
+                continue
 
             # If structured didn't work, try pattern-based extraction for complex layouts
             pattern_products = self._extract_products_from_table_simple(
@@ -575,11 +577,19 @@ class SelectSectionExtractor:
 
                     # Match prices to lengths (zip them together)
                     # DO NOT forward-fill - dashes mean unavailable
-                    min_count = min(len(lengths), len(price_data))
+                    filtered_entries = [
+                        entry for entry in price_data if not (entry["price"] is None and not entry["is_dash"])
+                    ]
 
-                    for i in range(min_count):
-                        length = lengths[i]
-                        data = price_data[i]
+                    if not filtered_entries:
+                        continue
+
+                    if len(filtered_entries) < len(lengths):
+                        aligned_lengths = lengths[-len(filtered_entries):]
+                    else:
+                        aligned_lengths = lengths[: len(filtered_entries)]
+
+                    for length, data in zip(aligned_lengths, filtered_entries):
                         price = data["price"]
                         is_dash = data["is_dash"]
 
@@ -632,6 +642,10 @@ class SelectSectionExtractor:
             candidate = part.strip()
             # Check for dashes again at line level
             if not candidate or candidate in ["-", "—", "–", "n/a", "N/A"]:
+                continue
+
+            # Skip tokens that still contain alpha characters (e.g., "SL14")
+            if re.search(r"[A-Za-z]", candidate):
                 continue
 
             # Skip obvious fraction/dimension strings
@@ -1235,11 +1249,26 @@ class SelectSectionExtractor:
 
     def _find_column_by_pattern(self, table: pd.DataFrame, pattern: str) -> Optional[int]:
         """Find column index by content pattern."""
+        compiled = re.compile(pattern)
+
         for col_idx, col in enumerate(table.columns):
-            if table[col].dtype == "object":
-                sample_values = table[col].dropna().head(5)
-                matches = sum(1 for val in sample_values if re.search(pattern, str(val)))
-                if matches >= 2:  # At least 2 matches
+            column_values = table[col]
+
+            # Handle MultiIndex columns where selection returns a DataFrame
+            if isinstance(column_values, pd.DataFrame):
+                sample_values = column_values.astype(str).fillna("").values.flatten()
+            else:
+                sample_values = column_values.fillna("").astype(str).values
+
+            # Quick skip: if everything is empty, continue
+            if not any(sample_values):
+                continue
+
+            match_count = 0
+            for val in sample_values[:10]:  # limit scanning
+                if compiled.search(str(val)):
+                    match_count += 1
+                if match_count >= 2:
                     return col_idx
         return None
 
