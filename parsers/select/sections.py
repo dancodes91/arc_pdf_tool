@@ -1297,12 +1297,27 @@ class SelectSectionExtractor:
 
     def _find_column_by_pattern(self, table: pd.DataFrame, pattern: str) -> Optional[int]:
         """Find column index by content pattern."""
+        compiled = re.compile(pattern)
+
         for col_idx, col in enumerate(table.columns):
-            if table[col].dtype == "object":
-                sample_values = table[col].dropna().head(5)
-                matches = sum(1 for val in sample_values if re.search(pattern, str(val)))
-                if matches >= 2:  # At least 2 matches
-                    return col_idx
+            column_values = table[col]
+
+            # Handle MultiIndex columns where selection returns a DataFrame
+            if isinstance(column_values, pd.DataFrame):
+                sample_values = column_values.astype(str).fillna("").values.flatten()
+            else:
+                sample_values = column_values.fillna("").astype(str).values
+
+            if not any(sample_values):
+                continue
+
+            match_count = 0
+            for val in sample_values[:10]:
+                if compiled.search(str(val)):
+                    match_count += 1
+                    if match_count >= 2:
+                        return col_idx
+
         return None
 
     def _extract_base_model(self, sku: str) -> str:
