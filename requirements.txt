@@ -231,7 +231,7 @@ paddlepaddle==3.2.0
     # via arc-pdf-tool
 paddlex==3.2.1
     # via paddleocr
-pandas==2.3.2
+pandas==2.3.3
     # via
     #   arc-pdf-tool
     #   camelot-py
