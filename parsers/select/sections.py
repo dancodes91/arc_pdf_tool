@@ -939,6 +939,10 @@ class SelectSectionExtractor:
                     if not finish_code:
                         continue  # Skip this product entirely
 
+                if finish_code not in ["CL", "BR", "BK"]:
+                    continue
+
+
                 # If length still missing, try dedicated columns (e.g., "Length")
                 if not length_value:
                     possible_length = None
@@ -1088,8 +1092,10 @@ class SelectSectionExtractor:
 
         current_model = None
         current_duty = None
+        length_headers: List[str] = []
 
-        for line_index, raw_line in enumerate(text.splitlines()):
+        lines = text.splitlines()
+        for line_index, raw_line in enumerate(lines):
             line = raw_line.strip()
             if not line:
                 continue
@@ -1101,6 +1107,62 @@ class SelectSectionExtractor:
                 current_model = header_match.group(1).replace(" ", "")
                 duty_match = re.search(r"(LIGHT|MEDIUM|HEAVY)\s+DUTY", upper_line)
                 current_duty = duty_match.group(0).title() if duty_match else None
+                length_headers = []
+                continue
+
+            if upper_line.startswith("MODEL #"):
+                length_headers = []
+                continue
+
+            if re.fullmatch(r'\d{2,3}"(?:\s*/\s*\d{2,3}")?', line):
+                lengths_found = re.findall(r'\d{2,3}', line)
+                length_headers.extend(lengths_found)
+                continue
+
+            model_column_match = re.match(
+                r"^(SL\d{2})\s+([A-Z]{2})\s+((?:HD|LD)\d+|LL)$", upper_line
+            )
+            if model_column_match and length_headers:
+                base_model = model_column_match.group(1)
+                finish = model_column_match.group(2)
+                duty = model_column_match.group(3)
+
+                prices: List[float] = []
+                price_index = line_index + 1
+                while price_index < len(lines) and len(prices) < len(length_headers):
+                    price_line = lines[price_index].strip()
+                    if re.fullmatch(r"\d+(\.\d{2})?", price_line):
+                        prices.append(float(price_line))
+                        price_index += 1
+                    else:
+                        break
+
+                for length, price in zip(length_headers, prices):
+                    sku = f"{base_model}-{finish}-{duty}-{length}"
+                    description = f"{base_model} {finish} {duty} {length}"
+                    item = self.tracker.create_parsed_item(
+                        value={
+                            "sku": sku,
+                            "model": base_model,
+                            "series": base_model[:2],
+                            "description": description,
+                            "base_price": price,
+                            "finish_code": finish if finish in ["CL", "BR", "BK"] else finish,
+                            "specifications": {
+                                "length": f'{length}"',
+                                "duty": duty,
+                            },
+                            "is_active": True,
+                            "manufacturer": "SELECT Hinges",
+                        },
+                        data_type="product",
+                        raw_text=f"{base_model} {finish} {duty} {length} {price}",
+                        confidence=0.85,
+                        row_index=line_index,
+                        page_number=page_number,
+                    )
+                    products.append(item)
+
                 continue
 
             if not current_model:
@@ -1433,6 +1495,9 @@ class SelectSectionExtractor:
                         finish_code = "BR"
                     elif re.search(r"\bBK\b", cell_str, re.IGNORECASE):
                         finish_code = "BK"
+
+                if finish_code not in ["CL", "BR", "BK"]:
+                    continue
 
                 # Extract length from column header
                 length_from_col = ""
