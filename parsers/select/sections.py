@@ -302,12 +302,11 @@ class SelectSectionExtractor:
 
         # Fallback: parse textual sections if provided
         if text:
-            text_products = self._extract_products_from_text_blocks(text, page_number=page_number)
-            for p in text_products:
-                sku = p.value.get("sku")
-                if sku and sku not in seen_skus:
-                    products.append(p)
-                    seen_skus.add(sku)
+            text_products = self._extract_products_from_text_blocks(
+                text, page_number=page_number, existing_skus=seen_skus
+            )
+            # Text extraction already handles deduplication via existing_skus, so just extend
+            products.extend(text_products)
 
         # Deduplicate products by normalized SKU, prefer entries with higher price/confidence
         deduped_products: Dict[str, ParsedItem] = {}
@@ -344,13 +343,17 @@ class SelectSectionExtractor:
 
             # Skip products without length specs (invalid for SELECT pricing guides)
             if not has_length:
-                self.logger.debug(f"Skipping product without length: {sku}")
+                self.logger.info(f"[FILTER] Skipping product without length: {sku}")
                 continue
 
             # Additional price validation (SELECT prices are typically $50-$5000)
             if price is None or price < 10 or price > 10000:
-                self.logger.debug(f"Skipping product with invalid price: {sku} ${price}")
+                self.logger.info(f"[FILTER] Skipping product with invalid price: {sku} ${price}")
                 continue
+
+            # DEBUG: Log latch-guard products that pass validation
+            if 'LG' in sku.upper():
+                self.logger.info(f"[FILTER] ✅ Latch-guard product passed: {sku} ${price}")
 
             valid_products.append(p)
 
@@ -929,6 +932,10 @@ class SelectSectionExtractor:
                     continue
 
 
+                if finish_code not in ["CL", "BR", "BK"]:
+                    continue
+
+
                 # If length still missing, try dedicated columns (e.g., "Length")
                 if not length_value:
                     possible_length = None
@@ -1065,22 +1072,257 @@ class SelectSectionExtractor:
         return products
 
     def _extract_products_from_text_blocks(
-        self, text: str, page_number: int = None
+        self, text: str, page_number: int = None, existing_skus: set = None
     ) -> List[ParsedItem]:
-        """Extract products from plain text sections when no structured tables are available."""
+        """Extract products from plain text sections when no structured tables are available.
+
+        Handles multiple patterns:
+        1. Horizontal "Model #" tables with lengths as columns (Pin & Barrel models)
+        2. Vertical model/finish/duty tables with lengths as rows
+        3. Inline product specifications
+        """
         products = []
         if not text:
             return products
 
+        if existing_skus is None:
+            existing_skus = set()
+
         self.tracker.set_context(
             section="Model Tables", method="text_patterns", page_number=page_number
         )
+
+        lines = text.splitlines()
+        i = 0
+
+        while i < len(lines):
+            line = lines[i].strip()
+            if not line:
+                i += 1
+                continue
+
+            # PATTERN 1: Horizontal "Model #" tables (Pin & Barrel, Toilet Partition, etc.)
+            # Example:
+            #   Model # 79" / 83" 85" / 95" 119"
+            #   SL310 1,380 1,407 2,012
+            if line.upper().startswith("MODEL #"):
+                # Extract all length values from the header
+                length_header = line
+                lengths = []
+
+                # Match patterns like: 79" / 83", 85" / 95", 119", 54", 57"
+                # Split by whitespace but keep quoted groups together
+                parts = re.findall(r'(\d+"\s*/\s*\d+"|\\d+")', length_header)
+                for part in parts:
+                    # Extract all numeric values from each part
+                    nums = re.findall(r'(\d+)', part)
+                    lengths.extend(nums)
+
+                # If no lengths found with the above pattern, try simpler pattern
+                if not lengths:
+                    lengths = re.findall(r'(\d{2,3})(?:\s*")?', length_header)
+
+                # Remove "Model" and "#" from lengths if captured
+                lengths = [l for l in lengths if l not in ["Model", "#", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]]
+
+                self.logger.debug(f"Found Model # header with lengths: {lengths}")
+
+                # Look ahead for the next non-empty line (should be the model + prices)
+                i += 1
+                while i < len(lines):
+                    data_line = lines[i].strip()
+                    if not data_line:
+                        i += 1
+                        continue
+
+                    # Check if this line starts with a model number
+                    model_match = re.match(r'^(SL\d{2,4}(?:TP)?)\s+(.*)', data_line, re.IGNORECASE)
+                    if not model_match:
+                        # Not a model line, exit this pattern
+                        break
+
+                    base_model = model_match.group(1).upper()
+                    prices_str = model_match.group(2).strip()
+
+                    # Extract all prices from the rest of the line
+                    # Handle comma-separated thousands (e.g., "1,380")
+                    price_matches = re.findall(r'(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)', prices_str)
+                    prices = []
+                    for price_str in price_matches:
+                        try:
+                            # Remove commas and convert to float
+                            price_val = float(price_str.replace(',', ''))
+                            if 10 <= price_val <= 10000:  # Valid price range
+                                prices.append(price_val)
+                        except ValueError:
+                            continue
+
+                    self.logger.debug(f"Model {base_model} has {len(prices)} prices for {len(lengths)} lengths")
+
+                    # Match lengths to prices
+                    for length, price in zip(lengths, prices):
+                        # Build SKU: BASE_MODEL-LENGTH (no finish for Pin & Barrel)
+                        sku = f"{base_model}-{length}"
+
+                        # Skip duplicates
+                        if sku in existing_skus:
+                            continue
+                        existing_skus.add(sku)
+
+                        # Build description
+                        description = f"{base_model} {length}\""
+
+                        # Create product
+                        product_data = {
+                            "sku": sku,
+                            "model": base_model,
+                            "series": base_model[:2] if len(base_model) >= 2 else base_model,
+                            "description": description,
+                            "base_price": price,
+                            "finish_code": None,  # Pin & Barrel models don't have finish codes
+                            "specifications": {
+                                "length": f'{length}"',
+                            },
+                            "is_active": True,
+                            "manufacturer": "SELECT Hinges",
+                        }
+
+                        item = self.tracker.create_parsed_item(
+                            value=product_data,
+                            data_type="product",
+                            raw_text=f"{base_model} {length}\" ${price}",
+                            confidence=0.90,
+                            row_index=i,
+                            page_number=page_number,
+                        )
+                        products.append(item)
+
+                        self.logger.debug(f"[TEXT-HORIZONTAL] Created {sku} = ${price}")
+
+                    # Move to next line (might be another model with same header)
+                    i += 1
+
+                # Continue from where we left off
+                continue
+
+            # PATTERN 2 & 3: Existing vertical and inline patterns
+            # (Keep existing logic for backward compatibility)
+            i += 1
+
+        # Also run the original vertical/inline extraction logic
+        products.extend(self._extract_products_vertical_inline(text, page_number, existing_skus))
+
+        return products
+
+    def _extract_products_vertical_inline(
+        self, text: str, page_number: int = None, existing_skus: set = None
+    ) -> List[ParsedItem]:
+        """Extract products using original vertical and inline patterns.
+
+        Also handles latch-guard vertical tables (LGO, LGOW, LGI products).
+        """
+        products = []
+        if existing_skus is None:
+            existing_skus = set()
 
         current_model = None
         current_duty = None
         length_headers: List[str] = []
 
         lines = text.splitlines()
+        line_index = 0
+
+        while line_index < len(lines):
+            raw_line = lines[line_index]
+            line = raw_line.strip()
+            if not line:
+                line_index += 1
+                continue
+
+            upper_line = line.upper()
+
+            # LATCH-GUARD VERTICAL TABLES (Pattern: Model 83" 95" followed by LGO83 CL 255 -)
+            if re.match(r'^Model\s+\d+"\s+\d+"', line, re.IGNORECASE):
+                # Check if this is a latch-guard table
+                is_latch_guard = False
+                for lookahead in range(1, min(11, len(lines) - line_index)):
+                    if re.search(r'LG[OWI]+\d{2}', lines[line_index + lookahead], re.IGNORECASE):
+                        is_latch_guard = True
+                        break
+
+                if is_latch_guard:
+                    # Extract lengths from header
+                    lengths = re.findall(r'(\d{2,3})\s*"', line)
+                    self.logger.info(f"[LATCHGUARD] Table with lengths: {lengths}")
+
+                    # Process products
+                    line_index += 1
+                    while line_index < len(lines):
+                        data_line = lines[line_index].strip()
+                        if not data_line:
+                            line_index += 1
+                            continue
+
+                        # Match: LGO83 CL 255 - (can be embedded in text)
+                        lg_match = re.search(
+                            r'(LG[OWI]+)(\d{2})\s+([A-Z]{2})[*]?\s+([\d\-\s]+)',
+                            data_line,
+                            re.IGNORECASE
+                        )
+
+                        if lg_match:
+                            prefix = lg_match.group(1).upper()
+                            length_from_model = lg_match.group(2)
+                            finish = lg_match.group(3).upper()
+                            prices_str = lg_match.group(4).strip()
+
+                            # Map prices to lengths
+                            price_parts = prices_str.split()
+                            for idx, price_str in enumerate(price_parts):
+                                if idx < len(lengths) and price_str != '-':
+                                    try:
+                                        price_val = float(price_str.replace(',', ''))
+                                        if 10 <= price_val <= 10000:
+                                            length = lengths[idx]
+                                            sku = f"{prefix}{length}-{finish}"
+
+                                            if sku not in existing_skus:
+                                                existing_skus.add(sku)
+                                                product_data = {
+                                                    "sku": sku,
+                                                    "model": f"{prefix}{length}",
+                                                    "series": prefix,
+                                                    "description": f"{prefix}{length} {finish} {length}\"",
+                                                    "base_price": price_val,
+                                                    "finish_code": finish if finish in ["CL", "BR", "BK"] else None,
+                                                    "specifications": {"length": f'{length}"'},
+                                                    "is_active": True,
+                                                    "manufacturer": "SELECT Hinges",
+                                                }
+                                                item = self.tracker.create_parsed_item(
+                                                    value=product_data,
+                                                    data_type="product",
+                                                    raw_text=data_line,
+                                                    confidence=0.90,
+                                                    row_index=line_index,
+                                                    page_number=page_number,
+                                                )
+                                                products.append(item)
+                                                self.logger.info(f"[LATCHGUARD] Created {sku} = ${price_val}")
+                                    except ValueError:
+                                        pass
+
+                        # Check if we hit another Model header
+                        if re.match(r'^Model\s+\d+"\s+\d+"', data_line, re.IGNORECASE):
+                            break
+
+                        line_index += 1
+                    continue
+
+            line_index += 1
+
+        # Reset for second pass with original patterns
+        line_index = 0
         for line_index, raw_line in enumerate(lines):
             line = raw_line.strip()
             if not line:
@@ -1481,6 +1723,9 @@ class SelectSectionExtractor:
                         finish_code = "BR"
                     elif re.search(r"\bBK\b", cell_str, re.IGNORECASE):
                         finish_code = "BK"
+
+                if finish_code not in ["CL", "BR", "BK"]:
+                    continue
 
                 if finish_code not in ["CL", "BR", "BK"]:
                     continue

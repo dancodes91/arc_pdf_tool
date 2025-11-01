@@ -134,7 +134,9 @@ class SelectHingesParser:
 
         # Process EVERY page - prefer existing tables, fall back to Camelot when needed
         for page in self.document.pages:
-            page_text = page.text or ""
+            # Use pdfplumber for text extraction to preserve table formatting
+            # The Enhanced PDF Extractor (pypdf) fragments tables into separate lines
+            page_text = self._extract_page_text_with_pdfplumber(page.page_number)
             page_num = page.page_number
 
             page_tables, extraction_method, camelot_used = self._resolve_page_tables(
@@ -144,18 +146,16 @@ class SelectHingesParser:
             if camelot_used:
                 camelot_pages_used += 1
 
-            if not page_tables:
-                self.logger.debug(f"Page {page_num}: no usable tables found (method={extraction_method})")
-                continue
-
+            # ALWAYS try extraction, even if no tables found
+            # Text-based extraction can find products that table extraction misses
             page_products = self.section_extractor.extract_model_tables(
-                page_text, page_tables, page_number=page_num
+                page_text, page_tables or [], page_number=page_num
             )
             if page_products:
                 self.products.extend(page_products)
                 pages_processed.append(page_num)
                 self.logger.debug(
-                    f"Page {page_num}: extracted {len(page_products)} products using {extraction_method}"
+                    f"Page {page_num}: extracted {len(page_products)} products using {extraction_method or 'text'}"
                 )
 
         self.logger.info(
@@ -168,6 +168,22 @@ class SelectHingesParser:
                 sku = product.value.get("sku", "Unknown")
                 price = product.value.get("base_price", 0)
                 self.logger.debug(f"  {sku}: ${price}")
+
+    def _extract_page_text_with_pdfplumber(self, page_number: int) -> str:
+        """Extract text from a specific page using pdfplumber.
+
+        pdfplumber preserves table formatting better than pypdf,
+        which is critical for extracting horizontal product tables.
+        """
+        try:
+            import pdfplumber
+            with pdfplumber.open(self.pdf_path) as pdf:
+                # pdfplumber uses 0-based indexing
+                page = pdf.pages[page_number - 1]
+                return page.extract_text() or ""
+        except Exception as e:
+            self.logger.warning(f"pdfplumber text extraction failed for page {page_number}: {e}")
+            return ""
 
     def _resolve_page_tables(
         self,
