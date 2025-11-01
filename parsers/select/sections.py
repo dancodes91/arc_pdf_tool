@@ -406,9 +406,14 @@ class SelectSectionExtractor:
             column_lengths = []
             for col_idx, col_header in enumerate(header[1:], start=1):
                 # Look for length patterns like 79", 83", 83"/85", 95", 120"
-                match = re.search(r'(\d+)\s*["\']', str(col_header))
-                if match:
-                    column_lengths.append((col_idx, match.group(1)))
+                # Handle combined columns by extracting ALL lengths (e.g., "83"/85"" -> ["83", "85"])
+                col_header_str = str(col_header)
+                length_matches = re.findall(r'(\d+)\s*["\']', col_header_str)
+
+                # For each length found in this column header, create a mapping
+                # Combined columns (e.g., "83"/85"") will have multiple products for same column
+                for length_value in length_matches:
+                    column_lengths.append((col_idx, length_value))
 
             if column_lengths:
                 # COLUMN-SEPARATED structure (Hager PDF)
@@ -536,8 +541,20 @@ class SelectSectionExtractor:
                         price = data.get("price")
                         original_cell = data.get("original_cell", "")
 
-                        # Skip if no price OR if original cell was a dash (explicitly unavailable)
-                        if not price or original_cell in ["-", "—", "–"]:
+                        # Skip if no price OR if original cell was a dash/empty (explicitly unavailable)
+                        # Also skip if the cell looks like it contains model data instead of price
+                        if not price:
+                            continue
+                        if original_cell.lower() in ["", "nan", "none", "-", "—", "–", "n/a"]:
+                            continue
+                        # Skip cells that contain model patterns (e.g., "SL11", "SL12") - wrong data
+                        if re.search(r'\bSL\s*\d{2,3}\b', original_cell, re.IGNORECASE):
+                            self.logger.debug(f"[FILTER] Skipping {length} - cell contains model pattern: {original_cell}")
+                            continue
+                        # Skip if price exactly matches a common length value (likely extracting length as price)
+                        common_lengths = ["79", "83", "85", "95", "120"]
+                        if str(int(price)) in common_lengths and abs(price - float(length)) < 50:
+                            self.logger.debug(f"[FILTER] Skipping {length} - price {price} matches length value (wrong data)")
                             continue
 
                         self._create_product(
@@ -585,9 +602,21 @@ class SelectSectionExtractor:
                         data = price_data[i]
                         price = data["price"]
                         is_dash = data["is_dash"]
+                        original_str = data["original"]
 
                         # Skip if no valid price OR if it was explicitly marked unavailable with dash
                         if price is None or is_dash:
+                            continue
+
+                        # Skip if original string contains model patterns (wrong data)
+                        if re.search(r'\bSL\s*\d{2,3}\b', original_str, re.IGNORECASE):
+                            self.logger.debug(f"[FILTER] Skipping {length} - price string contains model: {original_str}")
+                            continue
+
+                        # Skip if price exactly matches a common length value (likely extracting length as price)
+                        common_lengths = ["79", "83", "85", "95", "120"]
+                        if str(int(price)) in common_lengths and abs(price - float(length)) < 50:
+                            self.logger.debug(f"[FILTER] Skipping {length} - price {price} matches length value (wrong data)")
                             continue
 
                         self._create_product(
@@ -944,7 +973,8 @@ class SelectSectionExtractor:
                     elif col_idx + 1 < len(row):
                         possible_length = str(row.iloc[col_idx + 1]).strip()
                     if possible_length:
-                        length_match = re.search(r'(\d{2,3})', possible_length)
+                        # Match 2-3 digit lengths, preferring longer matches (79, 83, 95, 120, etc.)
+                        length_match = re.search(r'\b(\d{2,3})\b', possible_length)
                         if length_match:
                             length_value = length_match.group(1)
 
@@ -965,8 +995,11 @@ class SelectSectionExtractor:
                     price_val = self._extract_price_from_cell(str(row.iloc[price_col_idx]))
 
                 # If still missing, inspect the SKU cell itself
+                # BUT avoid extracting prices that are part of the model number (SL11, HD600, etc.)
                 if price_val is None:
-                    price_matches = re.findall(r"(\d+\.?\d{0,2})", cell_value)
+                    # First, remove the SKU match portion to avoid false positives
+                    cell_without_sku = cell_value[sku_match.end():]  # Text after the SKU
+                    price_matches = re.findall(r"(\d+\.?\d{0,2})", cell_without_sku)
                     for price_str in price_matches:
                         try:
                             pval = float(price_str)
@@ -991,7 +1024,7 @@ class SelectSectionExtractor:
                             continue
 
                         adj_cell = str(row.iloc[adj_col]).strip()
-                        if not adj_cell:
+                        if not adj_cell or adj_cell == "-":
                             continue
 
                         # Prefer cells that look like monetary values
@@ -1685,7 +1718,15 @@ class SelectSectionExtractor:
             for col_idx, cell_value in enumerate(row):
                 cell_str = str(cell_value).strip()
 
+                # Skip empty cells, dashes (not available), and cells that contain only model numbers
                 if cell_str.lower() in ["nan", "none", "", "-", "n/a"]:
+                    continue
+
+                # Skip cells that contain "-" as the only meaningful content (e.g., "SL12\n-")
+                # Remove model numbers, whitespace, and check if only dash remains
+                cell_cleaned = re.sub(r'SL\d{2,3}', '', cell_str)
+                cell_cleaned = re.sub(r'\s+', '', cell_cleaned)  # Remove all whitespace
+                if cell_cleaned in ["-", ""]:
                     continue
 
                 # Extract price

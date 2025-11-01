@@ -336,6 +336,11 @@ quick_upload_test.py
 test_export_*.csv
 test_export_*.json
 test_export_*.xlsx
+test_select_fixes.py
+test_export/
+test_fixes/
+test_fixes*/
+exports_fixed/
 
 # Frontend build artifacts
 frontend/.next/
