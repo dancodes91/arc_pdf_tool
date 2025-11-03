@@ -125,30 +125,90 @@ class HagerSectionExtractor:
         return None
 
     @staticmethod
-    def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice"):
-        """Extract tables from specific page (uses cache if available)."""
+    def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice", timeout: int = 30):
+        """Extract tables from specific page with timeout protection (uses cache if available).
+
+        Args:
+            pdf_path: Path to PDF file
+            page_number: Page number to extract (1-indexed)
+            flavor: Camelot flavor ('lattice' or 'stream')
+            timeout: Maximum seconds to wait for extraction (default: 30)
+
+        Returns:
+            List of DataFrames or empty list if extraction fails/times out
+        """
         # Try cache first
         cached = HagerSectionExtractor.get_cached_tables(pdf_path, page_number)
         if cached is not None:
             return cached
 
         # Fallback: extract single page if not cached
-        import camelot
         import gc
+        import threading
+
+        class CamelotExtractor:
+            """Thread-safe Camelot extractor with timeout support."""
+            def __init__(self):
+                self.result = None
+                self.error = None
+                self.completed = False
+
+            def extract(self, pdf_path: str, page_str: str, flavor: str):
+                """Extract tables in a separate thread."""
+                try:
+                    import camelot
+                    tables = camelot.read_pdf(
+                        pdf_path, pages=page_str, flavor=flavor, suppress_stdout=True, backend="pdfium"
+                    )
+                    self.result = [t.df for t in tables] if tables.n else []
+                    self.completed = True
+                except Exception as e:
+                    self.error = str(e)
+                    self.completed = True
 
         page_str = str(page_number)
+        extractor = CamelotExtractor()
+
+        # Run Camelot in a separate thread with timeout
+        thread = threading.Thread(target=extractor.extract, args=(pdf_path, page_str, flavor))
+        thread.daemon = True  # Daemon thread will be killed when main thread exits
+
         try:
-            tables = camelot.read_pdf(
-                pdf_path, pages=page_str, flavor=flavor, suppress_stdout=True, backend="pdfium"
-            )
-            result = [t.df for t in tables] if tables.n else []
-            # Force cleanup to prevent Windows file locking on temp files
-            del tables
-            gc.collect()
-            return result
+            logger.debug(f"Starting Camelot extraction for page {page_number} (flavor={flavor}, timeout={timeout}s)")
+            thread.start()
+            thread.join(timeout=timeout)
+
+            if thread.is_alive():
+                # Thread is still running - it timed out
+                logger.warning(
+                    f"Camelot extraction timed out after {timeout}s for page {page_number} "
+                    f"(flavor={flavor}). Thread will be abandoned."
+                )
+                # Note: Python threads cannot be forcefully killed, but as a daemon thread,
+                # it will be terminated when the main process exits
+                return []
+
+            # Check if we got results
+            if extractor.completed:
+                if extractor.error:
+                    logger.warning(f"Camelot extraction failed for page {page_number}: {extractor.error}")
+                    return []
+                elif extractor.result is not None:
+                    logger.debug(f"Camelot extracted {len(extractor.result)} tables from page {page_number}")
+                    gc.collect()
+                    return extractor.result
+                else:
+                    logger.warning(f"Camelot completed but returned no results for page {page_number}")
+                    return []
+            else:
+                logger.warning(f"Camelot extraction did not complete for page {page_number}")
+                return []
+
         except Exception as e:
-            logger.warning(f"Camelot extraction failed for page {page_number}: {e}")
+            logger.error(f"Error during Camelot extraction for page {page_number}: {e}")
             return []
+        finally:
+            gc.collect()
 
     def extract_finish_symbols(
         self, page_text: str, tables: list, page_number: int

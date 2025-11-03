@@ -94,25 +94,36 @@ def upload_pdf():
                 # Get file size
                 file_size = os.path.getsize(filepath)
                 
+                # Parser configuration with timeout protection
+                parser_config = {
+                    'camelot_timeout': 30,  # 30 second timeout for Camelot extraction
+                    'enable_camelot': True,
+                    'camelot_flavors': ['stream', 'lattice'],
+                }
+
                 # Parse PDF based on manufacturer using enhanced parsers
                 if manufacturer == 'hager':
                     from parsers.hager.parser import HagerParser
-                    parser = HagerParser(filepath)
+                    parser = HagerParser(filepath, config=parser_config)
+                    logger.info(f"Using HagerParser for {filename} (timeout={parser_config['camelot_timeout']}s)")
                 elif manufacturer == 'select_hinges':
                     from parsers.select.parser import SelectHingesParser
-                    parser = SelectHingesParser(filepath)
+                    parser = SelectHingesParser(filepath, config=parser_config)
+                    logger.info(f"Using SelectHingesParser for {filename} (timeout={parser_config['camelot_timeout']}s)")
                 else:
                     # Try to auto-detect manufacturer
                     from parsers.hager.parser import HagerParser
-                    parser = HagerParser(filepath)
+                    parser = HagerParser(filepath, config=parser_config)
                     detected = parser.identify_manufacturer()
+                    logger.info(f"Auto-detected manufacturer: {detected}")
                     if detected == 'select_hinges':
                         from parsers.select.parser import SelectHingesParser
-                        parser = SelectHingesParser(filepath)
+                        parser = SelectHingesParser(filepath, config=parser_config)
 
                 # Parse the PDF with enhanced parser
-                logger.info(f"Parsing {filename} with enhanced parser")
+                logger.info(f"Starting PDF parsing: {filename}")
                 parsed_data = parser.parse()
+                logger.info(f"Parsing completed: {filename}")
 
                 # Extract metadata for logging and user feedback
                 parsing_metadata = parsed_data.get('parsing_metadata', {})

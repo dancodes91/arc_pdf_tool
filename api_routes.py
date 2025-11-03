@@ -112,32 +112,40 @@ def upload_pdf():
         # Get file size
         file_size = os.path.getsize(filepath)
 
+        # Parser configuration with timeout protection
+        parser_config = {
+            'camelot_timeout': 30,  # 30 second timeout for Camelot extraction
+            'enable_camelot': True,
+            'camelot_flavors': ['stream', 'lattice'],
+        }
+
         # Parse PDF based on manufacturer using manufacturer-specific parsers
         # Use Universal Parser as fallback for unknown manufacturers
         if manufacturer == 'hager':
             from parsers.hager.parser import HagerParser
-            parser = HagerParser(filepath)
-            logger.info(f"Using HagerParser for {filename}")
+            parser = HagerParser(filepath, config=parser_config)
+            logger.info(f"Using HagerParser for {filename} (timeout={parser_config['camelot_timeout']}s)")
         elif manufacturer in ['select', 'select_hinges']:
             from parsers.select.parser import SelectHingesParser
-            parser = SelectHingesParser(filepath)
-            logger.info(f"Using SelectHingesParser for {filename}")
+            parser = SelectHingesParser(filepath, config=parser_config)
+            logger.info(f"Using SelectHingesParser for {filename} (timeout={parser_config['camelot_timeout']}s)")
         else:
             # Use Universal Parser for unknown manufacturers
             from parsers.universal import UniversalParser
-            parser = UniversalParser(
-                filepath,
-                config={
-                    'use_hybrid': True,  # Enable 3-layer hybrid approach
-                    'use_ml_detection': True,
-                    'confidence_threshold': 0.6,
-                    'max_pages': None  # Process all pages
-                }
-            )
-            logger.info(f"Using UniversalParser for {filename} (manufacturer: {manufacturer})")
+            universal_config = {
+                'use_hybrid': True,  # Enable 3-layer hybrid approach
+                'use_ml_detection': True,
+                'confidence_threshold': 0.6,
+                'max_pages': None,  # Process all pages
+                'camelot_timeout': 30,  # Add timeout protection
+            }
+            parser = UniversalParser(filepath, config=universal_config)
+            logger.info(f"Using UniversalParser for {filename} (manufacturer: {manufacturer}, timeout=30s)")
 
         # Parse the PDF with selected parser
+        logger.info(f"Starting PDF parsing: {filename}")
         parsed_data = parser.parse()
+        logger.info(f"Parsing completed: {filename}")
         parsed_data['file_path'] = filepath
         parsed_data['file_size'] = file_size
 

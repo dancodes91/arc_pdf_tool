@@ -93,22 +93,82 @@ class SelectSectionExtractor:
         }
 
     @staticmethod
-    def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice"):
-        """Extract tables from specific page using Camelot."""
-        import camelot
+    def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice", timeout: int = 30):
+        """Extract tables from specific page using Camelot with timeout protection.
+
+        Args:
+            pdf_path: Path to PDF file
+            page_number: Page number to extract (1-indexed)
+            flavor: Camelot flavor ('lattice' or 'stream')
+            timeout: Maximum seconds to wait for extraction (default: 30)
+
+        Returns:
+            List of DataFrames or empty list if extraction fails/times out
+        """
         import gc
+        import threading
+
+        class CamelotExtractor:
+            """Thread-safe Camelot extractor with timeout support."""
+            def __init__(self):
+                self.result = None
+                self.error = None
+                self.completed = False
+
+            def extract(self, pdf_path: str, page_str: str, flavor: str):
+                """Extract tables in a separate thread."""
+                try:
+                    import camelot
+                    tables = camelot.read_pdf(pdf_path, pages=page_str, flavor=flavor)
+                    self.result = [t.df for t in tables] if tables.n else []
+                    self.completed = True
+                except Exception as e:
+                    self.error = str(e)
+                    self.completed = True
 
         page_str = str(page_number)
+        extractor = CamelotExtractor()
+
+        # Run Camelot in a separate thread with timeout
+        thread = threading.Thread(target=extractor.extract, args=(pdf_path, page_str, flavor))
+        thread.daemon = True  # Daemon thread will be killed when main thread exits
+
         try:
-            tables = camelot.read_pdf(pdf_path, pages=page_str, flavor=flavor)
-            result = [t.df for t in tables] if tables.n else []
-            # Force cleanup to prevent Windows file locking on temp files
-            del tables
-            gc.collect()
-            return result
+            logger.debug(f"Starting Camelot extraction for page {page_number} (flavor={flavor}, timeout={timeout}s)")
+            thread.start()
+            thread.join(timeout=timeout)
+
+            if thread.is_alive():
+                # Thread is still running - it timed out
+                logger.warning(
+                    f"Camelot extraction timed out after {timeout}s for page {page_number} "
+                    f"(flavor={flavor}). Thread will be abandoned."
+                )
+                # Note: Python threads cannot be forcefully killed, but as a daemon thread,
+                # it will be terminated when the main process exits
+                return []
+
+            # Check if we got results
+            if extractor.completed:
+                if extractor.error:
+                    logger.warning(f"Camelot extraction failed for page {page_number}: {extractor.error}")
+                    return []
+                elif extractor.result is not None:
+                    logger.debug(f"Camelot extracted {len(extractor.result)} tables from page {page_number}")
+                    gc.collect()
+                    return extractor.result
+                else:
+                    logger.warning(f"Camelot completed but returned no results for page {page_number}")
+                    return []
+            else:
+                logger.warning(f"Camelot extraction did not complete for page {page_number}")
+                return []
+
         except Exception as e:
-            logger.warning(f"Camelot extraction failed for page {page_number}: {e}")
+            logger.error(f"Error during Camelot extraction for page {page_number}: {e}")
             return []
+        finally:
+            gc.collect()
 
     def extract_finish_symbols(self, text: str) -> List[ParsedItem]:
         """Extract finish symbols/abbreviations from SELECT PDF."""

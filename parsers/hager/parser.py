@@ -28,6 +28,10 @@ class HagerParser:
         # Set config['fast_mode'] = True to enable (90%+ of products in first 300 pages)
         self.fast_mode = self.config.get("fast_mode", False)
 
+        # Camelot timeout: Maximum seconds to wait for Camelot table extraction
+        # Default: 30 seconds (prevents hangs on problematic PDFs)
+        self.camelot_timeout = self.config.get("camelot_timeout", 30)
+
         # Initialize utilities
         self.provenance_tracker = ProvenanceTracker(pdf_path)
         self.section_extractor = HagerSectionExtractor(self.provenance_tracker)
@@ -233,9 +237,9 @@ class HagerParser:
             if "ARCHITECTURAL FINISH SYMBOLS" not in page_text:
                 continue
 
-            # Extract tables for this page using Camelot
+            # Extract tables for this page using Camelot with timeout protection
             tables = self.section_extractor.extract_tables_with_camelot(
-                self.pdf_path, page.page_number
+                self.pdf_path, page.page_number, timeout=self.camelot_timeout
             )
 
             page_symbols = self.section_extractor.extract_finish_symbols(
@@ -271,9 +275,9 @@ class HagerParser:
             ):
                 continue
 
-            # Extract tables for this page using Camelot
+            # Extract tables for this page using Camelot with timeout protection
             tables = self.section_extractor.extract_tables_with_camelot(
-                self.pdf_path, page.page_number
+                self.pdf_path, page.page_number, timeout=self.camelot_timeout
             )
 
             page_rules = self.section_extractor.extract_price_rules(
@@ -307,9 +311,9 @@ class HagerParser:
             ):
                 continue
 
-            # Extract tables for this page using Camelot
+            # Extract tables for this page using Camelot with timeout protection
             tables = self.section_extractor.extract_tables_with_camelot(
-                self.pdf_path, page.page_number
+                self.pdf_path, page.page_number, timeout=self.camelot_timeout
             )
 
             page_additions = self.section_extractor.extract_hinge_additions(
@@ -394,9 +398,9 @@ class HagerParser:
                 )
                 self.products.extend(matrix_products)
             else:
-                # Regular table-based extraction
+                # Regular table-based extraction with timeout protection
                 tables = self.section_extractor.extract_tables_with_camelot(
-                    self.pdf_path, page.page_number
+                    self.pdf_path, page.page_number, timeout=self.camelot_timeout
                 )
 
                 page_products = self.section_extractor.extract_item_tables(

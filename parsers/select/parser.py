@@ -225,16 +225,29 @@ class SelectHingesParser:
         camelot_used = False
 
         if camelot_enabled:
+            # Get timeout from config, default to 30 seconds
+            camelot_timeout = self.config.get("camelot_timeout", 30)
+
             for flavor in camelot_flavors:
-                tables = self.section_extractor.extract_tables_with_camelot(
-                    self.pdf_path, page.page_number, flavor=flavor
+                self.logger.info(
+                    f"Page {page.page_number}: Attempting Camelot {flavor} extraction "
+                    f"(timeout={camelot_timeout}s)"
                 )
+
+                tables = self.section_extractor.extract_tables_with_camelot(
+                    self.pdf_path, page.page_number, flavor=flavor, timeout=camelot_timeout
+                )
+
                 if not tables:
+                    self.logger.debug(
+                        f"Page {page.page_number}: Camelot {flavor} returned no tables "
+                        f"(possibly timed out or failed)"
+                    )
                     continue
 
                 camelot_used = True
                 tables_score = self._table_quality_score(tables)
-                self.logger.debug(
+                self.logger.info(
                     f"Page {page.page_number}: Camelot {flavor} score={tables_score} "
                     f"(fallback_score={best_score})"
                 )
@@ -243,6 +256,9 @@ class SelectHingesParser:
                     best_tables = tables
                     best_method = f"camelot_{flavor}"
                     best_score = tables_score
+                    self.logger.info(
+                        f"Page {page.page_number}: Using Camelot {flavor} as best method"
+                    )
 
                 if tables_score >= quality_threshold:
                     break
