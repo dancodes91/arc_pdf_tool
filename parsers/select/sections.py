@@ -398,7 +398,9 @@ class SelectSectionExtractor:
             if specs and specs.get("length"):
                 has_length = True
             # Also check SKU for length pattern (ends with digits like -79, -83, -95, -120)
-            elif re.search(r'(?:-\d{2,3}|\d{2,3}$)', sku):
+            # Updated regex to match length at END of SKU, avoiding duty codes like HD600
+            # Pattern matches: dash or space followed by 2-3 digits at end of string
+            elif re.search(r'[-\s](\d{2,3})$', sku):
                 has_length = True
 
             # Skip products without length specs (invalid for SELECT pricing guides)
@@ -971,10 +973,12 @@ class SelectSectionExtractor:
                 if cell_value.lower() in ["nan", "none", "", "-"]:
                     continue
 
-                # Look for SELECT SKU pattern: SL## optionally followed by finish code and variant
-                # Examples: "SL21 CL HD300", "SL11 BR HD600", "SL14CL", or just "SL21"
+                # Look for SELECT SKU pattern: SL## optionally followed by finish code, duty, and length
+                # Examples: "SL21 CL HD300", "SL11 BR HD600", "SL12-BR-HD600-120", "SL14CL", or just "SL21"
+                # Updated regex to capture BOTH duty AND length when present
+                # Supports spaces, dashes, or no separator between components
                 sku_match = re.search(
-                    r'(SL\s*\d{2})(?:\s*([A-Z]{2}))?(?:\s*(HD\d+|LD\d+|LL|\d{2,3}"?))?',
+                    r'(SL\s*\d{2})(?:[- ]*([A-Z]{2}))?(?:[- ]*(HD\d+|LD\d+|LL))?(?:[- ]*(\d{2,3})"?)?',
                     cell_value,
                     re.IGNORECASE,
                 )
@@ -986,16 +990,8 @@ class SelectSectionExtractor:
                 finish_code = (
                     sku_match.group(2).upper() if sku_match.group(2) else None
                 )  # CL, BR, BK or None
-                variant_raw = sku_match.group(3)
-                duty = None
-                length_value = None
-
-                if variant_raw:
-                    variant_norm = variant_raw.replace('"', "").upper()
-                    if re.match(r'^\d{2,3}$', variant_norm):
-                        length_value = variant_norm
-                    else:
-                        duty = variant_norm
+                duty = sku_match.group(3).upper() if sku_match.group(3) else None  # HD600, LL, etc.
+                length_value = sku_match.group(4) if sku_match.group(4) else None  # 120, 83, etc.
 
                 # If finish code missing, check adjacent cells
                 if not finish_code:
