@@ -466,7 +466,12 @@ class SelectSectionExtractor:
 
             # Try column-separated first (check if header[1:] contains length patterns)
             column_lengths = []
+            valid_lengths = {"57", "79", "83", "85", "95", "119", "120"}  # Filter out fractions
             for col_idx, col_header in enumerate(header[1:], start=1):
+                # Skip None/empty columns that can throw off indexing
+                if col_header is None or str(col_header).strip() in ["", "nan", "None"]:
+                    continue
+
                 # Look for length patterns like 79", 83", 83"/85", 95", 120"
                 # Handle combined columns by extracting ALL lengths (e.g., "83"/85"" -> ["83", "85"])
                 col_header_str = str(col_header)
@@ -475,7 +480,9 @@ class SelectSectionExtractor:
                 # For each length found in this column header, create a mapping
                 # Combined columns (e.g., "83"/85"") will have multiple products for same column
                 for length_value in length_matches:
-                    column_lengths.append((col_idx, length_value))
+                    # Only accept common hinge lengths, filter out fractions like 16, 4, etc.
+                    if length_value in valid_lengths:
+                        column_lengths.append((col_idx, length_value))
 
             if column_lengths:
                 # COLUMN-SEPARATED structure (Hager PDF)
@@ -510,6 +517,7 @@ class SelectSectionExtractor:
             current_descriptor = None
             current_parsed = None
             current_base_model = None
+            current_sub_header_lengths = None  # Track sub-header lengths for current section
 
             # STEP 2: Process each data row
             for row_idx, row in data_rows.iterrows():
@@ -541,6 +549,30 @@ class SelectSectionExtractor:
                         break
 
                 if not parsed and current_parsed:
+                    # First check if this row looks like a sub-header row (contains "Model #" plus length patterns)
+                    row_text = " ".join(str(cell) for cell in row if str(cell).strip())
+                    if re.search(r'\bModel\s*#?\b', row_text, re.IGNORECASE):
+                        # This is a sub-header row - extract length columns from it for use in subsequent rows
+                        sub_header_lengths = []
+                        # Common hinge lengths - filter out fractions like 16, 4, etc.
+                        valid_lengths = {"57", "79", "83", "85", "95", "119", "120"}
+                        for col_idx in range(len(row)):
+                            cell = str(row.iloc[col_idx]).strip()
+                            if cell and cell not in ["<NA>", "nan", "None", ""]:
+                                # Look for length patterns
+                                length_matches = re.findall(r'(\d+)\s*["\']', cell)
+                                for length_val in length_matches:
+                                    # Only accept common hinge lengths
+                                    if length_val in valid_lengths:
+                                        sub_header_lengths.append((col_idx, length_val))
+
+                        if sub_header_lengths:
+                            current_sub_header_lengths = sub_header_lengths
+                            self.logger.info(f"Detected sub-header with lengths: {[(idx, l) for idx, l in sub_header_lengths]}")
+
+                        # Skip processing this row as data
+                        continue
+
                     # Use the most recent descriptor ONLY if this row contains prices
                     # AND we haven't moved to a different model family
                     has_numeric = any(
@@ -586,7 +618,24 @@ class SelectSectionExtractor:
                     # Map length -> (price, original_cell_value)
                     length_data_map = {}
 
-                    for length, col_idx in length_columns.items():
+
+                    # Use sub-header to refine column mapping if available
+                    # Combine main header lengths with sub-header column indices where available
+                    if current_sub_header_lengths:
+                        # Start with main header lengths and columns
+                        active_length_columns = length_columns.copy()
+                        # Update column indices from sub-header for lengths it mentions
+                        sub_header_dict = {length: col_idx for col_idx, length in current_sub_header_lengths}
+                        for length in sub_header_dict:
+                            active_length_columns[length] = sub_header_dict[length]
+                        active_lengths = lengths  # Keep all lengths from main header
+                        self.logger.debug(f"Using combined header/sub-header lengths: {active_lengths}")
+                    else:
+                        active_length_columns = length_columns
+                        active_lengths = lengths
+
+                    # First, try using the column mapping from the header/sub-header
+                    for length, col_idx in active_length_columns.items():
                         if col_idx < len(row):
                             cell = str(row.iloc[col_idx]).strip()
                             # Store both the extracted price AND the original cell value
@@ -596,9 +645,55 @@ class SelectSectionExtractor:
                                 "original_cell": cell
                             }
 
+
+                    # Check if we got valid prices for most lengths
+                    # If too many are missing or invalid, fall back to sequential extraction
+                    valid_price_count = sum(1 for data in length_data_map.values() if data.get("price") and data.get("price") >= 10)
+                    if valid_price_count < len(active_lengths) * 0.5:  # Less than 50% valid prices
+                        self.logger.info(f"Column mapping yielded only {valid_price_count}/{len(active_lengths)} valid prices, trying sequential extraction")
+
+                        # Find the column with the model descriptor
+                        # Look for the base model pattern (e.g., "SL12") in the cells
+                        model_col_idx = None
+                        for col_idx in range(len(row)):
+                            cell = str(row.iloc[col_idx]).strip()
+                            # Check if cell contains the model descriptor OR just the base model
+                            if model_descriptor and (model_descriptor in cell or base_model in cell):
+                                # Make sure this cell looks like a model descriptor (not just a price that happens to contain digits)
+                                if re.search(r'SL\s*\d{2,3}', cell, re.IGNORECASE):
+                                    model_col_idx = col_idx
+                                    break
+
+
+                        if model_col_idx is not None:
+                            # Extract all valid prices to the right of the model descriptor
+                            prices = []
+                            for col_idx in range(model_col_idx + 1, len(row)):
+                                cell = str(row.iloc[col_idx]).strip()
+                                price_val = self._extract_price_from_cell(cell)
+
+                                # Only include valid prices (not lengths, not clearly wrong data)
+                                if price_val and price_val >= 10:
+                                    # Skip if price equals a common length (likely confusion)
+                                    # This catches cases like extracting "83" as a price when it's actually the length header
+                                    if str(int(price_val)) not in ["79", "83", "85", "95", "120", "119", "16", "57"]:
+                                        prices.append((price_val, cell))
+
+                            self.logger.info(f"Sequential extraction found {len(prices)} prices: {[p[0] for p in prices]}")
+
+                            # Match prices to lengths in order
+                            if len(prices) > 0:
+                                length_data_map.clear()
+                                for i, length in enumerate(active_lengths):
+                                    if i < len(prices):
+                                        length_data_map[length] = {
+                                            "price": prices[i][0],
+                                            "original_cell": prices[i][1]
+                                        }
+
                     # Create products ONLY for cells that have valid prices
                     # DO NOT forward-fill - if a cell is "-" or empty, that size is unavailable
-                    for length in lengths:
+                    for length in active_lengths:
                         data = length_data_map.get(length, {})
                         price = data.get("price")
                         original_cell = data.get("original_cell", "")
