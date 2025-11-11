@@ -3,7 +3,7 @@ services:
     name: arc-pdf-api
     env: python
     buildCommand: chmod +x render-build.sh && ./render-build.sh
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 300
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 600
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0

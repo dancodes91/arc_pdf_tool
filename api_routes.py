@@ -6,7 +6,10 @@ This module provides REST API endpoints for the React frontend
 from flask import Blueprint, request, jsonify, send_file
 import os
 import logging
+import threading
+import uuid
 from datetime import datetime
+from typing import Dict, Any
 
 from database.manager import PriceBookManager
 from database.models import PriceBook, DatabaseManager
@@ -30,6 +33,10 @@ diff_engine = DiffEngine()
 export_manager = ExportManager()
 
 logger = logging.getLogger(__name__)
+
+# Job tracking for async uploads
+upload_jobs: Dict[str, Dict[str, Any]] = {}
+jobs_lock = threading.Lock()
 
 @api.route('/price-books', methods=['GET'])
 def get_price_books():
@@ -77,9 +84,120 @@ def get_products(price_book_id):
         logger.error(f"Error fetching products for price book {price_book_id}: {e}")
         return jsonify({'error': str(e)}), 500
 
+def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: str, file_size: int):
+    """Background task to process PDF"""
+    try:
+        with jobs_lock:
+            upload_jobs[job_id]['status'] = 'processing'
+            upload_jobs[job_id]['progress'] = 5
+            upload_jobs[job_id]['message'] = 'Initializing parser...'
+        
+        # Auto-detect manufacturer from filename if not specified
+        if manufacturer in ['auto', ''] or not manufacturer:
+            filename_lower = filename.lower()
+            if 'hager' in filename_lower:
+                manufacturer = 'hager'
+            elif 'select' in filename_lower:
+                manufacturer = 'select_hinges'
+            else:
+                manufacturer = 'auto'
+        
+        # Parser configuration optimized for Render Pro tier
+        # Safety limit: max 200 pages to prevent excessive processing time
+        parser_config = {
+            'camelot_timeout': 15,
+            'enable_camelot': True,
+            'camelot_flavors': ['stream'],
+            'max_pages': 200,  # Safety limit to prevent processing very large PDFs
+        }
+
+        # Progress callback to update job status
+        def update_progress(progress: int, message: str):
+            with jobs_lock:
+                if job_id in upload_jobs:
+                    upload_jobs[job_id]['progress'] = progress
+                    upload_jobs[job_id]['message'] = message
+
+        # Parse PDF based on manufacturer
+        if manufacturer == 'hager':
+            from parsers.hager.parser import HagerParser
+            parser = HagerParser(filepath, config=parser_config)
+            logger.info(f"Using HagerParser for {filename}")
+        elif manufacturer in ['select', 'select_hinges']:
+            from parsers.select.parser import SelectHingesParser
+            parser = SelectHingesParser(filepath, config=parser_config)
+            # Set progress callback if parser supports it
+            if hasattr(parser, 'set_progress_callback'):
+                parser.set_progress_callback(update_progress)
+            logger.info(f"Using SelectHingesParser for {filename}")
+        else:
+            from parsers.universal import UniversalParser
+            universal_config = {
+                'use_hybrid': True,
+                'use_ml_detection': True,
+                'confidence_threshold': 0.6,
+                'max_pages': None,
+                'camelot_timeout': 15,
+            }
+            parser = UniversalParser(filepath, config=universal_config)
+            logger.info(f"Using UniversalParser for {filename}")
+
+        update_progress(10, 'Extracting PDF pages...')
+        
+        # Parse the PDF
+        logger.info(f"Starting PDF parsing: {filename}")
+        parsed_data = parser.parse()
+        logger.info(f"Parsing completed: {filename}")
+        parsed_data['file_path'] = filepath
+        parsed_data['file_size'] = file_size
+
+        with jobs_lock:
+            upload_jobs[job_id]['progress'] = 70
+            upload_jobs[job_id]['message'] = 'Saving to database...'
+
+        # Store in database
+        from services.etl_loader import ETLLoader
+        db_manager = DatabaseManager()
+        session = db_manager.get_session()
+
+        try:
+            etl_loader = ETLLoader(database_url=os.getenv('DATABASE_URL', 'sqlite:///price_books.db'))
+            load_result = etl_loader.load_parsing_results(parsed_data, session)
+            session.commit()
+
+            result = {
+                'price_book_id': load_result['price_book_id'],
+                'products_created': load_result['products_loaded'],
+                'finishes_loaded': load_result.get('finishes_loaded', 0),
+                'confidence': parsed_data.get('parsing_metadata', {}).get('overall_confidence', 0)
+            }
+        except Exception as db_error:
+            session.rollback()
+            logger.error(f"Database error: {db_error}", exc_info=True)
+            raise
+        finally:
+            session.close()
+        
+        with jobs_lock:
+            upload_jobs[job_id]['status'] = 'completed'
+            upload_jobs[job_id]['progress'] = 100
+            upload_jobs[job_id]['message'] = 'Processing complete'
+            upload_jobs[job_id]['result'] = result
+            upload_jobs[job_id]['completed_at'] = datetime.utcnow().isoformat()
+        
+        logger.info(f"Job {job_id} completed successfully")
+        
+    except Exception as e:
+        logger.error(f"Error processing PDF in job {job_id}: {e}", exc_info=True)
+        with jobs_lock:
+            upload_jobs[job_id]['status'] = 'failed'
+            upload_jobs[job_id]['message'] = f'Error: {str(e)}'
+            upload_jobs[job_id]['error'] = str(e)
+            upload_jobs[job_id]['completed_at'] = datetime.utcnow().isoformat()
+
 @api.route('/upload', methods=['POST', 'OPTIONS'])
 def upload_pdf():
-    """Upload and parse PDF file"""
+    """Upload and parse PDF file asynchronously"""
     # Handle CORS preflight request
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'ok'})
@@ -112,80 +230,69 @@ def upload_pdf():
         # Get file size
         file_size = os.path.getsize(filepath)
 
-        # Parser configuration with timeout protection
-        parser_config = {
-            'camelot_timeout': 30,  # 30 second timeout for Camelot extraction
-            'enable_camelot': True,
-            'camelot_flavors': ['stream', 'lattice'],
-        }
-
-        # Parse PDF based on manufacturer using manufacturer-specific parsers
-        # Use Universal Parser as fallback for unknown manufacturers
-        if manufacturer == 'hager':
-            from parsers.hager.parser import HagerParser
-            parser = HagerParser(filepath, config=parser_config)
-            logger.info(f"Using HagerParser for {filename} (timeout={parser_config['camelot_timeout']}s)")
-        elif manufacturer in ['select', 'select_hinges']:
-            from parsers.select.parser import SelectHingesParser
-            parser = SelectHingesParser(filepath, config=parser_config)
-            logger.info(f"Using SelectHingesParser for {filename} (timeout={parser_config['camelot_timeout']}s)")
-        else:
-            # Use Universal Parser for unknown manufacturers
-            from parsers.universal import UniversalParser
-            universal_config = {
-                'use_hybrid': True,  # Enable 3-layer hybrid approach
-                'use_ml_detection': True,
-                'confidence_threshold': 0.6,
-                'max_pages': None,  # Process all pages
-                'camelot_timeout': 30,  # Add timeout protection
+        # Create job ID
+        job_id = str(uuid.uuid4())
+        
+        # Initialize job status
+        with jobs_lock:
+            upload_jobs[job_id] = {
+                'status': 'queued',
+                'progress': 0,
+                'message': 'File uploaded, queued for processing',
+                'filename': filename,
+                'started_at': datetime.utcnow().isoformat(),
+                'result': None,
+                'error': None
             }
-            parser = UniversalParser(filepath, config=universal_config)
-            logger.info(f"Using UniversalParser for {filename} (manufacturer: {manufacturer}, timeout=30s)")
-
-        # Parse the PDF with selected parser
-        logger.info(f"Starting PDF parsing: {filename}")
-        parsed_data = parser.parse()
-        logger.info(f"Parsing completed: {filename}")
-        parsed_data['file_path'] = filepath
-        parsed_data['file_size'] = file_size
-
-        # Store in database using ETL loader
-        from services.etl_loader import ETLLoader
-        from database.models import DatabaseManager
-
-        db_manager = DatabaseManager()
-        session = db_manager.get_session()
-
-        try:
-            etl_loader = ETLLoader(database_url=os.getenv('DATABASE_URL', 'sqlite:///price_books.db'))
-            load_result = etl_loader.load_parsing_results(parsed_data, session)
-            session.commit()
-
-            result = {
-                'price_book_id': load_result['price_book_id'],
-                'products_created': load_result['products_loaded'],
-                'finishes_loaded': load_result.get('finishes_loaded', 0),
-                'confidence': parsed_data.get('parsing_metadata', {}).get('overall_confidence', 0)
-            }
-        except Exception as db_error:
-            session.rollback()
-            logger.error(f"Database error: {db_error}", exc_info=True)
-            raise
-        finally:
-            session.close()
+        
+        # Start background processing
+        thread = threading.Thread(
+            target=_process_pdf_async,
+            args=(job_id, filepath, filename, manufacturer, file_size),
+            daemon=True
+        )
+        thread.start()
+        
+        logger.info(f"Started async processing job {job_id} for {filename}")
         
         return jsonify({
             'success': True,
-            'price_book_id': result['price_book_id'],
-            'products_created': result['products_created'],
-            'finishes_loaded': result['finishes_loaded'],
-            'confidence': result['confidence'],
-            'message': f'Successfully uploaded and parsed {filename}'
-        })
+            'job_id': job_id,
+            'status': 'queued',
+            'message': 'File uploaded successfully. Processing in background.',
+            'status_url': f'/api/upload/status/{job_id}'
+        }), 202  # 202 Accepted
         
     except Exception as e:
         logger.error(f"Error uploading PDF: {e}")
         return jsonify({'error': str(e)}), 500
+
+@api.route('/upload/status/<job_id>', methods=['GET'])
+def get_upload_status(job_id):
+    """Get status of an upload job"""
+    with jobs_lock:
+        job = upload_jobs.get(job_id)
+    
+    if not job:
+        return jsonify({'error': 'Job not found'}), 404
+    
+    response = {
+        'job_id': job_id,
+        'status': job['status'],
+        'progress': job['progress'],
+        'message': job['message'],
+        'filename': job.get('filename'),
+        'started_at': job.get('started_at'),
+    }
+    
+    if job['status'] == 'completed' and job.get('result'):
+        response['result'] = job['result']
+        response['completed_at'] = job.get('completed_at')
+    elif job['status'] == 'failed':
+        response['error'] = job.get('error')
+        response['completed_at'] = job.get('completed_at')
+    
+    return jsonify(response)
 
 @api.route('/compare', methods=['POST'])
 def compare_price_books():

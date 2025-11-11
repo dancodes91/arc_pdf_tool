@@ -17,7 +17,7 @@ type WizardStep = 1 | 2 | 3
 
 export default function UploadPage() {
   const router = useRouter()
-  const { uploadPriceBook, loading, error } = usePriceBookStore()
+  const { uploadPriceBook, pollUploadStatus, fetchPriceBooks, loading, error } = usePriceBookStore()
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState<WizardStep>(1)
@@ -29,7 +29,7 @@ export default function UploadPage() {
   const [parseProgress, setParseProgress] = useState(0)
   const [pagesParsed, setPagesParsed] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
-  const [eta, setEta] = useState('')
+  const [statusMessage, setStatusMessage] = useState('')
   const [logs, setLogs] = useState<string[]>([])
   const [showLogs, setShowLogs] = useState(false)
 
@@ -72,57 +72,107 @@ export default function UploadPage() {
     }
   }
 
+  // Polling state
+  const [pollIntervalId, setPollIntervalId] = useState<NodeJS.Timeout | null>(null)
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null)
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalId) {
+        clearInterval(pollIntervalId)
+      }
+    }
+  }, [pollIntervalId])
+
   // Step 1: Start upload
   const handleStartUpload = async () => {
     if (!file || !manufacturer) return
 
     setCurrentStep(2)
-    setTotalPages(Math.floor(Math.random() * 50) + 20) // Simulated
+    setParseProgress(0)
+    setLogs([])
+    setCurrentJobId(null)
 
-    // Simulate parsing progress
+    // Clear any existing polling
+    if (pollIntervalId) {
+      clearInterval(pollIntervalId)
+      setPollIntervalId(null)
+    }
+
     try {
       const result = await uploadPriceBook(file, manufacturer)
 
-      // Simulate progress updates
-      const progressInterval = setInterval(() => {
-        setParseProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(progressInterval)
-            return 100
-          }
-          const newProgress = prev + Math.random() * 15
-          setPagesParsed(Math.floor((newProgress / 100) * totalPages))
+      // Handle async job-based upload
+      if (result.job_id) {
+        setCurrentJobId(result.job_id)
+        
+        // Poll for status updates
+        const interval = setInterval(async () => {
+          try {
+            const status = await pollUploadStatus(result.job_id!)
+            
+            // Update progress
+            setParseProgress(status.progress || 0)
+            setStatusMessage(status.message || '')
+            
+            // Update logs with status message
+            setLogs(prev => {
+              const logEntry = `[INFO] ${status.message}`
+              if (status.message && !prev.includes(logEntry)) {
+                return [...prev, logEntry]
+              }
+              return prev
+            })
 
-          // Simulate logs
-          if (newProgress > 25 && logs.length === 0) {
-            setLogs(['[INFO] Starting PDF analysis...', '[INFO] Detected manufacturer format'])
-          }
-          if (newProgress > 50 && logs.length === 2) {
-            setLogs(prev => [...prev, '[INFO] Extracting tables from page 15'])
-          }
-          if (newProgress > 75 && logs.length === 3) {
-            setLogs(prev => [...prev, '[SUCCESS] Price data validated'])
-          }
+            // Check if completed
+            if (status.status === 'completed' && status.result) {
+              clearInterval(interval)
+              setPollIntervalId(null)
+              setCurrentStep(3)
+              setParsedData({
+                effectiveDate: status.result.effective_date || '',
+                itemCount: status.result.products_created || 0,
+                optionCount: status.result.finishes_loaded || 0,
+                finishCount: status.result.finishes_loaded || 0,
+              })
+              setUploadedBookId(status.result.price_book_id?.toString() || null)
+              setLogs(prev => [...prev, '[SUCCESS] Processing complete'])
+              // Refresh price books list
+              fetchPriceBooks()
+            }
 
-          return Math.min(newProgress, 100)
-        })
-      }, 500)
+            // Check if failed
+            if (status.status === 'failed') {
+              clearInterval(interval)
+              setPollIntervalId(null)
+              setLogs(prev => [...prev, `[ERROR] ${status.error || 'Processing failed'}`])
+            }
+          } catch (err) {
+            console.error('Error polling status:', err)
+            clearInterval(interval)
+            setPollIntervalId(null)
+          }
+        }, 1500) // Poll every 1.5 seconds
 
-      // When complete, move to step 3
-      setTimeout(() => {
+        setPollIntervalId(interval)
+      }
+
+      // Handle legacy synchronous response
+      if (result.price_book_id) {
         setCurrentStep(3)
+        setParseProgress(100)
+        setUploadedBookId(result.price_book_id.toString())
         setParsedData({
-          effectiveDate: '2024-01-01',
-          itemCount: 1247,
-          optionCount: 112,
-          finishCount: 23,
+          effectiveDate: '',
+          itemCount: 0,
+          optionCount: 0,
+          finishCount: 0,
         })
-        if (result) {
-          setUploadedBookId(result.toString())
-        }
-      }, 6000)
+      }
     } catch (err) {
       console.error('Upload failed:', err)
+      setLogs(prev => [...prev, `[ERROR] ${err instanceof Error ? err.message : 'Upload failed'}`])
     }
   }
 
@@ -302,6 +352,9 @@ export default function UploadPage() {
                 <span className="text-muted-foreground">{Math.round(parseProgress)}%</span>
               </div>
               <Progress value={parseProgress} className="h-2" />
+              {statusMessage && (
+                <p className="text-sm text-muted-foreground mt-2">{statusMessage}</p>
+              )}
             </div>
 
             {/* Stats */}

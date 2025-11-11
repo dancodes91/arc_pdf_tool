@@ -34,6 +34,21 @@ class SelectHingesParser:
         self.net_add_options: List[ParsedItem] = []
         self.products: List[ParsedItem] = []
         self.finishes: List[ParsedItem] = []
+        
+        # Progress callback for async updates
+        self.progress_callback: Optional[callable] = None
+
+    def set_progress_callback(self, callback: callable):
+        """Set callback function for progress updates (progress: int, message: str)"""
+        self.progress_callback = callback
+
+    def _update_progress(self, progress: int, message: str):
+        """Internal method to call progress callback if set"""
+        if self.progress_callback:
+            try:
+                self.progress_callback(progress, message)
+            except Exception as e:
+                self.logger.warning(f"Error calling progress callback: {e}")
 
     def parse(self) -> Dict[str, Any]:
         """Parse SELECT Hinges PDF with comprehensive extraction."""
@@ -41,20 +56,26 @@ class SelectHingesParser:
 
         try:
             # Extract PDF document
+            self._update_progress(15, 'Extracting PDF pages...')
             self.document = self.pdf_extractor.extract_document()
-            self.logger.info(f"Extracted PDF with {len(self.document.pages)} pages")
+            total_pages = len(self.document.pages)
+            self.logger.info(f"Extracted PDF with {total_pages} pages")
+            self._update_progress(20, f'Extracted {total_pages} pages')
 
             # Combine all text content
+            self._update_progress(25, 'Processing text content...')
             full_text = self._combine_text_content()
 
             # Extract all tables
+            self._update_progress(30, 'Extracting tables...')
             all_tables = self._combine_all_tables()
 
             # Parse sections
+            self._update_progress(35, 'Parsing document sections...')
             self._parse_effective_date(full_text)
             self._parse_finishes(full_text)
             self._parse_net_add_options(full_text)
-            self._parse_model_tables(full_text, all_tables)
+            self._parse_model_tables(full_text, all_tables, total_pages=total_pages)
 
             # Build final results
             results = self._build_results()
@@ -118,63 +139,124 @@ class SelectHingesParser:
                 price = option.value.get("adder_value", 0)
                 self.logger.debug(f"  {code}: ${price}")
 
-    def _parse_model_tables(self, text: str, tables: List[Any]) -> None:
+    def _parse_model_tables(self, text: str, tables: List[Any], total_pages: int = None) -> None:
         """Parse product model tables page by page - ALWAYS try Camelot for complete extraction."""
+        import time
+        import gc
+        
         self.logger.info("Parsing model tables...")
         self.products = []
         pages_processed = []
 
+        # Time limit for Render Pro tier (9 minutes to leave buffer for 10min gunicorn timeout)
+        start_time = time.time()
+        max_processing_time = 540.0  # 9 minutes (leaves 60s buffer)
+        max_pages = self.config.get("max_pages")  # Limit pages if configured
+
         camelot_settings = {
             "quality_threshold": self.config.get("table_quality_threshold", 45),
             "enable": self.config.get("enable_camelot", True),
-            "flavors": self.config.get("camelot_flavors", ["stream", "lattice"]),
+            "flavors": self.config.get("camelot_flavors", ["stream"]),  # Only stream for speed
             "max_pages": self.config.get("max_camelot_pages"),
         }
         camelot_pages_used = 0
 
-        # Open pdfplumber PDF once and reuse for all pages
-        import pdfplumber
-        try:
-            pdfplumber_pdf = pdfplumber.open(self.pdf_path)
-        except Exception as e:
-            self.logger.warning(f"Failed to open PDF with pdfplumber: {e}")
-            pdfplumber_pdf = None
-
-        try:
-            # Process EVERY page - prefer existing tables, fall back to Camelot when needed
-            for page in self.document.pages:
-                # Use pdfplumber for text extraction to preserve table formatting
-                # The Enhanced PDF Extractor (pypdf) fragments tables into separate lines
-                page_text = self._extract_page_text_with_pdfplumber(
-                    page.page_number, pdfplumber_pdf
+        # Process pages with timeout and page limit protection
+        pages_to_process = self.document.pages
+        if max_pages:
+            pages_to_process = pages_to_process[:max_pages]
+            self.logger.info(f"Limiting to first {max_pages} pages due to max_pages config")
+        else:
+            self.logger.info(f"Processing all {len(pages_to_process)} pages (Pro tier - no page limit)")
+        
+        # Process pages in batches of 5 for memory management
+        batch_size = 5
+        total_pages_to_process = len(pages_to_process)
+        for batch_idx, page in enumerate(pages_to_process):
+            # Check if we're running out of time
+            elapsed = time.time() - start_time
+            if elapsed > max_processing_time:
+                self.logger.warning(
+                    f"Stopping parsing early after {elapsed:.1f}s to prevent timeout. "
+                    f"Processed {len(pages_processed)} pages, found {len(self.products)} products."
                 )
-                page_num = page.page_number
-
-                page_tables, extraction_method, camelot_used = self._resolve_page_tables(
-                    page, page_text, camelot_pages_used, camelot_settings
+                break
+            
+            # Update progress every page (progress from 40% to 65% for page processing)
+            page_num = page.page_number
+            if total_pages_to_process > 0:
+                # Progress: 40% (start) to 65% (end of page processing)
+                page_progress = 40 + int((batch_idx + 1) / total_pages_to_process * 25)
+                self._update_progress(
+                    page_progress,
+                    f'Processing page {page_num}/{total_pages_to_process} ({len(self.products)} products found)'
                 )
+            
+            # Use pdfplumber for text extraction to preserve table formatting
+            # Open PDF fresh for each page to prevent memory accumulation
+            # The Enhanced PDF Extractor (pypdf) fragments tables into separate lines
+            page_text = self._extract_page_text_with_pdfplumber(page.page_number)
+            
+            # Fallback to existing page text if pdfplumber timed out or failed
+            if not page_text and page.text:
+                page_text = page.text
+                self.logger.debug(f"Using fallback text extraction for page {page.page_number}")
 
-                if camelot_used:
-                    camelot_pages_used += 1
-
-                # ALWAYS try extraction, even if no tables found
-                # Text-based extraction can find products that table extraction misses
-                page_products = self.section_extractor.extract_model_tables(
-                    page_text, page_tables or [], page_number=page_num
+            # Check time remaining before starting expensive operations
+            elapsed = time.time() - start_time
+            time_remaining = max_processing_time - elapsed
+            
+            # Skip Camelot if we're running low on time (need at least 20s for Camelot)
+            if time_remaining < 20.0:
+                self.logger.warning(
+                    f"Skipping Camelot extraction for page {page_num} - only {time_remaining:.1f}s remaining"
                 )
-                if page_products:
-                    self.products.extend(page_products)
-                    pages_processed.append(page_num)
-                    self.logger.debug(
-                        f"Page {page_num}: extracted {len(page_products)} products using {extraction_method or 'text'}"
-                    )
-        finally:
-            # Always close the PDF file
-            if pdfplumber_pdf:
-                pdfplumber_pdf.close()
+                # Disable Camelot for this page
+                page_camelot_settings = camelot_settings.copy()
+                page_camelot_settings['enable'] = False
+            else:
+                page_camelot_settings = camelot_settings
 
+            page_tables, extraction_method, camelot_used = self._resolve_page_tables(
+                page, page_text, camelot_pages_used, page_camelot_settings
+            )
+
+            if camelot_used:
+                camelot_pages_used += 1
+
+            # ALWAYS try extraction, even if no tables found
+            # Text-based extraction can find products that table extraction misses
+            page_products = self.section_extractor.extract_model_tables(
+                page_text, page_tables or [], page_number=page_num
+            )
+            
+            # Clear page_tables reference after use to free memory
+            del page_tables
+            
+            if page_products:
+                self.products.extend(page_products)
+                pages_processed.append(page_num)
+                self.logger.debug(
+                    f"Page {page_num}: extracted {len(page_products)} products using {extraction_method or 'text'}"
+                )
+                # Clear page_products reference after extending
+                del page_products
+            
+            # Clear page_text after processing
+            del page_text
+            
+            # Force garbage collection after each page to free memory
+            gc.collect()
+            
+            # Full garbage collection every 5 pages (batch processing)
+            if (batch_idx + 1) % batch_size == 0:
+                gc.collect(2)  # Full collection for batch cleanup
+                self.logger.debug(f"Completed batch of {batch_size} pages, performed full GC")
+
+        elapsed_total = time.time() - start_time
         self.logger.info(
-            f"Found {len(self.products)} products across {len(pages_processed)} pages: {pages_processed}"
+            f"Found {len(self.products)} products across {len(pages_processed)} pages "
+            f"in {elapsed_total:.1f}s: {pages_processed}"
         )
 
         # Log sample products for verification
@@ -184,34 +266,68 @@ class SelectHingesParser:
                 price = product.value.get("base_price", 0)
                 self.logger.debug(f"  {sku}: ${price}")
 
-    def _extract_page_text_with_pdfplumber(self, page_number: int, pdf_obj=None) -> str:
-        """Extract text from a specific page using pdfplumber.
+    def _extract_page_text_with_pdfplumber(self, page_number: int) -> str:
+        """Extract text from a specific page using pdfplumber with timeout protection.
 
         pdfplumber preserves table formatting better than pypdf,
         which is critical for extracting horizontal product tables.
         
+        Opens PDF fresh for each page to prevent memory accumulation.
+        
         Args:
             page_number: 1-based page number
-            pdf_obj: Optional pre-opened pdfplumber PDF object to reuse
         """
+        import threading
+        import pdfplumber
+        
+        # Timeout per page to prevent hanging (15 seconds)
+        page_timeout = 15.0
+        
+        class TextExtractor:
+            def __init__(self):
+                self.result = ""
+                self.completed = False
+                self.error = None
+            
+            def extract(self, pdf, page_idx):
+                try:
+                    page = pdf.pages[page_idx]
+                    self.result = page.extract_text() or ""
+                    self.completed = True
+                except Exception as e:
+                    self.error = str(e)
+                    self.completed = True
+        
         try:
-            import pdfplumber
-            
-            # Use provided PDF object or open new one
-            if pdf_obj is not None:
-                pdf = pdf_obj
-                should_close = False
-            else:
-                pdf = pdfplumber.open(self.pdf_path)
-                should_close = True
-            
-            try:
-                # pdfplumber uses 0-based indexing
-                page = pdf.pages[page_number - 1]
-                return page.extract_text() or ""
-            finally:
-                if should_close:
-                    pdf.close()
+            # Open PDF fresh for each page to prevent memory accumulation
+            # This is slower but prevents memory issues
+            with pdfplumber.open(self.pdf_path) as pdf:
+                # Run extraction in a thread with timeout
+                extractor = TextExtractor()
+                page_idx = page_number - 1  # pdfplumber uses 0-based indexing
+                
+                thread = threading.Thread(target=extractor.extract, args=(pdf, page_idx))
+                thread.daemon = True
+                thread.start()
+                thread.join(timeout=page_timeout)
+                
+                if thread.is_alive():
+                    # Thread is still running - it timed out
+                    self.logger.warning(
+                        f"pdfplumber text extraction timed out after {page_timeout}s for page {page_number}. "
+                        f"Falling back to existing page text."
+                    )
+                    # Return empty string - will use existing page text from document
+                    return ""
+                
+                if extractor.completed:
+                    if extractor.error:
+                        self.logger.warning(f"pdfplumber text extraction failed for page {page_number}: {extractor.error}")
+                        return ""
+                    return extractor.result
+                else:
+                    self.logger.warning(f"pdfplumber text extraction did not complete for page {page_number}")
+                    return ""
         except Exception as e:
             self.logger.warning(f"pdfplumber text extraction failed for page {page_number}: {e}")
             return ""
@@ -256,8 +372,8 @@ class SelectHingesParser:
         camelot_used = False
 
         if camelot_enabled:
-            # Get timeout from config, default to 30 seconds
-            camelot_timeout = self.config.get("camelot_timeout", 30)
+            # Get timeout from config, default to 15 seconds (reduced for speed)
+            camelot_timeout = self.config.get("camelot_timeout", 15)
 
             for flavor in camelot_flavors:
                 self.logger.info(
@@ -284,12 +400,18 @@ class SelectHingesParser:
                 )
 
                 if tables_score > best_score:
+                    # Clear previous best_tables if replacing
+                    if best_tables and best_tables != fallback_tables:
+                        del best_tables
                     best_tables = tables
                     best_method = f"camelot_{flavor}"
                     best_score = tables_score
                     self.logger.info(
                         f"Page {page.page_number}: Using Camelot {flavor} as best method"
                     )
+                else:
+                    # Clear tables that didn't win to free memory
+                    del tables
 
                 if tables_score >= quality_threshold:
                     break

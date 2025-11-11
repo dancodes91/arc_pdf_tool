@@ -85,7 +85,8 @@ interface PriceBookState {
   fetchPriceBooks: () => Promise<void>
   fetchProducts: (priceBookId: number) => Promise<void>
   setCurrentPriceBook: (book: PriceBook) => void
-  uploadPriceBook: (file: File, manufacturer: string) => Promise<number>
+  uploadPriceBook: (file: File, manufacturer: string) => Promise<{ job_id?: string; status_url?: string; price_book_id?: number }>
+  pollUploadStatus: (jobId: string) => Promise<any>
   exportPriceBook: (priceBookId: number, format: 'excel' | 'csv' | 'json') => Promise<void>
   deletePriceBook: (priceBookId: number) => Promise<void>
   comparePriceBooks: (oldId: number, newId: number) => Promise<void>
@@ -155,15 +156,34 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
         },
       })
 
-      // Refresh price books list
-      await get().fetchPriceBooks()
+      // Handle async response - return job_id for status polling
+      if (response.status === 202 && response.data.job_id) {
+        set({ loading: false })
+        return { job_id: response.data.job_id, status_url: response.data.status_url }
+      }
 
-      set({ loading: false })
-      return response.data.price_book_id
+      // Legacy synchronous response (if backend hasn't been updated)
+      if (response.data.price_book_id) {
+        await get().fetchPriceBooks()
+        set({ loading: false })
+        return { price_book_id: response.data.price_book_id }
+      }
+
+      throw new Error('Unexpected response format')
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || 'Failed to upload price book'
       set({ error: errorMessage, loading: false })
       console.error('Error uploading price book:', error)
+      throw new Error(errorMessage)
+    }
+  },
+
+  pollUploadStatus: async (jobId: string): Promise<any> => {
+    try {
+      const response = await apiClient.get(`upload/status/${jobId}`)
+      return response.data
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to get upload status'
       throw new Error(errorMessage)
     }
   },
