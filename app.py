@@ -24,7 +24,7 @@ Config.init_app(app)
 # CORS: Allow Vercel frontend + local development
 CORS(app,
      origins=[
-         'https://arcpdftool.vercel.app',  # Production frontend
+         'https://pdf-parser-inky.vercel.app',  # Production frontend
          'http://localhost:3000',
          'http://localhost:3001',
          'http://localhost:3002',

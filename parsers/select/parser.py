@@ -132,31 +132,46 @@ class SelectHingesParser:
         }
         camelot_pages_used = 0
 
-        # Process EVERY page - prefer existing tables, fall back to Camelot when needed
-        for page in self.document.pages:
-            # Use pdfplumber for text extraction to preserve table formatting
-            # The Enhanced PDF Extractor (pypdf) fragments tables into separate lines
-            page_text = self._extract_page_text_with_pdfplumber(page.page_number)
-            page_num = page.page_number
+        # Open pdfplumber PDF once and reuse for all pages
+        import pdfplumber
+        try:
+            pdfplumber_pdf = pdfplumber.open(self.pdf_path)
+        except Exception as e:
+            self.logger.warning(f"Failed to open PDF with pdfplumber: {e}")
+            pdfplumber_pdf = None
 
-            page_tables, extraction_method, camelot_used = self._resolve_page_tables(
-                page, page_text, camelot_pages_used, camelot_settings
-            )
-
-            if camelot_used:
-                camelot_pages_used += 1
-
-            # ALWAYS try extraction, even if no tables found
-            # Text-based extraction can find products that table extraction misses
-            page_products = self.section_extractor.extract_model_tables(
-                page_text, page_tables or [], page_number=page_num
-            )
-            if page_products:
-                self.products.extend(page_products)
-                pages_processed.append(page_num)
-                self.logger.debug(
-                    f"Page {page_num}: extracted {len(page_products)} products using {extraction_method or 'text'}"
+        try:
+            # Process EVERY page - prefer existing tables, fall back to Camelot when needed
+            for page in self.document.pages:
+                # Use pdfplumber for text extraction to preserve table formatting
+                # The Enhanced PDF Extractor (pypdf) fragments tables into separate lines
+                page_text = self._extract_page_text_with_pdfplumber(
+                    page.page_number, pdfplumber_pdf
                 )
+                page_num = page.page_number
+
+                page_tables, extraction_method, camelot_used = self._resolve_page_tables(
+                    page, page_text, camelot_pages_used, camelot_settings
+                )
+
+                if camelot_used:
+                    camelot_pages_used += 1
+
+                # ALWAYS try extraction, even if no tables found
+                # Text-based extraction can find products that table extraction misses
+                page_products = self.section_extractor.extract_model_tables(
+                    page_text, page_tables or [], page_number=page_num
+                )
+                if page_products:
+                    self.products.extend(page_products)
+                    pages_processed.append(page_num)
+                    self.logger.debug(
+                        f"Page {page_num}: extracted {len(page_products)} products using {extraction_method or 'text'}"
+                    )
+        finally:
+            # Always close the PDF file
+            if pdfplumber_pdf:
+                pdfplumber_pdf.close()
 
         self.logger.info(
             f"Found {len(self.products)} products across {len(pages_processed)} pages: {pages_processed}"
@@ -169,18 +184,34 @@ class SelectHingesParser:
                 price = product.value.get("base_price", 0)
                 self.logger.debug(f"  {sku}: ${price}")
 
-    def _extract_page_text_with_pdfplumber(self, page_number: int) -> str:
+    def _extract_page_text_with_pdfplumber(self, page_number: int, pdf_obj=None) -> str:
         """Extract text from a specific page using pdfplumber.
 
         pdfplumber preserves table formatting better than pypdf,
         which is critical for extracting horizontal product tables.
+        
+        Args:
+            page_number: 1-based page number
+            pdf_obj: Optional pre-opened pdfplumber PDF object to reuse
         """
         try:
             import pdfplumber
-            with pdfplumber.open(self.pdf_path) as pdf:
+            
+            # Use provided PDF object or open new one
+            if pdf_obj is not None:
+                pdf = pdf_obj
+                should_close = False
+            else:
+                pdf = pdfplumber.open(self.pdf_path)
+                should_close = True
+            
+            try:
                 # pdfplumber uses 0-based indexing
                 page = pdf.pages[page_number - 1]
                 return page.extract_text() or ""
+            finally:
+                if should_close:
+                    pdf.close()
         except Exception as e:
             self.logger.warning(f"pdfplumber text extraction failed for page {page_number}: {e}")
             return ""
