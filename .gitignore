@@ -368,3 +368,7 @@ kill_port_5000.py
 kill_and_restart.bat
 temp_article.txt
 nul
+test_exports/
+test_exports_hager/
+test_exports_hager_fixed/
+*.png

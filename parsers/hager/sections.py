@@ -800,8 +800,11 @@ class HagerSectionExtractor:
                 description = match.group(2).strip()
                 price_str = match.group(3).strip()
 
-                # Build full SKU
-                full_sku = f"{series_code}{variant}" if variant else series_code
+                # Build full SKU (avoid duplication if variant == series_code)
+                if variant and variant != series_code:
+                    full_sku = f"{series_code}{variant}"
+                else:
+                    full_sku = series_code
 
                 # Normalize
                 sku_normalized = data_normalizer.normalize_sku(full_sku, "hager")

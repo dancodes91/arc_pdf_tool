@@ -44,7 +44,7 @@ class HagerParser:
         self.finish_symbols: List[ParsedItem] = []
         self.price_rules: List[ParsedItem] = []
         self.hinge_additions: List[ParsedItem] = []
-        self.products: List[ParsedItem] = []
+        self.products: List[ParsedItem] = []  # Initialize once, accumulate across chunks
 
         # Page range optimization (from PDF analysis)
         # Pages 1-6: General info (skip for product extraction)
@@ -133,8 +133,8 @@ class HagerParser:
                 range_tables = self._get_tables_from_pages(start_page, actual_end)
                 range_text = self._get_text_from_pages(start_page, actual_end)
 
-                # Parse items from this range
-                self._parse_item_tables(range_text, range_tables)
+                # Parse items from this range (pass current chunk range to prevent duplicates)
+                self._parse_item_tables(range_text, range_tables, start_page, actual_end)
 
                 self.logger.info(
                     f"[{chunk_idx}/{total_chunks}] Chunk complete: "
@@ -328,10 +328,17 @@ class HagerParser:
                 price = addition.value.get("adder_value", 0)
                 self.logger.debug(f"  {code}: ${price}")
 
-    def _parse_item_tables(self, text: str, tables: List[Any]) -> None:
-        """Parse product item tables page by page with performance optimization."""
-        self.logger.info("Parsing item tables...")
-        self.products = []
+    def _parse_item_tables(self, text: str, tables: List[Any], chunk_start: int, chunk_end: int) -> None:
+        """Parse product item tables page by page with performance optimization.
+
+        Args:
+            text: Text content from pages
+            tables: Table data from pages
+            chunk_start: Start page of current chunk (inclusive)
+            chunk_end: End page of current chunk (inclusive)
+        """
+        self.logger.info(f"Parsing item tables for pages {chunk_start}-{chunk_end}...")
+        # DO NOT reset self.products - accumulate across chunks
 
         # RELAXED FILTERING: Process pages with prices OR product indicators
         # Many Hager pages have prices embedded in tables (not visible in plain text)
@@ -359,16 +366,15 @@ class HagerParser:
             "Standard",
         ]
 
-        # Get current page range being processed (from caller)
-        # Only filter pages within the current range
+        # CRITICAL FIX: Only process pages in the CURRENT chunk range
+        # This prevents duplicate extraction across multiple chunk calls
 
         pages_to_process = []
         for page in self.document.pages:
             page_num = page.page_number
 
-            # Check if page is in current processing range
-            # (This is set by the caller in parse() method via page ranges)
-            in_range = any(start <= page_num <= end for start, end in self.product_page_ranges)
+            # Check if page is in CURRENT chunk range (not all ranges)
+            in_range = chunk_start <= page_num <= chunk_end
 
             if not in_range:
                 continue
@@ -387,6 +393,9 @@ class HagerParser:
             f"Processing {len(pages_to_process)}/{len(self.document.pages)} pages with product indicators"
         )
 
+        # Track SKUs to prevent duplicates within this chunk
+        existing_skus = {p.value.get("sku") for p in self.products if p.value.get("sku")}
+
         for page in pages_to_process:
             page_text = page.text or ""
 
@@ -396,7 +405,12 @@ class HagerParser:
                 matrix_products = self.matrix_parser.extract_matrix_products(
                     page_text, page.page_number
                 )
-                self.products.extend(matrix_products)
+                # Add only unique products
+                for product in matrix_products:
+                    sku = product.value.get("sku")
+                    if sku and sku not in existing_skus:
+                        self.products.append(product)
+                        existing_skus.add(sku)
             else:
                 # Regular table-based extraction with timeout protection
                 tables = self.section_extractor.extract_tables_with_camelot(
@@ -406,7 +420,12 @@ class HagerParser:
                 page_products = self.section_extractor.extract_item_tables(
                     page_text, tables, page.page_number
                 )
-                self.products.extend(page_products)
+                # Add only unique products
+                for product in page_products:
+                    sku = product.value.get("sku")
+                    if sku and sku not in existing_skus:
+                        self.products.append(product)
+                        existing_skus.add(sku)
 
         self.logger.info(f"Found {len(self.products)} products")
 
