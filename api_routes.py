@@ -8,7 +8,7 @@ import os
 import logging
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from typing import Dict, Any
 
 from database.manager import PriceBookManager
@@ -165,10 +165,24 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
             load_result = etl_loader.load_parsing_results(parsed_data, session)
             session.commit()
 
+            # Extract effective date from parsed_data for frontend display
+            effective_date_value = None
+            if 'effective_date' in parsed_data and parsed_data['effective_date']:
+                effective_date_item = parsed_data['effective_date']
+                if isinstance(effective_date_item, dict):
+                    date_val = effective_date_item.get('value')
+                    # Convert date object to ISO string for JSON serialization
+                    if date_val:
+                        if isinstance(date_val, date):
+                            effective_date_value = date_val.isoformat()
+                        elif isinstance(date_val, str):
+                            effective_date_value = date_val
+
             result = {
                 'price_book_id': load_result['price_book_id'],
                 'products_created': load_result['products_loaded'],
                 'finishes_loaded': load_result.get('finishes_loaded', 0),
+                'effective_date': effective_date_value,
                 'confidence': parsed_data.get('parsing_metadata', {}).get('overall_confidence', 0)
             }
         except Exception as db_error:
