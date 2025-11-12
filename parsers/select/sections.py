@@ -92,6 +92,45 @@ class SelectSectionExtractor:
             "SL41": r"SL\s*41.*?(?=SL\s*\d{2}|$)",
         }
 
+        # Valid length combinations for each model (from PDF pages 7-8)
+        # This prevents invalid products like SL12-79 (SL12 only has 83", 95", 120")
+        self.valid_model_lengths = {
+            "SL11": ["79", "83", "85", "95", "120"],
+            "SL12": ["83", "95", "120"],  # NO 79" or 85"
+            "SL14": ["83", "85", "95", "120"],  # NO 79"
+            "SL18": ["79", "83", "85", "95", "120"],
+            "SL21": ["79", "83", "85", "95", "120"],
+            "SL24": ["79", "83", "85", "95", "120"],
+            "SL41": ["79", "83", "85", "95", "120"],
+            # Pin & Barrel models (from page 10)
+            "SL310": ["79", "83", "85", "95", "119"],
+            "SL306": ["54", "57"],
+            # Latch-guard models
+            "LGO83": ["83", "95"],
+            "LGO95": ["83", "95"],
+            "LGOW83": ["83", "95"],
+            "LGOW95": ["83", "95"],
+            "LGI83": ["83", "95"],
+            "LGI95": ["83", "95"],
+        }
+
+    def is_valid_model_length(self, base_model: str, length: str) -> bool:
+        """Validate if a length is available for a specific model.
+
+        Args:
+            base_model: Model code (e.g., "SL12", "SL14")
+            length: Length value (e.g., "79", "83", "95")
+
+        Returns:
+            True if this model+length combination is valid, False otherwise
+        """
+        # If model not in validation dict, allow all lengths (permissive for unknown models)
+        if base_model not in self.valid_model_lengths:
+            return True
+
+        # Check if length is in the valid list for this model
+        return length in self.valid_model_lengths[base_model]
+
     @staticmethod
     def extract_tables_with_camelot(pdf_path: str, page_number: int, flavor: str = "lattice", timeout: int = 30):
         """Extract tables from specific page using Camelot with timeout protection.
@@ -334,6 +373,9 @@ class SelectSectionExtractor:
                     if sku and sku not in seen_skus:
                         products.append(p)
                         seen_skus.add(sku)
+                # Structured extraction succeeded - skip pattern and grid for this table
+                # to prevent creating duplicate/invalid products with different length combinations
+                continue
 
             # If structured didn't work, try pattern-based extraction for complex layouts
             pattern_products = self._extract_products_from_table_simple(
@@ -542,6 +584,11 @@ class SelectSectionExtractor:
                             # Moving to a different model family (e.g., SL11 -> SL12)
                             # Reset the current descriptor to prevent contamination
                             self.logger.debug(f"Model family changed: {current_base_model} -> {new_base_model}")
+                            # CRITICAL FIX: Reset sub-header lengths when changing model families
+                            # This prevents using stale length data from previous models
+                            # (e.g., SL11's 79" being incorrectly applied to SL12 which doesn't have 79")
+                            current_sub_header_lengths = None
+                            self.logger.debug(f"Reset sub-header lengths for new model family")
 
                         current_descriptor = model_descriptor
                         current_parsed = parsed
@@ -620,17 +667,18 @@ class SelectSectionExtractor:
 
 
                     # Use sub-header to refine column mapping if available
-                    # Combine main header lengths with sub-header column indices where available
+                    # When a sub-header is present, it defines the EXACT lengths available for that model
                     if current_sub_header_lengths:
-                        # Start with main header lengths and columns
-                        active_length_columns = length_columns.copy()
-                        # Update column indices from sub-header for lengths it mentions
+                        # Use ONLY the lengths specified in the sub-header for this model
+                        # DO NOT use lengths from the main header, as those may include
+                        # lengths from other models (e.g., SL11's 79" being applied to SL12)
                         sub_header_dict = {length: col_idx for col_idx, length in current_sub_header_lengths}
-                        for length in sub_header_dict:
-                            active_length_columns[length] = sub_header_dict[length]
-                        active_lengths = lengths  # Keep all lengths from main header
-                        self.logger.debug(f"Using combined header/sub-header lengths: {active_lengths}")
+                        active_length_columns = sub_header_dict
+                        active_lengths = [length for length in sub_header_dict.keys()]
+                        self.logger.debug(f"Using sub-header lengths ONLY for this model: {active_lengths}")
                     else:
+                        # Use main header lengths as fallback, but we'll validate later
+                        # to ensure we don't create invalid products
                         active_length_columns = length_columns
                         active_lengths = lengths
 
@@ -855,6 +903,14 @@ class SelectSectionExtractor:
         table_idx: int
     ) -> None:
         """Create a product item and add it to the products list."""
+        # VALIDATION: Check if this model+length combination is valid
+        if not self.is_valid_model_length(base_model, length):
+            self.logger.info(
+                f"[FILTER] Skipping invalid product: {base_model} with length {length}\" "
+                f"(not available for this model)"
+            )
+            return
+
         # Build SKU: BASE_MODEL-FINISH-DUTY-LENGTH
         sku_parts = [base_model]
         if finish:
@@ -929,7 +985,7 @@ class SelectSectionExtractor:
         if not match:
             return None
 
-        base_model = match.group(1).replace(" ", "")  # "SL11"
+        base_model = match.group(1).replace(" ", "").upper()  # "SL11"
         finish = match.group(2).upper() if match.group(2) else None  # "CL"
         duty = match.group(3).upper() if match.group(3) else None  # "HD600"
 
@@ -1081,7 +1137,7 @@ class SelectSectionExtractor:
                 if not sku_match:
                     continue
 
-                base_model = sku_match.group(1).replace(" ", "")  # SL21
+                base_model = sku_match.group(1).replace(" ", "").upper()  # SL21
                 finish_code = (
                     sku_match.group(2).upper() if sku_match.group(2) else None
                 )  # CL, BR, BK or None
@@ -1196,6 +1252,14 @@ class SelectSectionExtractor:
 
                 # If still no price, skip this entry (was creating too many 0-price entries)
                 if price_val is None or price_val == 0:
+                    continue
+
+                # VALIDATION: Check if this model+length combination is valid
+                if length_value and not self.is_valid_model_length(base_model, length_value):
+                    self.logger.info(
+                        f"[FILTER] Skipping invalid product: {base_model} with length {length_value}\" "
+                        f"(not available for this model) - SKU would be: {sku}"
+                    )
                     continue
 
                 # Check for duplicates using (sku, price) tuple - allows same SKU with different prices
@@ -1345,6 +1409,14 @@ class SelectSectionExtractor:
 
                     # Match lengths to prices
                     for length, price in zip(lengths, prices):
+                        # VALIDATION: Check if this model+length combination is valid
+                        if not self.is_valid_model_length(base_model, length):
+                            self.logger.info(
+                                f"[FILTER] Skipping invalid product: {base_model} with length {length}\" "
+                                f"(not available for this model)"
+                            )
+                            continue
+
                         # Build SKU: BASE_MODEL-LENGTH (no finish for Pin & Barrel)
                         sku = f"{base_model}-{length}"
 
@@ -1468,7 +1540,16 @@ class SelectSectionExtractor:
                                         price_val = float(price_str.replace(',', ''))
                                         if 10 <= price_val <= 10000:
                                             length = lengths[idx]
+                                            latch_model = f"{prefix}{length}"
                                             sku = f"{prefix}{length}-{finish}"
+
+                                            # VALIDATION: Check if this model+length combination is valid
+                                            if not self.is_valid_model_length(latch_model, length):
+                                                self.logger.info(
+                                                    f"[FILTER] Skipping invalid latch-guard product: {latch_model} with length {length}\" "
+                                                    f"(not available for this model)"
+                                                )
+                                                continue
 
                                             if sku not in existing_skus:
                                                 existing_skus.add(sku)
@@ -1550,6 +1631,14 @@ class SelectSectionExtractor:
                         break
 
                 for length, price in zip(length_headers, prices):
+                    # VALIDATION: Check if this model+length combination is valid
+                    if not self.is_valid_model_length(base_model, length):
+                        self.logger.info(
+                            f"[FILTER] Skipping invalid product: {base_model} with length {length}\" "
+                            f"(not available for this model)"
+                        )
+                        continue
+
                     sku = f"{base_model}-{finish}-{duty}-{length}"
                     description = f"{base_model} {finish} {duty} {length}"
                     item = self.tracker.create_parsed_item(
@@ -1594,6 +1683,14 @@ class SelectSectionExtractor:
             price = float(product_match.group("price"))
 
             if price < 5:  # Ignore obvious noise
+                continue
+
+            # VALIDATION: Check if this model+length combination is valid
+            if not self.is_valid_model_length(current_model, length):
+                self.logger.info(
+                    f"[FILTER] Skipping invalid product: {current_model} with length {length}\" "
+                    f"(not available for this model)"
+                )
                 continue
 
             sku = f"{current_model}{finish}{length}"
@@ -1933,6 +2030,21 @@ class SelectSectionExtractor:
                     length_match = re.search(r'(HD\d+|LD\d+|LL|\d+\s*")', cell_str)
                     if length_match:
                         length_duty = length_match.group(1).replace(" ", "")
+
+                # Extract numeric length for validation
+                validation_length = None
+                if length_from_col:
+                    validation_length = length_from_col
+                elif length_duty and re.match(r'^\d{2,3}$', length_duty):
+                    validation_length = length_duty
+
+                # VALIDATION: Check if this model+length combination is valid
+                if validation_length and not self.is_valid_model_length(base_model, validation_length):
+                    self.logger.info(
+                        f"[FILTER] Skipping invalid product: {base_model} with length {validation_length}\" "
+                        f"(not available for this model)"
+                    )
+                    continue
 
                 # Build SKU with proper format: {BASE}_{FINISH}_{DUTY}_{LENGTH}
                 sku_parts = [base_model]
