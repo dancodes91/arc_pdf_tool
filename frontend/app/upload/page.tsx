@@ -138,8 +138,12 @@ export default function UploadPage() {
               })
               setUploadedBookId(status.result.price_book_id?.toString() || null)
               setLogs(prev => [...prev, '[SUCCESS] Processing complete'])
-              // Refresh price books list
-              fetchPriceBooks()
+
+              // Refresh price books list with small delay to ensure backend verification completed
+              setTimeout(() => {
+                fetchPriceBooks()
+                setLogs(prev => [...prev, '[INFO] Price books list refreshed'])
+              }, 500)
             }
 
             // Check if failed

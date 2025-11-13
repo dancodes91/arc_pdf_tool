@@ -163,7 +163,13 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
         try:
             etl_loader = ETLLoader(database_url=os.getenv('DATABASE_URL', 'sqlite:///price_books.db'))
             load_result = etl_loader.load_parsing_results(parsed_data, session)
+
+            # Flush and commit to ensure data is written
+            session.flush()
             session.commit()
+
+            price_book_id = load_result['price_book_id']
+            products_created = load_result['products_loaded']
 
             # Extract effective date from parsed_data for frontend display
             effective_date_value = None
@@ -179,8 +185,8 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
                             effective_date_value = date_val
 
             result = {
-                'price_book_id': load_result['price_book_id'],
-                'products_created': load_result['products_loaded'],
+                'price_book_id': price_book_id,
+                'products_created': products_created,
                 'finishes_loaded': load_result.get('finishes_loaded', 0),
                 'effective_date': effective_date_value,
                 'confidence': parsed_data.get('parsing_metadata', {}).get('overall_confidence', 0)
@@ -191,15 +197,44 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
             raise
         finally:
             session.close()
-        
+
+        # Verify data is actually accessible before marking as complete
+        with jobs_lock:
+            upload_jobs[job_id]['progress'] = 90
+            upload_jobs[job_id]['message'] = 'Verifying database consistency...'
+
+        # Wait a moment and verify the price book is retrievable
+        import time
+        time.sleep(0.5)  # Small delay to ensure database visibility
+
+        # Verify with a fresh session that the data is accessible
+        verification_session = db_manager.get_session()
+        try:
+            from database.models import PriceBook
+            verified_book = verification_session.query(PriceBook).filter(
+                PriceBook.id == price_book_id
+            ).first()
+
+            if not verified_book:
+                raise Exception(f"Price book {price_book_id} not found after commit - database consistency error")
+
+            logger.info(f"Verified price book {price_book_id} is accessible with {verified_book.product_count} products")
+
+        except Exception as verify_error:
+            logger.error(f"Verification failed: {verify_error}", exc_info=True)
+            raise
+        finally:
+            verification_session.close()
+
+        # Now mark as truly completed
         with jobs_lock:
             upload_jobs[job_id]['status'] = 'completed'
             upload_jobs[job_id]['progress'] = 100
             upload_jobs[job_id]['message'] = 'Processing complete'
             upload_jobs[job_id]['result'] = result
             upload_jobs[job_id]['completed_at'] = datetime.utcnow().isoformat()
-        
-        logger.info(f"Job {job_id} completed successfully")
+
+        logger.info(f"Job {job_id} completed successfully with verified data")
         
     except Exception as e:
         logger.error(f"Error processing PDF in job {job_id}: {e}", exc_info=True)
