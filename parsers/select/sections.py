@@ -410,7 +410,9 @@ class SelectSectionExtractor:
             # Text extraction already handles deduplication via existing_skus, so just extend
             products.extend(text_products)
 
-        # Deduplicate products by normalized SKU, prefer entries with higher price/confidence
+        # Deduplicate products by normalized SKU
+        # Prefer text extraction over table extraction (more accurate for complex layouts)
+        # If same method, prefer higher price (more likely correct for partial data)
         deduped_products: Dict[str, ParsedItem] = {}
         for p in products:
             sku = p.value.get("sku", "")
@@ -418,11 +420,20 @@ class SelectSectionExtractor:
             normalized_sku = normalized_sku or sku.upper()
 
             existing = deduped_products.get(normalized_sku)
+            candidate_method = getattr(p.provenance, "extraction_method", "")
             candidate_price = p.value.get("base_price") or 0
 
             if existing:
+                existing_method = getattr(existing.provenance, "extraction_method", "")
                 existing_price = existing.value.get("base_price") or 0
-                if candidate_price >= existing_price:
+
+                # Prefer text_patterns over table_extraction (more reliable for garbled tables)
+                if candidate_method == "text_patterns" and existing_method == "table_extraction":
+                    deduped_products[normalized_sku] = p
+                elif candidate_method == "table_extraction" and existing_method == "text_patterns":
+                    pass  # Keep existing text extraction
+                # Same method: prefer higher price (likely more complete data)
+                elif candidate_price >= existing_price:
                     deduped_products[normalized_sku] = p
             else:
                 deduped_products[normalized_sku] = p
@@ -1353,27 +1364,40 @@ class SelectSectionExtractor:
             # Example:
             #   Model # 79" / 83" 85" / 95" 119"
             #   SL310 1,380 1,407 2,012
-            if line.upper().startswith("MODEL #"):
+            # Also handles cases where "Model #" appears in the middle of the line
+            if "MODEL #" in line.upper():
                 # Extract all length values from the header
                 length_header = line
                 lengths = []
 
+                # Common hinge lengths - only extract these valid values
+                valid_hinge_lengths = {"79", "83", "85", "95", "119", "120"}
+
                 # Match patterns like: 79" / 83", 85" / 95", 119", 54", 57"
-                # Split by whitespace but keep quoted groups together
-                parts = re.findall(r'(\d+"\s*/\s*\d+"|\\d+")', length_header)
-                for part in parts:
-                    # Extract all numeric values from each part
-                    nums = re.findall(r'(\d+)', part)
-                    lengths.extend(nums)
+                # Look for standalone numbers followed by quote marks
+                length_matches = re.findall(r'(\d{2,3})\s*"', length_header)
 
-                # If no lengths found with the above pattern, try simpler pattern
-                if not lengths:
-                    lengths = re.findall(r'(\d{2,3})(?:\s*")?', length_header)
+                # Filter to only valid hinge lengths
+                for length in length_matches:
+                    if length in valid_hinge_lengths:
+                        lengths.append(length)
 
-                # Remove "Model" and "#" from lengths if captured
-                lengths = [l for l in lengths if l not in ["Model", "#", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]]
+                # Special handling for garbled text (e.g., "8163" which should be "83")
+                # Look for valid hinge lengths as substrings in longer digit sequences
+                if len(lengths) < 3:  # If we haven't found all expected lengths
+                    # Find all digit sequences in the line
+                    all_digit_sequences = re.findall(r'\d+', length_header)
+                    for seq in all_digit_sequences:
+                        # Check if any valid hinge length appears as a substring
+                        for valid_length in sorted(valid_hinge_lengths, key=lambda x: -len(x)):
+                            if valid_length in seq and valid_length not in lengths:
+                                lengths.append(valid_length)
 
-                self.logger.debug(f"Found Model # header with lengths: {lengths}")
+                # Remove duplicates while preserving order
+                seen = set()
+                lengths = [x for x in lengths if not (x in seen or seen.add(x))]
+
+                self.logger.info(f"Found Model # header with lengths: {lengths}")
 
                 # Look ahead for the next non-empty line (should be the model + prices)
                 i += 1
@@ -1383,7 +1407,119 @@ class SelectSectionExtractor:
                         i += 1
                         continue
 
-                    # Check if this line starts with a model number
+                    # Try to parse full model descriptor (e.g., "SL12 CL HD600" or just "SL310")
+                    # First, try matching the full descriptor with finish and duty codes
+                    full_model_match = re.match(r'^(SL\d{2,4})\s+(CL|BR|BK)\s+(HD\d+|LL)\s+(.*)', data_line, re.IGNORECASE)
+
+                    # IMPORTANT FIX: Before processing, check if we need to infer missing lengths
+                    # Count how many prices we have in the data line to know how many lengths we need
+                    if full_model_match:
+                        base_model = full_model_match.group(1).upper()
+                        prices_str = full_model_match.group(4).strip()
+
+                        # Extract all prices to count them
+                        temp_price_matches = re.findall(r'(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)', prices_str)
+                        temp_prices = []
+                        for price_str in temp_price_matches:
+                            try:
+                                price_val = float(price_str.replace(',', ''))
+                                if 10 <= price_val <= 10000:
+                                    temp_prices.append(price_val)
+                            except ValueError:
+                                continue
+
+                        # If we have more prices than lengths, try to infer missing lengths
+                        if len(temp_prices) > len(lengths):
+                            self.logger.info(f"Have {len(temp_prices)} prices but only {len(lengths)} lengths for {base_model} - inferring missing lengths")
+
+                            # Get valid lengths for this model
+                            if hasattr(self, 'valid_model_lengths') and base_model in self.valid_model_lengths:
+                                model_valid_lengths = self.valid_model_lengths[base_model]
+
+                                # Find which lengths are missing
+                                missing_lengths = [l for l in model_valid_lengths if l not in lengths]
+
+                                # Add missing lengths until we have enough
+                                for missing in missing_lengths:
+                                    if len(lengths) < len(temp_prices):
+                                        lengths.insert(0, missing)  # Insert at beginning (likely the garbled one)
+                                        self.logger.info(f"Inferred missing length: {missing}\" for {base_model}")
+
+                                self.logger.info(f"Updated lengths: {lengths}")
+
+                    if full_model_match:
+                        # This is a model with finish and duty codes (e.g., SL12 CL HD600)
+                        base_model = full_model_match.group(1).upper()
+                        finish = full_model_match.group(2).upper()
+                        duty = full_model_match.group(3).upper()
+                        prices_str = full_model_match.group(4).strip()
+
+                        # Extract all prices from the rest of the line
+                        price_matches = re.findall(r'(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)', prices_str)
+                        prices = []
+                        for price_str in price_matches:
+                            try:
+                                price_val = float(price_str.replace(',', ''))
+                                if 10 <= price_val <= 10000:  # Valid price range
+                                    prices.append(price_val)
+                            except ValueError:
+                                continue
+
+                        self.logger.debug(f"Model {base_model} {finish} {duty} has {len(prices)} prices for {len(lengths)} lengths")
+
+                        # Match lengths to prices
+                        for length, price in zip(lengths, prices):
+                            # VALIDATION: Check if this model+length combination is valid
+                            if not self.is_valid_model_length(base_model, length):
+                                self.logger.info(
+                                    f"[FILTER] Skipping invalid product: {base_model} with length {length}\" "
+                                    f"(not available for this model)"
+                                )
+                                continue
+
+                            # Build SKU: BASE_MODEL-FINISH-DUTY-LENGTH
+                            sku = f"{base_model}-{finish}-{duty}-{length}"
+
+                            # Don't skip duplicates here - let the deduplication logic later handle it
+                            # This allows text extraction to override table extraction when prices are better
+                            existing_skus.add(sku)
+
+                            # Build description
+                            description = f"{base_model} {finish} {duty} {length}\""
+
+                            # Create product
+                            product_data = {
+                                "sku": sku,
+                                "model": base_model,
+                                "series": base_model[:3] if len(base_model) >= 3 else base_model,
+                                "description": description,
+                                "base_price": price,
+                                "finish_code": finish,
+                                "specifications": {
+                                    "length": f'{length}"',
+                                    "duty": duty,
+                                },
+                                "is_active": True,
+                                "manufacturer": "SELECT Hinges",
+                            }
+
+                            item = self.tracker.create_parsed_item(
+                                value=product_data,
+                                data_type="product",
+                                raw_text=f"{base_model} {finish} {duty} {length}\" ${price}",
+                                confidence=0.90,
+                                row_index=i,
+                                page_number=page_number,
+                            )
+                            products.append(item)
+
+                            self.logger.info(f"[TEXT-HORIZONTAL] Created {sku} = ${price}")
+
+                        # Move to next line
+                        i += 1
+                        continue
+
+                    # Fallback: Try simple model pattern (for Pin & Barrel, etc.)
                     model_match = re.match(r'^(SL\d{2,4}(?:TP)?)\s+(.*)', data_line, re.IGNORECASE)
                     if not model_match:
                         # Not a model line, exit this pattern
