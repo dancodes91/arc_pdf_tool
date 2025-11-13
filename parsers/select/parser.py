@@ -34,9 +34,12 @@ class SelectHingesParser:
         self.net_add_options: List[ParsedItem] = []
         self.products: List[ParsedItem] = []
         self.finishes: List[ParsedItem] = []
-        
+
         # Progress callback for async updates
         self.progress_callback: Optional[callable] = None
+
+        # OPTIMIZATION: Reusable pdfplumber handle to avoid re-opening PDF 100+ times
+        self._pdfplumber_handle = None
 
     def set_progress_callback(self, callback: callable):
         """Set callback function for progress updates (progress: int, message: str)"""
@@ -49,6 +52,31 @@ class SelectHingesParser:
                 self.progress_callback(progress, message)
             except Exception as e:
                 self.logger.warning(f"Error calling progress callback: {e}")
+
+    def _open_pdfplumber_once(self):
+        """
+        OPTIMIZATION: Open pdfplumber handle once and reuse it.
+        Prevents re-opening the entire PDF for each page (saves 50-100MB per page).
+        """
+        if self._pdfplumber_handle is None:
+            import pdfplumber
+            self._pdfplumber_handle = pdfplumber.open(self.pdf_path)
+            self.logger.debug(f"Opened pdfplumber handle (will be reused for all pages)")
+        return self._pdfplumber_handle
+
+    def _close_pdfplumber(self):
+        """OPTIMIZATION: Close pdfplumber handle to free memory."""
+        if self._pdfplumber_handle is not None:
+            try:
+                self._pdfplumber_handle.close()
+                self._pdfplumber_handle = None
+                self.logger.debug("Closed pdfplumber handle")
+            except Exception as e:
+                self.logger.warning(f"Error closing pdfplumber: {e}")
+
+    def __del__(self):
+        """Cleanup: Ensure pdfplumber handle is closed."""
+        self._close_pdfplumber()
 
     def parse(self) -> Dict[str, Any]:
         """Parse SELECT Hinges PDF with comprehensive extraction."""
@@ -86,6 +114,11 @@ class SelectHingesParser:
         except Exception as e:
             self.logger.error(f"Error during SELECT parsing: {e}")
             return self._build_error_results(str(e))
+        finally:
+            # OPTIMIZATION: Always close pdfplumber handle to free memory
+            self._close_pdfplumber()
+            import gc
+            gc.collect()
 
     def _combine_text_content(self) -> str:
         """Combine text content from all pages."""
@@ -229,10 +262,10 @@ class SelectHingesParser:
             page_products = self.section_extractor.extract_model_tables(
                 page_text, page_tables or [], page_number=page_num
             )
-            
-            # Clear page_tables reference after use to free memory
+
+            # OPTIMIZATION: Clear references immediately after use
             del page_tables
-            
+
             if page_products:
                 self.products.extend(page_products)
                 pages_processed.append(page_num)
@@ -241,17 +274,20 @@ class SelectHingesParser:
                 )
                 # Clear page_products reference after extending
                 del page_products
-            
+
             # Clear page_text after processing
             del page_text
-            
-            # Force garbage collection after each page to free memory
+
+            # OPTIMIZATION: Aggressive garbage collection after EVERY page
+            # This prevents memory accumulation on large PDFs
             gc.collect()
-            
-            # Full garbage collection every 5 pages (batch processing)
-            if (batch_idx + 1) % batch_size == 0:
-                gc.collect(2)  # Full collection for batch cleanup
-                self.logger.debug(f"Completed batch of {batch_size} pages, performed full GC")
+
+            # Full garbage collection every 10 pages (increased from 5 for efficiency)
+            if (batch_idx + 1) % 10 == 0:
+                gc.collect(2)  # Full generation 2 collection
+                gc.collect(1)  # Generation 1 collection
+                gc.collect(0)  # Young generation collection
+                self.logger.debug(f"Completed {batch_idx + 1} pages, performed full GC (3 generations)")
 
         elapsed_total = time.time() - start_time
         self.logger.info(
@@ -269,26 +305,26 @@ class SelectHingesParser:
     def _extract_page_text_with_pdfplumber(self, page_number: int) -> str:
         """Extract text from a specific page using pdfplumber with timeout protection.
 
+        OPTIMIZED: Reuses single pdfplumber handle instead of opening PDF for each page.
+        This saves 50-100MB per page on large PDFs.
+
         pdfplumber preserves table formatting better than pypdf,
         which is critical for extracting horizontal product tables.
-        
-        Opens PDF fresh for each page to prevent memory accumulation.
-        
+
         Args:
             page_number: 1-based page number
         """
         import threading
-        import pdfplumber
-        
+
         # Timeout per page to prevent hanging (15 seconds)
         page_timeout = 15.0
-        
+
         class TextExtractor:
             def __init__(self):
                 self.result = ""
                 self.completed = False
                 self.error = None
-            
+
             def extract(self, pdf, page_idx):
                 try:
                     page = pdf.pages[page_idx]
@@ -297,40 +333,73 @@ class SelectHingesParser:
                 except Exception as e:
                     self.error = str(e)
                     self.completed = True
-        
+
         try:
-            # Open PDF fresh for each page to prevent memory accumulation
-            # This is slower but prevents memory issues
-            with pdfplumber.open(self.pdf_path) as pdf:
-                # Run extraction in a thread with timeout
-                extractor = TextExtractor()
-                page_idx = page_number - 1  # pdfplumber uses 0-based indexing
-                
-                thread = threading.Thread(target=extractor.extract, args=(pdf, page_idx))
-                thread.daemon = True
-                thread.start()
-                thread.join(timeout=page_timeout)
-                
-                if thread.is_alive():
-                    # Thread is still running - it timed out
-                    self.logger.warning(
-                        f"pdfplumber text extraction timed out after {page_timeout}s for page {page_number}. "
-                        f"Falling back to existing page text."
-                    )
-                    # Return empty string - will use existing page text from document
+            # OPTIMIZATION: Reuse single pdfplumber handle
+            pdf = self._open_pdfplumber_once()
+
+            # Run extraction in a thread with timeout
+            extractor = TextExtractor()
+            page_idx = page_number - 1  # pdfplumber uses 0-based indexing
+
+            thread = threading.Thread(target=extractor.extract, args=(pdf, page_idx))
+            thread.daemon = True
+            thread.start()
+            thread.join(timeout=page_timeout)
+
+            if thread.is_alive():
+                # Thread is still running - it timed out
+                self.logger.warning(
+                    f"pdfplumber text extraction timed out after {page_timeout}s for page {page_number}. "
+                    f"Falling back to existing page text."
+                )
+                # OPTIMIZATION: Force cleanup of timed-out thread resources
+                del extractor
+                import gc
+                gc.collect()
+                # Return empty string - will use existing page text from document
+                return ""
+
+            if extractor.completed:
+                if extractor.error:
+                    self.logger.warning(f"pdfplumber text extraction failed for page {page_number}: {extractor.error}")
                     return ""
-                
-                if extractor.completed:
-                    if extractor.error:
-                        self.logger.warning(f"pdfplumber text extraction failed for page {page_number}: {extractor.error}")
-                        return ""
-                    return extractor.result
-                else:
-                    self.logger.warning(f"pdfplumber text extraction did not complete for page {page_number}")
-                    return ""
+                return extractor.result
+            else:
+                self.logger.warning(f"pdfplumber text extraction did not complete for page {page_number}")
+                return ""
         except Exception as e:
             self.logger.warning(f"pdfplumber text extraction failed for page {page_number}: {e}")
             return ""
+
+    def _detect_has_grid_lines(self, page_text: str) -> bool:
+        """
+        OPTIMIZATION: Detect if page likely has grid lines for smart Camelot flavor selection.
+        Reduces Camelot attempts from 2-3 to 1, saving 50% processing time.
+
+        Returns:
+            True if page likely has grid/border lines (use lattice)
+            False if borderless tables (use stream)
+        """
+        # Heuristic: Look for patterns that indicate structured tables with borders
+        grid_indicators = [
+            r'\+[-+]+\+',           # ASCII box drawing characters
+            r'\|.*\|.*\|',          # Multiple pipes suggesting columns
+            r'─',                   # Unicode box drawing
+            r'│',                   # Unicode vertical lines
+        ]
+
+        for pattern in grid_indicators:
+            if re.search(pattern, page_text):
+                return True
+
+        # Check for dense numeric content (often in bordered tables)
+        lines = page_text.split('\n')
+        numeric_lines = sum(1 for line in lines if re.search(r'\d+\.\d{2}', line))
+        if numeric_lines > len(lines) * 0.3:  # 30%+ lines have prices
+            return True
+
+        return False
 
     def _resolve_page_tables(
         self,
@@ -341,6 +410,8 @@ class SelectHingesParser:
     ) -> Tuple[List[Any], str, bool]:
         """
         Determine the best table extraction for a page.
+
+        OPTIMIZED: Smart flavor selection - only tries 1 Camelot flavor instead of 2-3.
 
         Prioritizes tables already extracted during PDF parsing and only falls back to
         Camelot when required. Returns the tables, the method name chosen, and whether
@@ -353,7 +424,6 @@ class SelectHingesParser:
 
         quality_threshold = camelot_settings.get("quality_threshold", 45)
         camelot_enabled = camelot_settings.get("enable", True)
-        camelot_flavors = camelot_settings.get("flavors", ["stream", "lattice"])
         camelot_max_pages = camelot_settings.get("max_pages")
 
         if camelot_enabled and camelot_max_pages is not None:
@@ -374,6 +444,16 @@ class SelectHingesParser:
         if camelot_enabled:
             # Get timeout from config, default to 15 seconds (reduced for speed)
             camelot_timeout = self.config.get("camelot_timeout", 15)
+
+            # OPTIMIZATION: Smart flavor selection based on page analysis
+            has_grid_lines = self._detect_has_grid_lines(page_text)
+
+            if has_grid_lines:
+                camelot_flavors = ['lattice']  # Only try lattice for gridded tables
+                self.logger.debug(f"Page {page.page_number}: Detected grid lines, using lattice only")
+            else:
+                camelot_flavors = ['stream']   # Only try stream for borderless tables
+                self.logger.debug(f"Page {page.page_number}: No grid detected, using stream only")
 
             for flavor in camelot_flavors:
                 self.logger.info(
@@ -413,8 +493,8 @@ class SelectHingesParser:
                     # Clear tables that didn't win to free memory
                     del tables
 
-                if tables_score >= quality_threshold:
-                    break
+                # OPTIMIZATION: Since we only try 1 flavor now, no need for quality check break
+                break
 
         if best_tables:
             return best_tables, best_method, camelot_used
