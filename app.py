@@ -21,20 +21,15 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 Config.init_app(app)
 
-# CORS: Allow Vercel frontend + local development
-CORS(app,
-     origins=[
-         'https://pdf-parser-inky.vercel.app',  # Production frontend
-         'http://localhost:3000',
-         'http://localhost:3001',
-         'http://localhost:3002',
-         'http://127.0.0.1:3000',
-         'http://127.0.0.1:3001',
-         'http://127.0.0.1:3002'
-     ],
-     supports_credentials=True,
-     allow_headers=['Content-Type', 'Authorization'],
-     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+# CORS configuration
+# Allow any frontend origin to call the API routes.
+# This is important for Vercel/Render deployments where the frontend URL can change.
+CORS(
+    app,
+    resources={r"/api/*": {"origins": "*"}},
+    supports_credentials=False,
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 )
 
 # Register API blueprint
