@@ -92,14 +92,15 @@ class SelectSectionExtractor:
             "SL41": r"SL\s*41.*?(?=SL\s*\d{2}|$)",
         }
 
-        # Valid length combinations for each model (from PDF pages 7-8)
+        # Valid length combinations for each model (from 2025 PDF pages 7-8)
         # This prevents invalid products like SL12-79 (SL12 only has 83", 95", 120")
+        # and SL18-79 / SL21-79, while still allowing legitimate 79" rows such as SL11 and SL14 BK.
         self.valid_model_lengths = {
             "SL11": ["79", "83", "85", "95", "120"],
             "SL12": ["83", "95", "120"],  # NO 79" or 85"
-            "SL14": ["83", "85", "95", "120"],  # NO 79"
-            "SL18": ["79", "83", "85", "95", "120"],
-            "SL21": ["79", "83", "85", "95", "120"],
+            "SL14": ["79", "83", "85", "95", "120"],  # 79" valid (e.g., SL14 BK HD600 79")
+            "SL18": ["83", "85", "95", "120"],  # 79" not listed in 2025 tables
+            "SL21": ["83", "85", "95", "120"],  # 79" not listed in 2025 tables
             "SL24": ["79", "83", "85", "95", "120"],
             "SL41": ["79", "83", "85", "95", "120"],
             # Pin & Barrel models (from page 10)
