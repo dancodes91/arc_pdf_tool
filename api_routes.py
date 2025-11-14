@@ -210,7 +210,7 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
         # Verify with a fresh session that the data is accessible
         verification_session = db_manager.get_session()
         try:
-            from database.models import PriceBook
+            from database.models import PriceBook, Product
             verified_book = verification_session.query(PriceBook).filter(
                 PriceBook.id == price_book_id
             ).first()
@@ -218,7 +218,12 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
             if not verified_book:
                 raise Exception(f"Price book {price_book_id} not found after commit - database consistency error")
 
-            logger.info(f"Verified price book {price_book_id} is accessible with {verified_book.product_count} products")
+            # Get actual product count from database
+            verified_product_count = verification_session.query(Product).filter(
+                Product.price_book_id == price_book_id
+            ).count()
+
+            logger.info(f"Verified price book {price_book_id} is accessible with {verified_product_count} products")
 
         except Exception as verify_error:
             logger.error(f"Verification failed: {verify_error}", exc_info=True)
