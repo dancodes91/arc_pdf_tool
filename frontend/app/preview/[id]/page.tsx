@@ -57,6 +57,8 @@ export default function PreviewPage() {
             status: data.status || 'completed',
             product_count: data.product_count || 0,
             option_count: data.option_count || 0,
+            finish_count: data.finish_count || 0,
+            rule_count: data.rule_count || 0,
             file_path: data.file_path || ''
           })
         } catch (error) {
@@ -243,7 +245,7 @@ export default function PreviewPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${products.filter(p => p.base_price).reduce((sum, p) => sum + (p.base_price || 0), 0) / products.filter(p => p.base_price).length || 0}
+              ${(products.filter(p => p.base_price).reduce((sum, p) => sum + (p.base_price || 0), 0) / products.filter(p => p.base_price).length || 0).toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground">
               Based on {products.filter(p => p.base_price).length} products

@@ -151,8 +151,8 @@ export default function PriceBookDetailPage() {
 
   const lowConfidenceCount = 0 // Placeholder - would come from API
   const optionsCount = currentPriceBook.option_count || 0
-  const finishesCount = 0 // Placeholder - would come from API
-  const rulesCount = 0 // Placeholder - would come from API
+  const finishesCount = currentPriceBook.finish_count || 0
+  const rulesCount = currentPriceBook.rule_count || 0
 
   return (
     <div className="container-max p-6 space-y-6">

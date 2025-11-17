@@ -6,7 +6,7 @@ import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Eye, Download, Trash2, FileText, Upload } from 'lucide-react'
+import { Eye, Download, Trash2, FileText, Upload, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { ColumnDef } from '@tanstack/react-table'
 
@@ -23,8 +23,28 @@ type PriceBook = {
 export default function BooksPage() {
   const { priceBooks, loading, fetchPriceBooks, deletePriceBook, exportPriceBook } = usePriceBookStore()
 
+  // Fetch price books on mount and when window regains focus
   useEffect(() => {
     fetchPriceBooks()
+
+    // Refresh when user navigates back to this page
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchPriceBooks()
+      }
+    }
+
+    const handleFocus = () => {
+      fetchPriceBooks()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [fetchPriceBooks])
 
   const columns: ColumnDef<PriceBook>[] = [
@@ -173,12 +193,23 @@ export default function BooksPage() {
             Browse and manage your parsed price books
           </p>
         </div>
-        <Link href="/upload">
-          <Button>
-            <Upload className="h-4 w-4" />
-            Upload New
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => fetchPriceBooks()}
+            disabled={loading}
+            title="Refresh"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-        </Link>
+          <Link href="/upload">
+            <Button>
+              <Upload className="h-4 w-4" />
+              Upload New
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}

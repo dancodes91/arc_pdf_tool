@@ -126,10 +126,11 @@ def main():
         
         # Start Flask application
         logger.info("Starting Flask application")
+        port = int(os.environ.get('PORT', '5050'))
         app.run(
             debug=Config.DEBUG if hasattr(Config, 'DEBUG') else False,
             host='0.0.0.0',
-            port=5000,
+            port=port,
             threaded=True
         )
         

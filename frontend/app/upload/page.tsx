@@ -139,11 +139,11 @@ export default function UploadPage() {
               setUploadedBookId(status.result.price_book_id?.toString() || null)
               setLogs(prev => [...prev, '[SUCCESS] Processing complete'])
 
-              // Refresh price books list with small delay to ensure backend verification completed
+              // Refresh price books list with delay to ensure backend verification completed
               setTimeout(() => {
                 fetchPriceBooks()
                 setLogs(prev => [...prev, '[INFO] Price books list refreshed'])
-              }, 500)
+              }, 1500)
             }
 
             // Check if failed
@@ -465,7 +465,7 @@ export default function UploadPage() {
                   <Button
                     variant="default"
                     className="justify-start"
-                    onClick={() => uploadedBookId && router.push(`/books/${uploadedBookId}`)}
+                    onClick={() => uploadedBookId && router.push(`/preview/${uploadedBookId}`)}
                   >
                     <Eye className="h-4 w-4" />
                     Preview Parsed Data
@@ -495,9 +495,9 @@ export default function UploadPage() {
               <div className="flex justify-between">
                 <Button
                   variant="ghost"
-                  onClick={() => router.push('/')}
+                  onClick={() => router.push('/books')}
                 >
-                  Return to Dashboard
+                  View All Price Books
                 </Button>
                 <Button
                   onClick={() => {

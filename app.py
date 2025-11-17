@@ -337,4 +337,6 @@ if __name__ == '__main__':
     price_book_manager.initialize_database()
     
     # Run app
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Use PORT environment variable if set, otherwise default to 5050
+    port = int(os.environ.get('PORT', '5050'))
+    app.run(debug=True, host='0.0.0.0', port=port)

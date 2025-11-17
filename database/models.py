@@ -159,6 +159,26 @@ class ChangeLog(Base):
     new_price_book = relationship("PriceBook", foreign_keys=[new_price_book_id])
     product = relationship("Product")
 
+
+class UploadJob(Base):
+    """Track long-running PDF upload and parsing jobs.
+
+    This provides a durable progress record so that /upload/status works
+    reliably even when the backend runs with multiple worker processes.
+    """
+
+    __tablename__ = "upload_jobs"
+
+    id = Column(String(64), primary_key=True)  # UUID string from API
+    filename = Column(Text, nullable=True)
+    status = Column(String(50), nullable=False, default="queued")  # queued, processing, completed, failed
+    progress = Column(Integer, nullable=False, default=0)  # 0-100
+    message = Column(Text, nullable=True)
+    price_book_id = Column(Integer, ForeignKey("price_books.id"), nullable=True)
+    started_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
+    error = Column(Text, nullable=True)
+
 class DatabaseManager:
     """Database connection and session management"""
 

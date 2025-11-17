@@ -19,7 +19,7 @@ const nextConfig = {
     return config;
   },
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
     return [
       {
         source: '/api/:path*',

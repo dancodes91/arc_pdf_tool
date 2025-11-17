@@ -20,6 +20,8 @@ interface PriceBook {
   status: 'processing' | 'processed' | 'completed' | 'failed'
   product_count: number
   option_count: number
+  finish_count: number
+  rule_count: number
   file_path: string
 }
 

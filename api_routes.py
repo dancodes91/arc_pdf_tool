@@ -12,13 +12,15 @@ from datetime import datetime, date
 from typing import Dict, Any
 
 from database.manager import PriceBookManager
-from database.models import PriceBook, DatabaseManager
+from database.models import PriceBook, DatabaseManager, UploadJob
 from diff_engine import DiffEngine
 from export_manager import ExportManager
 from models.baserow_syncs import BaserowSync
 
-# Initialize database
+# Initialize database (ensure all tables, including upload_jobs, exist)
 db_manager = DatabaseManager()
+# Create missing tables in a safe, idempotent way so UploadJob is available
+db_manager.create_tables()
 
 def get_session():
     """Get database session"""
@@ -91,6 +93,29 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
             upload_jobs[job_id]['status'] = 'processing'
             upload_jobs[job_id]['progress'] = 5
             upload_jobs[job_id]['message'] = 'Initializing parser...'
+
+        # Persist initial job state so it can be tracked across workers
+        session = get_session()
+        try:
+            job = session.query(UploadJob).get(job_id)
+            if not job:
+                job = UploadJob(
+                    id=job_id,
+                    filename=filename,
+                    status='processing',
+                    progress=5,
+                    message='Initializing parser...',
+                    started_at=datetime.utcnow(),
+                )
+                session.add(job)
+            else:
+                job.status = 'processing'
+                job.progress = 5
+                job.message = 'Initializing parser...'
+                job.filename = filename or job.filename
+            session.commit()
+        finally:
+            session.close()
         
         # Auto-detect manufacturer from filename if not specified
         if manufacturer in ['auto', ''] or not manufacturer:
@@ -117,6 +142,16 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
                 if job_id in upload_jobs:
                     upload_jobs[job_id]['progress'] = progress
                     upload_jobs[job_id]['message'] = message
+            # Also persist to database for cross-worker visibility
+            session = get_session()
+            try:
+                job = session.query(UploadJob).get(job_id)
+                if job:
+                    job.progress = progress
+                    job.message = message
+                    session.commit()
+            finally:
+                session.close()
 
         # Parse PDF based on manufacturer
         if manufacturer == 'hager':
@@ -151,9 +186,7 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
         parsed_data['file_path'] = filepath
         parsed_data['file_size'] = file_size
 
-        with jobs_lock:
-            upload_jobs[job_id]['progress'] = 70
-            upload_jobs[job_id]['message'] = 'Saving to database...'
+        update_progress(70, 'Saving to database...')
 
         # Store in database
         from services.etl_loader import ETLLoader
@@ -199,24 +232,34 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
             session.close()
 
         # Verify data is actually accessible before marking as complete
-        with jobs_lock:
-            upload_jobs[job_id]['progress'] = 90
-            upload_jobs[job_id]['message'] = 'Verifying database consistency...'
+        update_progress(90, 'Verifying database consistency...')
 
         # Wait a moment and verify the price book is retrievable
         import time
-        time.sleep(0.5)  # Small delay to ensure database visibility
+        time.sleep(1.0)  # Increased delay to ensure database visibility across all connections
 
         # Verify with a fresh session that the data is accessible
         verification_session = db_manager.get_session()
         try:
             from database.models import PriceBook, Product
-            verified_book = verification_session.query(PriceBook).filter(
-                PriceBook.id == price_book_id
-            ).first()
 
-            if not verified_book:
-                raise Exception(f"Price book {price_book_id} not found after commit - database consistency error")
+            # Multiple verification attempts with exponential backoff
+            max_attempts = 3
+            for attempt in range(max_attempts):
+                verified_book = verification_session.query(PriceBook).filter(
+                    PriceBook.id == price_book_id
+                ).first()
+
+                if verified_book:
+                    break
+
+                if attempt < max_attempts - 1:
+                    logger.warning(f"Verification attempt {attempt + 1} failed, retrying...")
+                    time.sleep(0.5 * (attempt + 1))  # Exponential backoff
+                    verification_session.close()
+                    verification_session = db_manager.get_session()
+                else:
+                    raise Exception(f"Price book {price_book_id} not found after {max_attempts} attempts - database consistency error")
 
             # Get actual product count from database
             verified_product_count = verification_session.query(Product).filter(
@@ -232,22 +275,52 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
             verification_session.close()
 
         # Now mark as truly completed
+        completed_at = datetime.utcnow()
         with jobs_lock:
             upload_jobs[job_id]['status'] = 'completed'
             upload_jobs[job_id]['progress'] = 100
             upload_jobs[job_id]['message'] = 'Processing complete'
             upload_jobs[job_id]['result'] = result
-            upload_jobs[job_id]['completed_at'] = datetime.utcnow().isoformat()
+            upload_jobs[job_id]['completed_at'] = completed_at.isoformat()
+
+        # Persist completion state to UploadJob
+        session = get_session()
+        try:
+            job = session.query(UploadJob).get(job_id)
+            if job:
+                job.status = 'completed'
+                job.progress = 100
+                job.message = 'Processing complete'
+                job.price_book_id = price_book_id
+                job.completed_at = completed_at
+                job.error = None
+                session.commit()
+        finally:
+            session.close()
 
         logger.info(f"Job {job_id} completed successfully with verified data")
-        
+
     except Exception as e:
         logger.error(f"Error processing PDF in job {job_id}: {e}", exc_info=True)
+        completed_at = datetime.utcnow()
         with jobs_lock:
             upload_jobs[job_id]['status'] = 'failed'
             upload_jobs[job_id]['message'] = f'Error: {str(e)}'
             upload_jobs[job_id]['error'] = str(e)
-            upload_jobs[job_id]['completed_at'] = datetime.utcnow().isoformat()
+            upload_jobs[job_id]['completed_at'] = completed_at.isoformat()
+
+        # Persist failure state so the frontend can show an error across workers
+        session = get_session()
+        try:
+            job = session.query(UploadJob).get(job_id)
+            if job:
+                job.status = 'failed'
+                job.message = f'Error: {str(e)}'
+                job.error = str(e)
+                job.completed_at = completed_at
+                session.commit()
+        finally:
+            session.close()
 
 @api.route('/upload', methods=['POST', 'OPTIONS'])
 def upload_pdf():
@@ -286,8 +359,8 @@ def upload_pdf():
 
         # Create job ID
         job_id = str(uuid.uuid4())
-        
-        # Initialize job status
+
+        # Initialize job status (in-memory)
         with jobs_lock:
             upload_jobs[job_id] = {
                 'status': 'queued',
@@ -298,6 +371,22 @@ def upload_pdf():
                 'result': None,
                 'error': None
             }
+
+        # Also persist initial job record so status polling works across workers
+        session = get_session()
+        try:
+            job = UploadJob(
+                id=job_id,
+                filename=filename,
+                status='queued',
+                progress=0,
+                message='File uploaded, queued for processing',
+                started_at=datetime.utcnow(),
+            )
+            session.add(job)
+            session.commit()
+        finally:
+            session.close()
         
         # Start background processing
         thread = threading.Thread(
@@ -324,29 +413,65 @@ def upload_pdf():
 @api.route('/upload/status/<job_id>', methods=['GET'])
 def get_upload_status(job_id):
     """Get status of an upload job"""
+    # First try in-memory job state (fast path)
     with jobs_lock:
         job = upload_jobs.get(job_id)
-    
-    if not job:
-        return jsonify({'error': 'Job not found'}), 404
-    
-    response = {
-        'job_id': job_id,
-        'status': job['status'],
-        'progress': job['progress'],
-        'message': job['message'],
-        'filename': job.get('filename'),
-        'started_at': job.get('started_at'),
-    }
-    
-    if job['status'] == 'completed' and job.get('result'):
-        response['result'] = job['result']
-        response['completed_at'] = job.get('completed_at')
-    elif job['status'] == 'failed':
-        response['error'] = job.get('error')
-        response['completed_at'] = job.get('completed_at')
-    
-    return jsonify(response)
+
+    if job:
+        response = {
+            'job_id': job_id,
+            'status': job['status'],
+            'progress': job['progress'],
+            'message': job['message'],
+            'filename': job.get('filename'),
+            'started_at': job.get('started_at'),
+        }
+
+        if job['status'] == 'completed' and job.get('result'):
+            response['result'] = job['result']
+            response['completed_at'] = job.get('completed_at')
+        elif job['status'] == 'failed':
+            response['error'] = job.get('error')
+            response['completed_at'] = job.get('completed_at')
+
+        return jsonify(response)
+
+    # If not found in memory (e.g., different worker process), fall back to DB
+    session = get_session()
+    try:
+        job_row = session.query(UploadJob).get(job_id)
+        if not job_row:
+            return jsonify({'error': 'Job not found'}), 404
+
+        # Base response from DB row
+        response = {
+            'job_id': job_row.id,
+            'status': job_row.status,
+            'progress': job_row.progress or 0,
+            'message': job_row.message or '',
+            'filename': job_row.filename,
+            'started_at': job_row.started_at.isoformat() if job_row.started_at else None,
+            'completed_at': job_row.completed_at.isoformat() if job_row.completed_at else None,
+        }
+
+        # If job has completed successfully, reconstruct result payload
+        if job_row.status == 'completed' and job_row.price_book_id:
+            summary = price_book_manager.get_price_book_summary(job_row.price_book_id)
+            if summary:
+                response['result'] = {
+                    'price_book_id': summary['id'],
+                    'products_created': summary.get('product_count', 0),
+                    'finishes_loaded': summary.get('finish_count', 0),
+                    'effective_date': summary.get('effective_date'),
+                    'confidence': None,  # Confidence is not stored in DB today
+                }
+
+        if job_row.status == 'failed' and job_row.error:
+            response['error'] = job_row.error
+
+        return jsonify(response)
+    finally:
+        session.close()
 
 @api.route('/compare', methods=['POST'])
 def compare_price_books():
