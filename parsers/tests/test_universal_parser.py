@@ -1,0 +1,264 @@
+"""
+Tests for the Universal PDF Parser.
+
+Run with: pytest parsers/tests/test_universal_parser.py -v
+"""
+
+import pytest
+import pandas as pd
+from pathlib import Path
+
+from parsers.universal_parser import (
+    UniversalPDFParser,
+    ParsedDocument,
+    PDFType,
+    ExtractionMethod,
+    PageAnalysis,
+    ExtractionResult,
+    parse_pdf,
+)
+
+
+class TestUniversalPDFParser:
+    """Test suite for UniversalPDFParser."""
+
+    def test_parser_initialization(self):
+        """Test parser initializes correctly."""
+        parser = UniversalPDFParser()
+        assert parser is not None
+        assert parser.config == {}
+        
+        parser_with_config = UniversalPDFParser({"min_confidence": 0.8})
+        assert parser_with_config.config["min_confidence"] == 0.8
+
+    def test_pdf_type_detection(self):
+        """Test PDF type detection from page analyses."""
+        parser = UniversalPDFParser()
+        
+        digital_analyses = [
+            PageAnalysis(
+                page_number=1, has_text=True, text_density=0.01,
+                has_images=False, image_coverage=0.0, has_tables=True,
+                table_count=1, table_regions=[], 
+                recommended_method=ExtractionMethod.PYMUPDF,
+                is_scanned=False
+            ),
+            PageAnalysis(
+                page_number=2, has_text=True, text_density=0.01,
+                has_images=False, image_coverage=0.0, has_tables=True,
+                table_count=2, table_regions=[],
+                recommended_method=ExtractionMethod.PYMUPDF,
+                is_scanned=False
+            ),
+        ]
+        assert parser._determine_pdf_type(digital_analyses) == PDFType.DIGITAL
+        
+        scanned_analyses = [
+            PageAnalysis(
+                page_number=1, has_text=False, text_density=0.0,
+                has_images=True, image_coverage=0.9, has_tables=False,
+                table_count=0, table_regions=[],
+                recommended_method=ExtractionMethod.PADDLEOCR,
+                is_scanned=True
+            ),
+        ]
+        assert parser._determine_pdf_type(scanned_analyses) == PDFType.SCANNED
+        
+        hybrid_analyses = [
+            PageAnalysis(
+                page_number=1, has_text=True, text_density=0.01,
+                has_images=False, image_coverage=0.0, has_tables=True,
+                table_count=1, table_regions=[],
+                recommended_method=ExtractionMethod.PYMUPDF,
+                is_scanned=False
+            ),
+            PageAnalysis(
+                page_number=2, has_text=False, text_density=0.0,
+                has_images=True, image_coverage=0.9, has_tables=False,
+                table_count=0, table_regions=[],
+                recommended_method=ExtractionMethod.PADDLEOCR,
+                is_scanned=True
+            ),
+        ]
+        assert parser._determine_pdf_type(hybrid_analyses) == PDFType.HYBRID
+
+    def test_clean_price(self):
+        """Test price cleaning functionality."""
+        parser = UniversalPDFParser()
+        
+        assert parser._clean_price("$1,234.56") == 1234.56
+        assert parser._clean_price("$100.00") == 100.00
+        assert parser._clean_price("99.99") == 99.99
+        assert parser._clean_price("1234") == 1234.0
+        
+        assert parser._clean_price("") is None
+        assert parser._clean_price(None) is None
+        assert parser._clean_price("N/A") is None
+        
+        assert parser._clean_price("1234,56") == 1234.56
+
+    def test_clean_sku(self):
+        """Test SKU cleaning functionality."""
+        parser = UniversalPDFParser()
+        
+        assert parser._clean_sku("abc-123") == "ABC-123"
+        assert parser._clean_sku("  SKU001  ") == "SKU001"
+        assert parser._clean_sku("...test...") == "TEST"
+        assert parser._clean_sku("") == ""
+        assert parser._clean_sku(None) == ""
+
+    def test_extraction_confidence_calculation(self):
+        """Test confidence calculation for extractions."""
+        parser = UniversalPDFParser()
+        
+        tables = [pd.DataFrame({"sku": ["A", "B"], "price": [100, 200]})]
+        confidence = parser._calculate_extraction_confidence(
+            tables, "Sample text content here",
+            ExtractionMethod.PYMUPDF, {}
+        )
+        assert confidence >= 0.9
+        
+        confidence = parser._calculate_extraction_confidence(
+            [], "", ExtractionMethod.TESSERACT, {}
+        )
+        assert confidence <= 0.65
+
+    def test_effective_date_extraction(self):
+        """Test effective date extraction from text."""
+        parser = UniversalPDFParser()
+        
+        text1 = "Price List\nEffective Date: 01/15/2025\nProducts..."
+        assert parser._extract_effective_date(text1) == "01/15/2025"
+        
+        text2 = "Prices effective 12-01-2024"
+        assert parser._extract_effective_date(text2) == "12-01-2024"
+        
+        text3 = "Product catalog with no date"
+        assert parser._extract_effective_date(text3) is None
+
+    def test_product_extraction_from_tables(self):
+        """Test product extraction from DataFrames."""
+        parser = UniversalPDFParser()
+        
+        df = pd.DataFrame({
+            "SKU": ["ABC-001", "ABC-002", "ABC-003"],
+            "Description": ["Product A", "Product B", "Product C"],
+            "Price": ["$100.00", "$200.00", "$300.00"],
+            "_page_number": [1, 1, 1],
+            "_extraction_method": ["pymupdf", "pymupdf", "pymupdf"],
+        })
+        
+        products = parser._extract_products([df])
+        
+        assert len(products) == 3
+        assert products[0]["sku"] == "ABC-001"
+        assert products[0]["description"] == "Product A"
+        assert products[0]["base_price"] == 100.00
+
+    def test_table_enhancement(self):
+        """Test table enhancement with TableProcessor."""
+        parser = UniversalPDFParser()
+        
+        df = pd.DataFrame({
+            "col1": ["Header1", "Data1", "Data2"],
+            "col2": ["Header2", "Data3", "Data4"],
+        })
+        
+        enhanced = parser._enhance_tables([df])
+        assert len(enhanced) >= 1
+
+    def test_parse_table_from_text(self):
+        """Test parsing table structure from OCR text."""
+        parser = UniversalPDFParser()
+        
+        text = """SKU          Description          Price
+ABC-001      Product One          $100.00
+ABC-002      Product Two          $200.00
+ABC-003      Product Three        $300.00"""
+        
+        table_data = parser._parse_table_from_text(text)
+        
+        assert len(table_data) >= 3
+        assert len(table_data[0]) >= 3
+
+
+class TestParseDocumentDataclass:
+    """Test ParsedDocument dataclass."""
+
+    def test_parsed_document_creation(self):
+        """Test creating a ParsedDocument."""
+        doc = ParsedDocument(
+            source_file="test.pdf",
+            pdf_type=PDFType.DIGITAL,
+            page_count=5,
+            tables=[pd.DataFrame()],
+            text_content="Sample text",
+            effective_date="01/01/2025",
+            products=[{"sku": "TEST"}],
+            extraction_results=[],
+            overall_confidence=0.95,
+            processing_notes=["Test note"],
+        )
+        
+        assert doc.source_file == "test.pdf"
+        assert doc.pdf_type == PDFType.DIGITAL
+        assert doc.page_count == 5
+        assert doc.overall_confidence == 0.95
+
+
+class TestConvenienceFunction:
+    """Test the parse_pdf convenience function."""
+
+    def test_parse_pdf_function_exists(self):
+        """Test that parse_pdf function is importable."""
+        assert callable(parse_pdf)
+
+
+class TestIntegration:
+    """Integration tests with real PDF files."""
+
+    @pytest.fixture
+    def test_pdf_path(self):
+        """Get path to test PDF if it exists."""
+        test_paths = [
+            Path("testdata/pdf/ABH PL 14 - 11.10.25 - Not to Scale.pdf"),
+            Path("tests/testdata/sample.pdf"),
+            Path("testdata/sample.pdf"),
+        ]
+        
+        for path in test_paths:
+            if path.exists():
+                return str(path)
+        
+        return None
+
+    @pytest.mark.skipif(
+        not Path("testdata/pdf").exists(),
+        reason="Test PDF directory not found"
+    )
+    def test_parse_real_pdf(self, test_pdf_path):
+        """Test parsing a real PDF file."""
+        if test_pdf_path is None:
+            pytest.skip("No test PDF file found")
+        
+        parser = UniversalPDFParser()
+        result = parser.parse(test_pdf_path)
+        
+        assert isinstance(result, ParsedDocument)
+        assert result.page_count > 0
+        assert result.overall_confidence > 0
+        
+        assert len(result.tables) > 0 or len(result.text_content) > 0
+        
+        print(f"\n--- Parse Results for {Path(test_pdf_path).name} ---")
+        print(f"PDF Type: {result.pdf_type.value}")
+        print(f"Pages: {result.page_count}")
+        print(f"Tables: {len(result.tables)}")
+        print(f"Products: {len(result.products)}")
+        print(f"Confidence: {result.overall_confidence:.2%}")
+        print(f"Effective Date: {result.effective_date}")
+        print(f"Processing Notes: {result.processing_notes}")
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
