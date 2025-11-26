@@ -40,6 +40,22 @@ logger = logging.getLogger(__name__)
 upload_jobs: Dict[str, Dict[str, Any]] = {}
 jobs_lock = threading.Lock()
 
+def _get_pdf_page_count(file_path: str) -> int:
+    """Best-effort page count for a PDF; returns 0 on failure."""
+    try:
+        import fitz  # PyMuPDF
+        doc = fitz.open(file_path)
+        count = len(doc)
+        doc.close()
+        return count
+    except Exception:
+        try:
+            import pdfplumber
+            with pdfplumber.open(file_path) as pdf:
+                return len(pdf.pages)
+        except Exception:
+            return 0
+
 @api.route('/price-books', methods=['GET'])
 def get_price_books():
     """Get all price books"""
@@ -514,6 +530,7 @@ def get_upload_status(job_id):
                 ).first()
                 
                 finish_count = 0
+                page_count = 0
                 if price_book:
                     # Count finishes for this manufacturer that were created around the upload time
                     # This is an approximation - ideally we'd track which finishes belong to which price book
@@ -534,6 +551,10 @@ def get_upload_status(job_id):
                         # Double-check: if ETL loaded 0 finishes, we should return 0
                         # This matches the log: "INFO:ETLLoader:Loaded 0 finishes"
                         finish_count = 0
+                    
+                    # Best-effort page count from stored file
+                    if price_book.file_path:
+                        page_count = _get_pdf_page_count(price_book.file_path)
                 
                 # Get effective date from price book
                 effective_date = price_book.effective_date.isoformat() if price_book and price_book.effective_date else None
@@ -545,6 +566,8 @@ def get_upload_status(job_id):
                     'finishes_loaded': finish_count,
                     'effective_date': effective_date,
                     'confidence': None,
+                    'pages_parsed': page_count,
+                    'total_pages': page_count,
                 }
             else:
                 # FIX: Price book ID not set yet - job might still be finalizing
