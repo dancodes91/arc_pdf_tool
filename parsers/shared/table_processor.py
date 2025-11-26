@@ -84,24 +84,28 @@ class TableProcessor:
         original_shape = df.shape
         processing_notes = []
 
-        # Step 1: Detect and weld multi-row headers
+        # Step 1: Clean up the dataframe first
+        df = self._clean_dataframe(df)
+        processing_notes.append("Cleaned dataframe")
+
+        # Step 2: Detect and weld multi-row headers
         df, header_info = self._weld_headers(df)
         if header_info["welded"]:
             processing_notes.append(f"Welded {header_info['rows']} header rows")
 
-        # Step 2: Recover merged cells
+        # Step 3: Recover merged cells
         df, merged_cells = self._recover_merged_cells(df)
         if merged_cells:
             processing_notes.append(f"Recovered {len(merged_cells)} merged cell regions")
 
-        # Step 3: Normalize data types and clean
+        # Step 4: Normalize data types and clean
         df = self._normalize_table_data(df)
         processing_notes.append("Normalized data types")
 
-        # Step 4: Calculate structure metadata
+        # Step 5: Calculate structure metadata
         structure = self._analyze_structure(df, merged_cells, header_info)
 
-        # Step 5: Calculate processing confidence
+        # Step 6: Calculate processing confidence
         confidence = self._calculate_confidence(df, structure, original_shape)
 
         return ProcessedTable(
@@ -111,6 +115,36 @@ class TableProcessor:
             processing_notes=processing_notes,
             confidence=confidence,
         )
+
+    def _clean_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Clean up dataframe by removing completely empty rows/columns.
+        
+        Args:
+            df: Input DataFrame
+            
+        Returns:
+            Cleaned DataFrame
+        """
+        # Reset index to ensure consistent indexing
+        df = df.reset_index(drop=True)
+        
+        # Convert all values to string for consistent handling
+        df = df.astype(str)
+        
+        # Replace common null representations
+        df = df.replace(['nan', 'None', 'NaN', 'null', 'NULL', ''], np.nan)
+        
+        # Remove completely empty rows
+        df = df.dropna(how='all')
+        
+        # Remove completely empty columns
+        df = df.dropna(axis=1, how='all')
+        
+        # Reset index again after dropping rows
+        df = df.reset_index(drop=True)
+        
+        return df
 
     def _weld_headers(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict]:
         """
@@ -132,7 +166,7 @@ class TableProcessor:
             row = df.iloc[i]
 
             # Check if this looks like a header row
-            is_header = self._is_header_row(row, df)
+            is_header = self._is_header_row(row, df, i)
             header_candidates.append((i, is_header))
 
         # Find consecutive header rows
@@ -144,7 +178,7 @@ class TableProcessor:
                 break
 
         if len(header_rows) <= 1:
-            return df, {"welded": False, "rows": 0}
+            return df, {"welded": False, "rows": len(header_rows)}
 
         # Weld headers together
         welded_header = []
@@ -168,13 +202,14 @@ class TableProcessor:
 
         return new_df, {"welded": True, "rows": len(header_rows)}
 
-    def _is_header_row(self, row: pd.Series, df: pd.DataFrame) -> bool:
+    def _is_header_row(self, row: pd.Series, df: pd.DataFrame, row_index: int) -> bool:
         """
         Determine if a row looks like a header.
 
         Args:
             row: Row to check
             df: Full dataframe for context
+            row_index: Index of the row in the dataframe
 
         Returns:
             True if row appears to be a header
@@ -196,6 +231,12 @@ class TableProcessor:
             "part",
             "sku",
             "item",
+            "list",
+            "net",
+            "msrp",
+            "upc",
+            "weight",
+            "dimensions",
         ]
 
         # Check for header keywords
@@ -203,12 +244,12 @@ class TableProcessor:
 
         # Check if mostly text (not numbers/prices)
         numeric_cells = sum(1 for cell in row if self._is_numeric_or_price(str(cell)))
-        mostly_text = numeric_cells / len(row) < 0.3
+        mostly_text = numeric_cells / len(row) < 0.3 if len(row) > 0 else True
 
         # Check if different from data rows (if any exist below)
         different_pattern = True
-        if len(df) > row.name + 1:
-            next_row = df.iloc[row.name + 1]
+        if row_index + 1 < len(df):
+            next_row = df.iloc[row_index + 1]
             next_numeric = sum(1 for cell in next_row if self._is_numeric_or_price(str(cell)))
             current_numeric = sum(1 for cell in row if self._is_numeric_or_price(str(cell)))
             different_pattern = abs(next_numeric - current_numeric) >= 2
@@ -574,7 +615,7 @@ class TableProcessor:
         # Check column compatibility
         if (
             len(table1.dataframe.columns) == len(table2.dataframe.columns)
-            and table1.dataframe.columns.tolist() == table2.dataframe.columns.tolist()
+            and list(table1.dataframe.columns) == list(table2.dataframe.columns)
         ):
             return True
 
@@ -629,17 +670,19 @@ class TableProcessor:
 
         for df in dataframes:
             if len(df.columns) == len(target_columns):
+                df = df.copy()
                 df.columns = target_columns  # Ensure same column names
                 aligned_dfs.append(df)
             elif len(df.columns) < len(target_columns):
                 # Pad with empty columns
+                df = df.copy()
                 for i in range(len(target_columns) - len(df.columns)):
                     df[f"pad_col_{i}"] = ""
                 df.columns = target_columns
                 aligned_dfs.append(df)
             else:
                 # Truncate extra columns
-                df_truncated = df.iloc[:, : len(target_columns)]
+                df_truncated = df.iloc[:, : len(target_columns)].copy()
                 df_truncated.columns = target_columns
                 aligned_dfs.append(df_truncated)
 
@@ -685,3 +728,44 @@ class TableProcessor:
             processing_notes=all_notes,
             confidence=combined_confidence,
         )
+
+    def detect_table_type(self, df: pd.DataFrame) -> str:
+        """
+        Detect the type of table based on content patterns.
+        
+        Args:
+            df: DataFrame to analyze
+            
+        Returns:
+            Table type string: 'price_list', 'product_catalog', 'specification', 'unknown'
+        """
+        if df.empty:
+            return "unknown"
+        
+        columns_lower = [str(col).lower() for col in df.columns]
+        all_text = " ".join(columns_lower)
+        
+        # Check for price list indicators
+        price_indicators = ["price", "list", "msrp", "net", "cost", "$"]
+        sku_indicators = ["sku", "model", "part", "item", "code"]
+        
+        has_price = any(ind in all_text for ind in price_indicators)
+        has_sku = any(ind in all_text for ind in sku_indicators)
+        
+        if has_price and has_sku:
+            return "price_list"
+        elif has_sku:
+            return "product_catalog"
+        elif has_price:
+            return "price_list"
+        
+        # Check data patterns
+        numeric_cols = 0
+        for col_idx in range(len(df.columns)):
+            if self._column_looks_numeric(df.iloc[:, col_idx]):
+                numeric_cols += 1
+        
+        if numeric_cols >= len(df.columns) * 0.5:
+            return "specification"
+        
+        return "unknown"
