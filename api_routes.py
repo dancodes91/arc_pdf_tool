@@ -188,19 +188,15 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
                 parser.set_progress_callback(update_progress)
             logger.info(f"Using SelectHingesParser for {filename}")
         else:
-            from parsers.universal import UniversalParser
+            from parsers.universal_parser import UniversalPDFParser
             universal_config = {
-                'use_hybrid': True,
-                # Disable heavy ML detector by default for faster, lower-RAM parsing
-                'use_ml_detection': False,
-                'confidence_threshold': 0.6,
-                'max_pages': 300,  # safety guard to avoid runaway jobs
-                'camelot_timeout': 15,
+                "table_processing": True,
+                "cross_page_stitching": True,
+                "enable_ocr": False,
             }
-            parser = UniversalParser(filepath, config=universal_config)
-            if hasattr(parser, 'set_progress_callback'):
-                parser.set_progress_callback(update_progress)
-            logger.info(f"Using UniversalParser for {filename}")
+            parser = UniversalPDFParser(universal_config)
+            logger.info(f"Using UniversalPDFParser for {filename}")
+            update_progress(20, "Parsing with universal parser...")
 
         update_progress(10, 'Extracting PDF pages...')
         
@@ -221,8 +217,32 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
         try:
             # Parse the PDF
             logger.info(f"Starting PDF parsing: {filename}")
-            parsed_data = parser.parse()
-            logger.info(f"Parsing completed: {filename}")
+            # New universal parser returns a ParsedDocument; convert to dict for ETL
+            parsed_result = parser.parse(filepath)
+            total_pages = getattr(parsed_result, "page_count", 0)
+            overall_conf = getattr(parsed_result, "overall_confidence", 0)
+
+            parsed_data = {
+                "manufacturer": "auto",
+                "source_file": filepath,
+                "parsing_metadata": {
+                    "parser_version": "universal_pdf_parser",
+                    "total_pages": total_pages,
+                    "overall_confidence": overall_conf,
+                },
+                "effective_date": parsed_result.effective_date,
+                "products": parsed_result.products,
+                "finish_symbols": [],  # not currently provided by UniversalPDFParser
+                "net_add_options": [],
+                "summary": {
+                    "total_products": len(parsed_result.products),
+                    "total_pages": total_pages,
+                    "confidence": overall_conf,
+                },
+            }
+
+            logger.info(f"Parsing completed: {filename} ({total_pages} pages, {len(parsed_result.products)} products)")
+            update_progress(60, f"Parsed {total_pages} pages", pages_parsed=total_pages, total_pages=total_pages)
         finally:
             heartbeat_stop.set()
             heartbeat_thread.join(timeout=1)
