@@ -167,18 +167,18 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
             if hasattr(parser, 'set_progress_callback'):
                 parser.set_progress_callback(update_progress)
             logger.info(f"Using SelectHingesParser for {filename}")
-            else:
-                from parsers.universal import UniversalParser
-                universal_config = {
-                    'use_hybrid': True,
-                    # Disable heavy ML detector by default for faster, lower-RAM parsing
-                    'use_ml_detection': False,
-                    'confidence_threshold': 0.6,
-                    'max_pages': 300,  # safety guard to avoid runaway jobs
-                    'camelot_timeout': 15,
-                }
-                parser = UniversalParser(filepath, config=universal_config)
-                logger.info(f"Using UniversalParser for {filename}")
+        else:
+            from parsers.universal import UniversalParser
+            universal_config = {
+                'use_hybrid': True,
+                # Disable heavy ML detector by default for faster, lower-RAM parsing
+                'use_ml_detection': False,
+                'confidence_threshold': 0.6,
+                'max_pages': 300,  # safety guard to avoid runaway jobs
+                'camelot_timeout': 15,
+            }
+            parser = UniversalParser(filepath, config=universal_config)
+            logger.info(f"Using UniversalParser for {filename}")
 
         update_progress(10, 'Extracting PDF pages...')
         
