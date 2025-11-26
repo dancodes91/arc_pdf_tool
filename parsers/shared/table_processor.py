@@ -93,19 +93,24 @@ class TableProcessor:
         if header_info["welded"]:
             processing_notes.append(f"Welded {header_info['rows']} header rows")
 
-        # Step 3: Recover merged cells
+        # Step 3: Drop repeated header rows inside data
+        df, dropped_header_rows = self._drop_repeated_header_rows(df)
+        if dropped_header_rows:
+            processing_notes.append(f"Dropped {dropped_header_rows} repeated header rows")
+
+        # Step 4: Recover merged cells
         df, merged_cells = self._recover_merged_cells(df)
         if merged_cells:
             processing_notes.append(f"Recovered {len(merged_cells)} merged cell regions")
 
-        # Step 4: Normalize data types and clean
+        # Step 5: Normalize data types and clean
         df = self._normalize_table_data(df)
         processing_notes.append("Normalized data types")
 
-        # Step 5: Calculate structure metadata
+        # Step 6: Calculate structure metadata
         structure = self._analyze_structure(df, merged_cells, header_info)
 
-        # Step 6: Calculate processing confidence
+        # Step 7: Calculate processing confidence
         confidence = self._calculate_confidence(df, structure, original_shape)
 
         return ProcessedTable(
@@ -201,6 +206,41 @@ class TableProcessor:
         new_df.reset_index(drop=True, inplace=True)
 
         return new_df, {"welded": True, "rows": len(header_rows)}
+
+    def _drop_repeated_header_rows(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, int]:
+        """
+        Remove rows in the data region that repeat the column headers.
+
+        Args:
+            df: Dataframe with final column names applied
+
+        Returns:
+            Tuple of (cleaned_df, dropped_count)
+        """
+        if df.empty:
+            return df, 0
+
+        header_signature = tuple(str(c).strip().lower() for c in df.columns)
+        drop_indices = []
+
+        for idx, row in df.iterrows():
+            row_signature = tuple(str(row[c]).strip().lower() for c in df.columns)
+
+            # Exact match: row is just another header
+            if row_signature == header_signature:
+                drop_indices.append(idx)
+                continue
+
+            # Fuzzy match: majority of cells equal the column names (common in repeated headers)
+            matches = sum(1 for a, b in zip(row_signature, header_signature) if a == b)
+            if len(header_signature) > 0 and matches / len(header_signature) >= 0.8:
+                drop_indices.append(idx)
+
+        if drop_indices:
+            df = df.drop(index=drop_indices)
+            df = df.reset_index(drop=True)
+
+        return df, len(drop_indices)
 
     def _is_header_row(self, row: pd.Series, df: pd.DataFrame, row_index: int) -> bool:
         """

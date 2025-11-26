@@ -134,6 +134,9 @@ class UniversalPDFParser:
         self.config = config or {}
         self.logger = logging.getLogger(f"{__class__.__name__}")
         
+        # Default: keep OCR off unless explicitly enabled to save memory/CPU on low-tier hosts
+        self.config.setdefault("enable_ocr", False)
+        
         self._table_processor = None
         self._ocr_processor = None
         self._provenance_tracker = None
@@ -369,9 +372,10 @@ class UniversalPDFParser:
         results = []
         
         for analysis in page_analyses:
-            if analysis.is_scanned:
+            if analysis.is_scanned and self.config.get("enable_ocr", True):
                 method_priority = self.SCANNED_METHOD_PRIORITY
             else:
+                # When OCR is disabled, fall back to digital methods to avoid heavy OCR memory usage
                 method_priority = self.DIGITAL_METHOD_PRIORITY
             
             page_result = None
@@ -894,6 +898,47 @@ class UniversalPDFParser:
         sku_patterns = ["sku", "model", "item", "part", "code", "number", "no", "#"]
         desc_patterns = ["description", "desc", "name", "product", "item"]
         price_patterns = ["price", "cost", "msrp", "list", "retail", "net", "$"]
+        finish_patterns = ["finish", "finishes", "color", "coat", "plating"]
+        size_patterns = ["size", "length", "width", "height", "depth", "thickness", "diameter", "dia", "dimension", "dim."]
+        # Expand finish detection to handle common codes (US##, BHMA ###, material abbreviations)
+        finish_code_regex = re.compile(
+            r"\b("
+            r"US\d{1,2}[A-Z]?|"          # US32, US32D, US10B
+            r"6\d{2}|"                   # 626, 613, etc.
+            r"BHMA\s*\d{3}|"             # BHMA 630
+            r"PVD|BSP|WSP|S4|S8|BLK|"    # finishes / coatings
+            r"PB|PN|SN|BN|AL|AN|SS|PS"   # material/finish abbreviations
+            r")\b",
+            re.IGNORECASE
+        )
+        finish_normalization = {
+            "US32D": "satin stainless steel",
+            "US32": "polished stainless steel",
+            "US3": "polished brass",
+            "US10B": "oil rubbed bronze",
+            "US4": "satin brass",
+            "US9": "antique bronze",
+            "US10": "satin bronze",
+            "US26": "polished chrome",
+            "US26D": "satin chrome",
+            "US5": "antique brass",
+            "US15": "satin nickel",
+            "US15A": "antique nickel",
+            "US19": "black",
+            "US28": "aluminum",
+            "US10A": "dark bronze",
+            "US14": "satin nickel",
+            "626": "satin chrome",
+            "605": "polished brass",
+            "606": "satin brass",
+            "612": "satin bronze",
+            "613": "oil rubbed bronze",
+            "614": "polished nickel",
+            "618": "polished nickel",
+            "619": "satin nickel",
+            "625": "polished chrome",
+            "630": "satin stainless steel",
+        }
         meta_columns = {"_page_number", "_extraction_method"}
         def _first_scalar(val: Any):
             if isinstance(val, pd.Series):
@@ -912,6 +957,8 @@ class UniversalPDFParser:
             sku_col = None
             desc_col = None
             price_col = None
+            finish_col = None
+            size_col = None
             
             for col, col_lower in columns_lower.items():
                 if col in meta_columns:
@@ -922,6 +969,10 @@ class UniversalPDFParser:
                     desc_col = col
                 elif any(p in col_lower for p in price_patterns):
                     price_col = col
+                elif any(p in col_lower for p in finish_patterns):
+                    finish_col = col
+                elif any(p in col_lower for p in size_patterns):
+                    size_col = col
 
             # Detect price column by content (numeric-heavy and/or currency symbols)
             if price_col is None:
@@ -1032,6 +1083,56 @@ class UniversalPDFParser:
                         best_text = text
                 return best_text
             
+            size_regex = re.compile(r"\b\d+(?:[-/]\d+)?(?:\.\d+)?\s*(?:\"|''|in\.?|inch(?:es)?|mm|cm|ft|')", re.IGNORECASE)
+
+            def _extract_finish(row: pd.Series) -> str:
+                if finish_col and finish_col in row.index:
+                    val = _first_scalar(row[finish_col])
+                    if val is not None and pd.notna(val):
+                        text = str(val).strip()
+                        if text:
+                            return text
+                # Try to pull from description first
+                desc_val = _choose_description(row)
+                if desc_val:
+                    match = finish_code_regex.search(desc_val)
+                    if match:
+                        return match.group(1)
+                # Then scan across all non-meta columns
+                for col in row.index:
+                    if col in meta_columns:
+                        continue
+                    val = _first_scalar(row[col])
+                    if val is None or pd.isna(val):
+                        continue
+                    text = str(val)
+                    match = finish_code_regex.search(text)
+                    if match:
+                        return match.group(1)
+                return ""
+
+            def _extract_size(row: pd.Series) -> str:
+                # Prefer explicit size column
+                if size_col and size_col in row.index:
+                    val = _first_scalar(row[size_col])
+                    if val is not None and pd.notna(val):
+                        text = str(val).strip()
+                        if text:
+                            return text
+
+                # Otherwise scan for dimension-like tokens
+                for col in row.index:
+                    if col in meta_columns:
+                        continue
+                    val = _first_scalar(row[col])
+                    if val is None or pd.isna(val):
+                        continue
+                    text = str(val)
+                    match = size_regex.search(text)
+                    if match:
+                        return match.group(0).strip()
+                return ""
+            
             for idx, row in df.iterrows():
                 product = {}
 
@@ -1044,6 +1145,15 @@ class UniversalPDFParser:
                 desc_value = _choose_description(row)
                 if desc_value:
                     product["description"] = desc_value
+
+                # Extract finish/size attributes
+                finish_value = _extract_finish(row)
+                if finish_value:
+                    norm = finish_normalization.get(str(finish_value).upper().replace(" ", ""), None)
+                    product["finish"] = norm or finish_value
+                size_value = _extract_size(row)
+                if size_value:
+                    product["size"] = size_value
 
                 # Safely extract price
                 if price_col and price_col in row.index:
@@ -1143,6 +1253,8 @@ class UniversalPDFParser:
         
         methods_used = set(r.method.value for r in results)
         notes.append(f"Extraction methods used: {', '.join(methods_used)}")
+        if not self.config.get("enable_ocr", True):
+            notes.append("OCR disabled (memory-saving mode)")
         
         total_tables = sum(len(r.tables) for r in results)
         notes.append(f"Total tables extracted: {total_tables}")
