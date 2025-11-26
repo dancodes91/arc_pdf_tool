@@ -206,6 +206,7 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
             heartbeat_thread.join(timeout=1)
         parsed_data['file_path'] = filepath
         parsed_data['file_size'] = file_size
+        total_pages = parsed_data.get('parsing_metadata', {}).get('total_pages', 0) or parsed_data.get('summary', {}).get('total_pages', 0)
 
         update_progress(70, 'Saving to database...')
 
@@ -244,7 +245,9 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
                 'finishes_loaded': load_result.get('finishes_loaded', 0),
                 'options_loaded': load_result.get('options_loaded', 0),  # FIX: Add options_loaded
                 'effective_date': effective_date_value,
-                'confidence': parsed_data.get('parsing_metadata', {}).get('overall_confidence', 0)
+                'confidence': parsed_data.get('parsing_metadata', {}).get('overall_confidence', 0),
+                'total_pages': total_pages,
+                'pages_parsed': total_pages,
             }
         except Exception as db_error:
             session.rollback()
@@ -455,6 +458,9 @@ def get_upload_status(job_id):
             if job.get('result'):
                 response['result'] = job['result']
                 response['completed_at'] = job.get('completed_at')
+                # Bubble up page counts if present in result
+                response['pages_parsed'] = job['result'].get('pages_parsed', 0)
+                response['total_pages'] = job['result'].get('total_pages', 0)
             else:
                 # Result missing from memory - fall through to DB lookup
                 job = None  # Force DB lookup
