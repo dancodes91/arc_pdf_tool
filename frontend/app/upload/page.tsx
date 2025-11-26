@@ -128,8 +128,19 @@ export default function UploadPage() {
             const status = await pollUploadStatus(result.job_id!)
             
             // Update progress
-            setParseProgress(status.progress || 0)
-            setStatusMessage(status.message || '')
+           setParseProgress(status.progress || 0)
+           setStatusMessage(status.message || '')
+           // Update page counts if available
+            if (typeof status.pages_parsed === 'number') {
+              setPagesParsed(status.pages_parsed)
+            } else if (status.result?.pages_parsed !== undefined) {
+              setPagesParsed(status.result.pages_parsed)
+            }
+            if (typeof status.total_pages === 'number') {
+              setTotalPages(status.total_pages)
+            } else if (status.result?.total_pages !== undefined) {
+              setTotalPages(status.result.total_pages)
+            }
             
             // Update logs with status message
             setLogs(prev => {
@@ -152,6 +163,13 @@ export default function UploadPage() {
                 optionCount: status.result.options_loaded || 0,  // FIX: Use options_loaded
                 finishCount: status.result.finishes_loaded || 0,  // FIX: Use finishes_loaded
               })
+              // Capture final page counts if provided
+              if (status.result.pages_parsed !== undefined) {
+                setPagesParsed(status.result.pages_parsed)
+              }
+              if (status.result.total_pages !== undefined) {
+                setTotalPages(status.result.total_pages)
+              }
               setUploadedBookId(status.result.price_book_id?.toString() || null)
               setLogs(prev => [...prev, '[SUCCESS] Processing complete'])
 
