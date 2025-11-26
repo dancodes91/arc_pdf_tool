@@ -221,9 +221,11 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
             parsed_result = parser.parse(filepath)
             total_pages = getattr(parsed_result, "page_count", 0)
             overall_conf = getattr(parsed_result, "overall_confidence", 0)
+            # UniversalPDFParser returns product dicts; wrap to ETL expected shape {"value": {...}}
+            wrapped_products = [{"value": p} for p in (parsed_result.products or [])]
 
             parsed_data = {
-                "manufacturer": "auto",
+                "manufacturer": manufacturer or "auto",
                 "source_file": filepath,
                 "parsing_metadata": {
                     "parser_version": "universal_pdf_parser",
@@ -231,11 +233,11 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
                     "overall_confidence": overall_conf,
                 },
                 "effective_date": parsed_result.effective_date,
-                "products": parsed_result.products,
+                "products": wrapped_products,
                 "finish_symbols": [],  # not currently provided by UniversalPDFParser
                 "net_add_options": [],
                 "summary": {
-                    "total_products": len(parsed_result.products),
+                    "total_products": len(wrapped_products),
                     "total_pages": total_pages,
                     "confidence": overall_conf,
                 },
