@@ -294,8 +294,33 @@ export default function BooksPage() {
               searchKey="manufacturer"
               searchPlaceholder="Search by manufacturer..."
               onExport={() => {
-                // Implement CSV export of table
-                console.log('Export all price books')
+                // Export table data as CSV
+                const headers = ['Manufacturer', 'Edition', 'Effective Date', 'Products', 'Status', 'Upload Date']
+                const rows = priceBooks.map(book => [
+                  book.manufacturer || '',
+                  book.edition || '',
+                  book.effective_date || '',
+                  book.product_count?.toString() || '0',
+                  book.status || '',
+                  book.upload_date ? new Date(book.upload_date).toLocaleDateString() : ''
+                ])
+                
+                // Create CSV content
+                const csvContent = [
+                  headers.join(','),
+                  ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+                ].join('\n')
+                
+                // Create and trigger download
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+                const link = document.createElement('a')
+                const url = URL.createObjectURL(blob)
+                link.setAttribute('href', url)
+                link.setAttribute('download', `price_books_${new Date().toISOString().split('T')[0]}.csv`)
+                link.style.visibility = 'hidden'
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
               }}
             />
           </CardContent>

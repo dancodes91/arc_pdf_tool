@@ -54,7 +54,8 @@ def parallel_table_extraction(
         Dict mapping page_number -> list of DataFrames
     """
     if max_workers is None:
-        max_workers = min(os.cpu_count() or 4, 8)
+        # MEMORY FIX: Reduce default workers for memory-constrained environments
+        max_workers = min(os.cpu_count() or 2, 2)  # Max 2 workers instead of 8
 
     # Split pages into batches for workers
     page_batches = [
@@ -73,6 +74,16 @@ def parallel_table_extraction(
         for batch_idx, batch_results in enumerate(executor.map(extract_func, page_batches)):
             all_results.update(batch_results)
             logger.info(f"Completed batch {batch_idx + 1}/{len(page_batches)}")
+            
+            # MEMORY FIX: Force garbage collection after each batch
+            if (batch_idx + 1) % 3 == 0:  # Every 3 batches
+                import gc
+                gc.collect()
 
     logger.info(f"Extracted {sum(len(tables) for tables in all_results.values())} total tables")
+    
+    # MEMORY FIX: Final garbage collection
+    import gc
+    gc.collect()
+    
     return all_results

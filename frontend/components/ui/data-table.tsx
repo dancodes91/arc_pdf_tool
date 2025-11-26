@@ -89,7 +89,7 @@ export function DataTable<TData, TValue>({
     },
   })
 
-  const rowHeight = density === 'dense' ? 'h-10' : 'h-13'
+  const rowHeight = density === 'dense' ? 'h-10' : 'h-12'
 
   return (
     <div className="space-y-4">

@@ -98,10 +98,16 @@ class HagerParser:
                 f"Preloading tables from {len(pages_to_preload)} pages "
                 f"in parallel (saving {total_pages - len(pages_to_preload)} pages)..."
             )
+            # MEMORY FIX: Reduce workers and batch size for 2GB RAM limit
+            # Use 2 workers instead of 4, and smaller batches (10 pages instead of 25)
             self.section_extractor.preload_tables_parallel(
-                self.pdf_path, pages_to_preload, max_workers=4
+                self.pdf_path, pages_to_preload, max_workers=2  # Reduced from 4
             )
             self.logger.info("Table preloading complete - parsing will now be fast")
+            
+            # MEMORY FIX: Force garbage collection after preloading
+            import gc
+            gc.collect()
 
             # Extract effective date from first few pages only
             first_pages_text = self._get_text_from_pages(1, 5)
@@ -145,10 +151,16 @@ class HagerParser:
             results = self._build_results()
 
             self.logger.info(f"Hager parsing completed: {self._get_summary()}")
+            
+            # MEMORY FIX: Clear table cache after parsing to free memory
+            self._clear_table_cache()
+            
             return results
 
         except Exception as e:
             self.logger.error(f"Error during Hager parsing: {e}", exc_info=True)
+            # Clear cache even on error
+            self._clear_table_cache()
             return self._build_error_results(str(e))
 
     def _get_text_from_pages(self, start_page: int, end_page: int) -> str:
@@ -694,3 +706,21 @@ class HagerParser:
 
         # Default to hager for this parser
         return "hager"
+
+    def _clear_table_cache(self):
+        """Clear the table cache to free memory."""
+        import gc
+        # Clear cache for this PDF
+        cache_key = (self.pdf_path, tuple(sorted(self._get_all_preloaded_pages())))
+        if cache_key in HagerSectionExtractor._table_cache:
+            del HagerSectionExtractor._table_cache[cache_key]
+        gc.collect()
+        self.logger.debug("Table cache cleared")
+    
+    def _get_all_preloaded_pages(self):
+        """Get list of all pages that were preloaded."""
+        pages = []
+        for start, end in self.product_page_ranges:
+            pages.extend(range(start, end + 1))
+        pages.extend(range(1, 21))  # Intro pages
+        return sorted(set(pages))

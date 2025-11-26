@@ -87,12 +87,23 @@ export default function UploadPage() {
 
   // Step 1: Start upload
   const handleStartUpload = async () => {
-    if (!file || !manufacturer) return
+    if (!file || !manufacturer) {
+      return
+    }
 
-    setCurrentStep(2)
+    // FIX: Reset all state before starting new upload
     setParseProgress(0)
+    setPagesParsed(0)
+    setTotalPages(0)
+    setStatusMessage('')
     setLogs([])
-    setCurrentJobId(null)
+    setUploadedBookId(null)
+    setParsedData({
+      effectiveDate: '',
+      itemCount: 0,
+      optionCount: 0,
+      finishCount: 0,
+    })
 
     // Clear any existing polling
     if (pollIntervalId) {
@@ -106,6 +117,10 @@ export default function UploadPage() {
       // Handle async job-based upload
       if (result.job_id) {
         setCurrentJobId(result.job_id)
+        // FIX: Move to step 2 (Parse) immediately when upload starts
+        setCurrentStep(2)
+        setStatusMessage('Uploading and initializing parser...')
+        setLogs(['[INFO] Upload started', '[INFO] Initializing parser...'])
         
         // Poll for status updates
         const interval = setInterval(async () => {
@@ -130,11 +145,12 @@ export default function UploadPage() {
               clearInterval(interval)
               setPollIntervalId(null)
               setCurrentStep(3)
+              // FIX: Use correct fields for options and finishes
               setParsedData({
                 effectiveDate: status.result.effective_date || '',
                 itemCount: status.result.products_created || 0,
-                optionCount: status.result.finishes_loaded || 0,
-                finishCount: status.result.finishes_loaded || 0,
+                optionCount: status.result.options_loaded || 0,  // FIX: Use options_loaded
+                finishCount: status.result.finishes_loaded || 0,  // FIX: Use finishes_loaded
               })
               setUploadedBookId(status.result.price_book_id?.toString() || null)
               setLogs(prev => [...prev, '[SUCCESS] Processing complete'])
@@ -144,6 +160,19 @@ export default function UploadPage() {
                 fetchPriceBooks()
                 setLogs(prev => [...prev, '[INFO] Price books list refreshed'])
               }, 1500)
+            }
+
+            // FIX: If status is completed but result is missing, keep polling (backend still processing)
+            if (status.status === 'completed' && !status.result) {
+              setStatusMessage('Finalizing results...')
+              setLogs(prev => {
+                const logEntry = '[INFO] Waiting for final results...'
+                if (!prev.includes(logEntry)) {
+                  return [...prev, logEntry]
+                }
+                return prev
+              })
+              // Continue polling - don't clear interval
             }
 
             // Check if failed
@@ -157,8 +186,7 @@ export default function UploadPage() {
             clearInterval(interval)
             setPollIntervalId(null)
           }
-        }, 1500) // Poll every 1.5 seconds
-
+        }, 1500)
         setPollIntervalId(interval)
       }
 
@@ -191,33 +219,41 @@ export default function UploadPage() {
 
         {/* Step Indicator */}
         <div className="flex items-center gap-2 mb-6">
-          {[1, 2, 3].map((step) => (
-            <div key={step} className="flex items-center">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                currentStep === step
-                  ? 'bg-primary text-white'
-                  : currentStep > step
-                  ? 'bg-success text-white'
-                  : 'bg-muted text-muted-foreground'
-              }`}>
-                {currentStep > step ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <span className="flex items-center justify-center w-5 h-5 rounded-full border-2 border-current text-xs">
-                    {step}
+          {[1, 2, 3].map((step) => {
+            // FIX: When on step 3 (Summary), show all steps as completed (green)
+            // When on step 2 (Parse), show step 1 as completed and step 2 as active
+            // When on step 1, show step 1 as active
+            const isCompleted = currentStep > step || (currentStep === 3 && step === 3)
+            const isActive = currentStep === step && currentStep !== 3
+            
+            return (
+              <div key={step} className="flex items-center">
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  isCompleted
+                    ? 'bg-success text-white'
+                    : isActive
+                    ? 'bg-primary text-white'
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  {isCompleted ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <span className="flex items-center justify-center w-5 h-5 rounded-full border-2 border-current text-xs">
+                      {step}
+                    </span>
+                  )}
+                  <span>
+                    {step === 1 && 'Select & Upload'}
+                    {step === 2 && 'Parse'}
+                    {step === 3 && 'Summary'}
                   </span>
+                </div>
+                {step < 3 && (
+                  <ChevronRight className="h-5 w-5 text-muted-foreground mx-2" />
                 )}
-                <span>
-                  {step === 1 && 'Select & Upload'}
-                  {step === 2 && 'Parse'}
-                  {step === 3 && 'Summary'}
-                </span>
               </div>
-              {step < 3 && (
-                <ChevronRight className="h-5 w-5 text-muted-foreground mx-2" />
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 
@@ -465,10 +501,16 @@ export default function UploadPage() {
                   <Button
                     variant="default"
                     className="justify-start"
-                    onClick={() => uploadedBookId && router.push(`/preview/${uploadedBookId}`)}
+                    disabled={!uploadedBookId}  // FIX: Disable if no book ID
+                    onClick={() => {
+                      if (uploadedBookId) {
+                        router.push(`/preview/${uploadedBookId}`)
+                      }
+                    }}
                   >
                     <Eye className="h-4 w-4" />
                     Preview Parsed Data
+                    {!uploadedBookId && <span className="ml-2 text-xs opacity-70">(Loading...)</span>}
                   </Button>
                   <Button
                     variant="outline"

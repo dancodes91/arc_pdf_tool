@@ -108,12 +108,17 @@ class HagerSectionExtractor:
             return
 
         logger.info(f"Preloading tables from {len(page_numbers)} pages in parallel...")
+        # MEMORY FIX: Reduce batch_size from 25 to 10 for memory-constrained environments
         results = parallel_table_extraction(
-            pdf_path, page_numbers, max_workers=max_workers, batch_size=25
+            pdf_path, page_numbers, max_workers=max_workers, batch_size=10  # Reduced from 25
         )
         cls._table_cache[cache_key] = results
         total_tables = sum(len(tables) for tables in results.values())
         logger.info(f"Preloaded {total_tables} tables from {len(results)} pages")
+        
+        # MEMORY FIX: Force garbage collection after caching
+        import gc
+        gc.collect()
 
     @classmethod
     def get_cached_tables(cls, pdf_path: str, page_number: int) -> Optional[List]:
