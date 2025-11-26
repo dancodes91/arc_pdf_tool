@@ -81,6 +81,27 @@ class UniversalParser:
         self.layer2_products: List[ParsedItem] = []
         self.layer3_products: List[ParsedItem] = []
 
+        # Progress callback (optional) for async UI updates
+        self.progress_callback: Optional[callable] = None
+
+    def set_progress_callback(self, callback: callable):
+        """Set callback function for progress updates (progress, message, pages_parsed?, total_pages?)."""
+        self.progress_callback = callback
+
+    def _update_progress(self, progress: int, message: str, pages_parsed: Optional[int] = None, total_pages: Optional[int] = None):
+        if self.progress_callback:
+            try:
+                # Support optional page counts without breaking older callbacks
+                self.progress_callback(progress, message, pages_parsed, total_pages)
+            except TypeError:
+                try:
+                    # Fallback to 2-arg signature
+                    self.progress_callback(progress, message)
+                except Exception as e:
+                    self.logger.warning(f"Progress callback error: {e}")
+            except Exception as e:
+                self.logger.warning(f"Progress callback error: {e}")
+
     @property
     def table_detector(self):
         """
@@ -100,20 +121,24 @@ class UniversalParser:
             Structured data with products, prices, options, etc.
         """
         self.logger.info(f"Starting hybrid universal parsing: {self.pdf_path}")
+        self._update_progress(10, "Initializing parser...")
 
         try:
             # Step 1: Extract PDF document (text + metadata)
             self.document = self.pdf_extractor.extract_document()
             total_pages = len(self.document.pages)
             self.logger.info(f"Extracted PDF: {total_pages} pages")
+            self._update_progress(20, f"Extracted {total_pages} pages", pages_parsed=0, total_pages=total_pages)
 
             # Step 2: Extract text-based metadata (dates, finishes, options)
             full_text = self._combine_text_content()
             self._parse_from_text(full_text)
+            self._update_progress(30, "Processed text content", pages_parsed=0, total_pages=total_pages)
 
             # Step 3: Hybrid 3-layer extraction (if enabled)
             if self.use_hybrid:
                 self.logger.info("Using HYBRID 3-layer extraction strategy")
+                self._update_progress(35, "Running hybrid extraction...", pages_parsed=0, total_pages=total_pages)
                 self._hybrid_extraction()
             else:
                 # Fallback to old ML-only approach
@@ -207,6 +232,7 @@ class UniversalParser:
             f"Layer 1 complete: {len(self.layer1_products)} products "
             f"({products_per_page:.1f} per page, {layer1_confidence:.1%} confidence)"
         )
+        self._update_progress(45, f"Layer 1 complete ({len(self.layer1_products)} products)", pages_parsed=len(self.document.pages) if self.document else None, total_pages=len(self.document.pages) if self.document else None)
 
         # LAYER 2: Camelot (conditional - only if Layer 1 yield is low)
         if self._should_use_layer2(products_per_page, layer1_confidence):
@@ -219,6 +245,7 @@ class UniversalParser:
                 f"(Total: {len(self.layer1_products) + len(self.layer2_products)}, "
                 f"{products_per_page:.1f} per page)"
             )
+            self._update_progress(65, f"Layer 2 tables extracted ({len(self.layer2_products)} new)", pages_parsed=len(self.document.pages) if self.document else None, total_pages=len(self.document.pages) if self.document else None)
         else:
             self.logger.info("LAYER 2: Skipped (Layer 1 yield sufficient)")
 
@@ -234,6 +261,7 @@ class UniversalParser:
                 f"Layer 3 complete: {len(self.layer3_products)} additional products "
                 f"(Total: {total_products + len(self.layer3_products)})"
             )
+            self._update_progress(80, f"Layer 3 OCR extraction ({len(self.layer3_products)} new)", pages_parsed=len(self.document.pages) if self.document else None, total_pages=len(self.document.pages) if self.document else None)
         else:
             self.logger.info("LAYER 3: Skipped (Layers 1+2 yield sufficient)")
 
@@ -299,6 +327,7 @@ class UniversalParser:
             product.confidence = sum(field_confidences) / len(field_confidences)
 
         self.logger.info(f"Phase 3 complete: Recalculated confidence for {len(self.products)} products")
+        self._update_progress(90, "Validation complete", pages_parsed=len(self.document.pages) if self.document else None, total_pages=len(self.document.pages) if self.document else None)
 
         # PHASE 5: ADAPTIVE PATTERN LEARNING
         self.logger.info("Phase 5: Adaptive pattern learning...")

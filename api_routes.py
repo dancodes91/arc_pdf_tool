@@ -155,11 +155,15 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
         }
 
         # Progress callback to update job status
-        def update_progress(progress: int, message: str):
+        def update_progress(progress: int, message: str, pages_parsed: int = None, total_pages: int = None):
             with jobs_lock:
                 if job_id in upload_jobs:
                     upload_jobs[job_id]['progress'] = progress
                     upload_jobs[job_id]['message'] = message
+                    if pages_parsed is not None:
+                        upload_jobs[job_id]['pages_parsed'] = pages_parsed
+                    if total_pages is not None:
+                        upload_jobs[job_id]['total_pages'] = total_pages
             # Also persist to database for cross-worker visibility
             session = get_session()
             try:
@@ -194,6 +198,8 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
                 'camelot_timeout': 15,
             }
             parser = UniversalParser(filepath, config=universal_config)
+            if hasattr(parser, 'set_progress_callback'):
+                parser.set_progress_callback(update_progress)
             logger.info(f"Using UniversalParser for {filename}")
 
         update_progress(10, 'Extracting PDF pages...')
@@ -468,6 +474,10 @@ def get_upload_status(job_id):
             'filename': job.get('filename'),
             'started_at': job.get('started_at'),
         }
+        if 'pages_parsed' in job:
+            response['pages_parsed'] = job.get('pages_parsed', 0)
+        if 'total_pages' in job:
+            response['total_pages'] = job.get('total_pages', 0)
 
         # FIX: If status is completed, always try to include result (even if missing from memory)
         if job['status'] == 'completed':
