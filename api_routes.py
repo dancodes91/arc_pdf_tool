@@ -167,25 +167,43 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
             if hasattr(parser, 'set_progress_callback'):
                 parser.set_progress_callback(update_progress)
             logger.info(f"Using SelectHingesParser for {filename}")
-        else:
-            from parsers.universal import UniversalParser
-            universal_config = {
-                'use_hybrid': True,
-                # Disable heavy ML detector by default for faster, lower-RAM parsing
-                'use_ml_detection': False,
-                'confidence_threshold': 0.6,
-                'max_pages': 300,  # safety guard to avoid runaway jobs
-                'camelot_timeout': 15,
-            }
-            parser = UniversalParser(filepath, config=universal_config)
-            logger.info(f"Using UniversalParser for {filename}")
+            else:
+                from parsers.universal import UniversalParser
+                universal_config = {
+                    'use_hybrid': True,
+                    # Disable heavy ML detector by default for faster, lower-RAM parsing
+                    'use_ml_detection': False,
+                    'confidence_threshold': 0.6,
+                    'max_pages': 300,  # safety guard to avoid runaway jobs
+                    'camelot_timeout': 15,
+                }
+                parser = UniversalParser(filepath, config=universal_config)
+                logger.info(f"Using UniversalParser for {filename}")
 
         update_progress(10, 'Extracting PDF pages...')
         
-        # Parse the PDF
-        logger.info(f"Starting PDF parsing: {filename}")
-        parsed_data = parser.parse()
-        logger.info(f"Parsing completed: {filename}")
+        # Heartbeat to keep UI status fresh during long parse steps
+        heartbeat_stop = threading.Event()
+
+        def heartbeat():
+            while not heartbeat_stop.wait(15):
+                with jobs_lock:
+                    current = upload_jobs.get(job_id, {}).get('progress', 10)
+                # Nudge progress but cap so final steps can set accurate values
+                heartbeat_progress = max(current, 20)
+                update_progress(heartbeat_progress, 'Parsing PDF... still working')
+
+        heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
+        heartbeat_thread.start()
+
+        try:
+            # Parse the PDF
+            logger.info(f"Starting PDF parsing: {filename}")
+            parsed_data = parser.parse()
+            logger.info(f"Parsing completed: {filename}")
+        finally:
+            heartbeat_stop.set()
+            heartbeat_thread.join(timeout=1)
         parsed_data['file_path'] = filepath
         parsed_data['file_size'] = file_size
 
