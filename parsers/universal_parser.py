@@ -894,6 +894,14 @@ class UniversalPDFParser:
         sku_patterns = ["sku", "model", "item", "part", "code", "number", "no", "#"]
         desc_patterns = ["description", "desc", "name", "product", "item"]
         price_patterns = ["price", "cost", "msrp", "list", "retail", "net", "$"]
+        meta_columns = {"_page_number", "_extraction_method"}
+        def _first_scalar(val: Any):
+            if isinstance(val, pd.Series):
+                clean = val.dropna()
+                return clean.iloc[0] if not clean.empty else None
+            if isinstance(val, (list, tuple)) and val:
+                return val[0]
+            return val
         
         for df in tables:
             if df.empty:
@@ -906,28 +914,164 @@ class UniversalPDFParser:
             price_col = None
             
             for col, col_lower in columns_lower.items():
+                if col in meta_columns:
+                    continue
                 if any(p in col_lower for p in sku_patterns):
                     sku_col = col
                 elif any(p in col_lower for p in desc_patterns):
                     desc_col = col
                 elif any(p in col_lower for p in price_patterns):
                     price_col = col
+
+            # Detect price column by content (numeric-heavy and/or currency symbols)
+            if price_col is None:
+                candidate_price_cols = []
+
+                for col in df.columns:
+                    if col in meta_columns:
+                        continue
+                    series = df[col]
+                    non_null = series.dropna()
+                    if len(non_null) == 0:
+                        continue
+
+                    numeric_count = 0
+                    currency_symbol_count = 0
+                    for raw_val in non_null:
+                        val = _first_scalar(raw_val)
+                        if val is None:
+                            continue
+                        val_str = str(val)
+                        price_val = self._clean_price(val_str)
+                        if price_val is not None:
+                            numeric_count += 1
+                        if "$" in val_str:
+                            currency_symbol_count += 1
+
+                    if numeric_count / len(non_null) >= 0.5 or currency_symbol_count / len(non_null) >= 0.3:
+                        candidate_price_cols.append((col, numeric_count))
+
+                if candidate_price_cols:
+                    # Choose the column with the most numeric-looking values
+                    candidate_price_cols.sort(key=lambda x: x[1], reverse=True)
+                    price_col = candidate_price_cols[0][0]
+
+            # Helper to avoid treating page numbers as SKUs
+            def _is_page_number_series(series: pd.Series) -> bool:
+                non_null = series.dropna()
+                if len(non_null) == 0:
+                    return False
+                if series.name and "page" in str(series.name).lower():
+                    return True
+                numeric_ratio = sum(str(x).replace(".", "", 1).isdigit() for x in non_null) / len(non_null)
+                unique_vals = pd.unique(non_null)
+                if numeric_ratio > 0.9 and len(unique_vals) <= 5:
+                    return True
+                return False
+
+            # Fallback SKU extractor using regex within any non-meta column
+            sku_regexes = [
+                r"\b[A-Z0-9]{2,}-[A-Z0-9]{1,}\b",          # contains dash
+                r"\b[A-Z]{1,3}\d{2,}[A-Z0-9]*\b",          # letters + digits
+                r"\b\d{3,}[A-Z]{1,}[A-Z0-9]*\b",           # digits leading then letter
+            ]
+
+            def _extract_sku_from_row(row: pd.Series) -> str:
+                # First try designated SKU column
+                if sku_col and sku_col in row.index and not _is_page_number_series(df[sku_col]):
+                    candidate = _first_scalar(row[sku_col])
+                    if pd.notna(candidate):
+                        cleaned = self._clean_sku(str(candidate))
+                        if cleaned:
+                            return cleaned
+                # Otherwise search across other columns
+                for col in row.index:
+                    if col in meta_columns:
+                        continue
+                    val = _first_scalar(row[col])
+                    if val is None or pd.isna(val):
+                        continue
+                    text = str(val)
+                    for pattern in sku_regexes:
+                        match = re.search(pattern, text, flags=re.IGNORECASE)
+                        if match:
+                            cleaned = self._clean_sku(match.group(0))
+                            if cleaned:
+                                return cleaned
+                    # Heuristic: token that has letters and digits and is not all numbers
+                    tokens = re.split(r"\s+", text)
+                    for token in tokens:
+                        if len(token) < 3 or len(token) > 24:
+                            continue
+                        has_digit = any(c.isdigit() for c in token)
+                        has_letter = any(c.isalpha() for c in token)
+                        if has_digit and has_letter:
+                            cleaned = self._clean_sku(token)
+                            if cleaned:
+                                return cleaned
+                return ""
+
+            # Fallback description chooser: longest text-like cell
+            def _choose_description(row: pd.Series) -> str:
+                if desc_col and desc_col in row.index:
+                    val = _first_scalar(row[desc_col])
+                    if val is not None and pd.notna(val):
+                        text = str(val).strip()
+                        if text:
+                            return text
+                best_text = ""
+                for col in row.index:
+                    if col in meta_columns or col == sku_col:
+                        continue
+                    val = _first_scalar(row[col])
+                    if val is None or pd.isna(val):
+                        continue
+                    text = str(val).strip()
+                    # Prefer text that has spaces and letters
+                    if len(text) > len(best_text) and any(c.isalpha() for c in text):
+                        best_text = text
+                return best_text
             
             for idx, row in df.iterrows():
                 product = {}
-                
-                if sku_col and pd.notna(row.get(sku_col)):
-                    product["sku"] = self._clean_sku(str(row[sku_col]))
-                
-                if desc_col and pd.notna(row.get(desc_col)):
-                    product["description"] = str(row[desc_col]).strip()
-                
-                if price_col and pd.notna(row.get(price_col)):
-                    product["base_price"] = self._clean_price(str(row[price_col]))
-                
+
+                # Extract SKU with heuristics
+                sku_value = _extract_sku_from_row(row)
+                if sku_value:
+                    product["sku"] = sku_value
+
+                # Extract description
+                desc_value = _choose_description(row)
+                if desc_value:
+                    product["description"] = desc_value
+
+                # Safely extract price
+                if price_col and price_col in row.index:
+                    price_val = _first_scalar(row[price_col])
+                    if isinstance(price_val, pd.Series):
+                        price_val = price_val.iloc[0] if len(price_val) > 0 else None
+                    if pd.notna(price_val):
+                        product["base_price"] = self._clean_price(str(price_val))
+                else:
+                    # Try to find a numeric price-like cell in the row
+                    for col in row.index:
+                        if col in meta_columns or col == sku_col:
+                            continue
+                        val = _first_scalar(row[col])
+                        if val is None or pd.isna(val):
+                            continue
+                        price_candidate = self._clean_price(str(val))
+                        if price_candidate is not None:
+                            product["base_price"] = price_candidate
+                            break
+
                 if product.get("sku") or product.get("description"):
-                    product["_source_page"] = row.get("_page_number")
-                    product["_extraction_method"] = row.get("_extraction_method")
+                    if "_page_number" in row.index:
+                        page_val = row["_page_number"]
+                        product["_source_page"] = page_val.iloc[0] if isinstance(page_val, pd.Series) else page_val
+                    if "_extraction_method" in row.index:
+                        method_val = row["_extraction_method"]
+                        product["_extraction_method"] = method_val.iloc[0] if isinstance(method_val, pd.Series) else method_val
                     products.append(product)
         
         return products
@@ -940,6 +1084,16 @@ class UniversalPDFParser:
         cleaned = str(sku_str).strip().upper()
         cleaned = re.sub(r"^[^\w-]+", "", cleaned)
         cleaned = re.sub(r"[^\w-]+$", "", cleaned)
+
+        # Reject plain numbers (these are often page numbers)
+        if cleaned.isdigit():
+            return ""
+
+        # Must contain at least one letter and one digit to be a valid SKU
+        has_digit = any(c.isdigit() for c in cleaned)
+        has_letter = any(c.isalpha() for c in cleaned)
+        if not (has_digit and has_letter):
+            return ""
         
         return cleaned
     
