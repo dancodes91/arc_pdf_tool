@@ -171,9 +171,10 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
             from parsers.universal import UniversalParser
             universal_config = {
                 'use_hybrid': True,
-                'use_ml_detection': True,
+                # Disable heavy ML detector by default for faster, lower-RAM parsing
+                'use_ml_detection': False,
                 'confidence_threshold': 0.6,
-                'max_pages': None,
+                'max_pages': 300,  # safety guard to avoid runaway jobs
                 'camelot_timeout': 15,
             }
             parser = UniversalParser(filepath, config=universal_config)
