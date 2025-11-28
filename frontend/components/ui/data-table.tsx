@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { ArrowUpDown, ChevronDown, Search, SlidersHorizontal, Download, Eye, EyeOff } from 'lucide-react'
+import { ArrowUpDown, ChevronDown, Search, SlidersHorizontal, Download, Eye, EyeOff, Trash2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -41,6 +41,11 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string
   onExport?: () => void
   density?: 'comfortable' | 'dense'
+  enableRowSelection?: boolean
+  onSelectionChange?: (selectedRows: TData[]) => void
+  onBulkDelete?: () => void
+  selectedCount?: number
+  isDeleting?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -50,6 +55,11 @@ export function DataTable<TData, TValue>({
   searchPlaceholder = 'Search...',
   onExport,
   density: densityProp,
+  enableRowSelection = false,
+  onSelectionChange,
+  onBulkDelete,
+  selectedCount = 0,
+  isDeleting = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -81,6 +91,7 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    enableRowSelection: enableRowSelection,
     state: {
       sorting,
       columnFilters,
@@ -88,6 +99,14 @@ export function DataTable<TData, TValue>({
       rowSelection,
     },
   })
+
+  // Notify parent of selection changes
+  React.useEffect(() => {
+    if (onSelectionChange && enableRowSelection) {
+      const selectedRows = table.getFilteredSelectedRowModel().rows.map(row => row.original)
+      onSelectionChange(selectedRows)
+    }
+  }, [rowSelection, onSelectionChange, enableRowSelection, table])
 
   const rowHeight = density === 'dense' ? 'h-10' : 'h-12'
 
@@ -177,6 +196,19 @@ export function DataTable<TData, TValue>({
               <span className="ml-2">Export</span>
             </Button>
           )}
+
+          {/* Bulk Delete */}
+          {onBulkDelete && selectedCount > 0 && (
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={onBulkDelete}
+              disabled={isDeleting}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span className="ml-2">Delete Selected ({selectedCount})</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -226,7 +258,7 @@ export function DataTable<TData, TValue>({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={columns.length + (enableRowSelection ? 1 : 0)}
                   className="h-24 text-center"
                 >
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">

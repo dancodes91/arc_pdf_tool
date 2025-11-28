@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { usePriceBookStore } from '@/lib/stores/priceBookStore'
 import { DataTable, DataTableColumnHeader } from '@/components/ui/data-table'
 import { Badge } from '@/components/ui/badge'
@@ -22,20 +22,33 @@ type PriceBook = {
 
 export default function BooksPage() {
   const { priceBooks, loading, fetchPriceBooks, deletePriceBook, exportPriceBook } = usePriceBookStore()
+  const [selectedRows, setSelectedRows] = useState<PriceBook[]>([])
+  const [isDeleting, setIsDeleting] = useState(false)
+  const lastFetchRef = useRef<number>(0)
+  const FETCH_COOLDOWN = 1000 // 1 second cooldown between fetches
+
+  const debouncedFetch = () => {
+    const now = Date.now()
+    if (now - lastFetchRef.current > FETCH_COOLDOWN) {
+      lastFetchRef.current = now
+      fetchPriceBooks()
+    }
+  }
 
   // Fetch price books on mount and when window regains focus
   useEffect(() => {
     fetchPriceBooks()
+    lastFetchRef.current = Date.now()
 
     // Refresh when user navigates back to this page
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        fetchPriceBooks()
+        debouncedFetch()
       }
     }
 
     const handleFocus = () => {
-      fetchPriceBooks()
+      debouncedFetch()
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -47,7 +60,69 @@ export default function BooksPage() {
     }
   }, [fetchPriceBooks])
 
+  const handleBulkDelete = async () => {
+    if (selectedRows.length === 0) return
+    
+    const count = selectedRows.length
+    const confirmMessage = `Are you sure you want to delete ${count} price book${count > 1 ? 's' : ''}?`
+    
+    if (!confirm(confirmMessage)) return
+    
+    // Update lastFetchRef BEFORE any operations to prevent event listeners from triggering
+    lastFetchRef.current = Date.now()
+    
+    // Save selected rows before clearing
+    const rowsToDelete = [...selectedRows]
+    setIsDeleting(true)
+    setSelectedRows([]) // Clear selection immediately to prevent UI flicker
+    try {
+      // Delete all selected items (skip refresh for each individual deletion)
+      await Promise.all(rowsToDelete.map(book => deletePriceBook(book.id, true)))
+      
+      // Refresh the list only once after all deletions are complete
+      await fetchPriceBooks()
+    } catch (error) {
+      console.error('Error deleting price books:', error)
+      alert('Some price books could not be deleted. Please try again.')
+      // Refresh even on error to ensure UI is in sync
+      await fetchPriceBooks()
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const columns: ColumnDef<PriceBook>[] = [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <div className="flex items-center justify-center">
+          <input
+            type="checkbox"
+            checked={table.getIsAllPageRowsSelected()}
+            onChange={(e) => {
+              table.toggleAllPageRowsSelected(e.target.checked)
+            }}
+            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer"
+            aria-label="Select all"
+          />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center justify-center">
+          <input
+            type="checkbox"
+            checked={row.getIsSelected()}
+            onChange={(e) => {
+              row.toggleSelected(e.target.checked)
+            }}
+            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-pointer"
+            aria-label="Select row"
+          />
+        </div>
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       accessorKey: 'manufacturer',
       header: ({ column }) => (
@@ -156,6 +231,7 @@ export default function BooksPage() {
               size="icon-sm"
               onClick={async () => {
                 if (confirm(`Delete ${book.manufacturer} ${book.edition || ''}?`)) {
+                  lastFetchRef.current = Date.now()
                   await deletePriceBook(book.id)
                 }
               }}
@@ -293,6 +369,11 @@ export default function BooksPage() {
               data={priceBooks}
               searchKey="manufacturer"
               searchPlaceholder="Search by manufacturer..."
+              enableRowSelection={true}
+              onSelectionChange={setSelectedRows}
+              onBulkDelete={handleBulkDelete}
+              selectedCount={selectedRows.length}
+              isDeleting={isDeleting}
               onExport={() => {
                 // Export table data as CSV
                 const headers = ['Manufacturer', 'Edition', 'Effective Date', 'Products', 'Status', 'Upload Date']

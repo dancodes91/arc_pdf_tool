@@ -228,18 +228,26 @@ export const usePriceBookStore = create<PriceBookState>((set, get) => ({
     }
   },
 
-  deletePriceBook: async (priceBookId: number) => {
-    set({ loading: true, error: null })
+  deletePriceBook: async (priceBookId: number, skipRefresh: boolean = false) => {
+    // Only set loading state if not skipping refresh (single delete operation)
+    if (!skipRefresh) {
+      set({ loading: true, error: null })
+    }
     try {
       await apiClient.delete(`price-books/${priceBookId}`)
 
-      // Refresh price books list after deletion
-      await get().fetchPriceBooks()
-
-      set({ loading: false })
+      // Refresh price books list after deletion (unless skipped for bulk operations)
+      if (!skipRefresh) {
+        await get().fetchPriceBooks()
+        set({ loading: false })
+      }
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || 'Failed to delete price book'
-      set({ error: errorMessage, loading: false })
+      if (!skipRefresh) {
+        set({ error: errorMessage, loading: false })
+      } else {
+        set({ error: errorMessage })
+      }
       console.error('Error deleting price book:', error)
       throw new Error(errorMessage)
     }
