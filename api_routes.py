@@ -217,25 +217,54 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
         try:
             # Parse the PDF
             logger.info(f"Starting PDF parsing: {filename}")
-            # New universal parser returns a ParsedDocument; convert to dict for ETL
-            parsed_result = parser.parse(filepath)
-            total_pages = getattr(parsed_result, "page_count", 0)
-            overall_conf = getattr(parsed_result, "overall_confidence", 0)
-            # UniversalPDFParser returns product dicts; wrap to ETL expected shape {"value": {...}}
-            wrapped_products = [{"value": p} for p in (parsed_result.products or [])]
+            # SelectHingesParser and HagerParser don't take arguments (filepath set in __init__)
+            # UniversalPDFParser.parse() takes filepath as argument
+            if manufacturer in ['select', 'select_hinges', 'hager']:
+                parsed_result = parser.parse()
+            else:
+                parsed_result = parser.parse(filepath)
+            
+            # Handle different return types
+            if hasattr(parsed_result, 'page_count'):
+                # UniversalPDFParser returns ParsedDocument
+                total_pages = getattr(parsed_result, "page_count", 0)
+                overall_conf = getattr(parsed_result, "overall_confidence", 0)
+                # UniversalPDFParser returns product dicts; wrap to ETL expected shape {"value": {...}}
+                wrapped_products = [{"value": p} for p in (parsed_result.products or [])]
+            else:
+                # SelectHingesParser/HagerParser return dict
+                # Extract total_pages from parsing_metadata or summary
+                parsing_meta = parsed_result.get('parsing_metadata', {})
+                summary = parsed_result.get('summary', {})
+                total_pages = parsing_meta.get('total_pages') or summary.get('total_pages', 0)
+                overall_conf = parsing_meta.get('overall_confidence', 0)
+                # These parsers already return dict format
+                wrapped_products = [{"value": p} for p in (parsed_result.get('products', []) or [])]
 
+            # Extract effective_date and other fields based on parser type
+            if hasattr(parsed_result, 'effective_date'):
+                # UniversalPDFParser returns ParsedDocument object
+                effective_date = parsed_result.effective_date
+                finish_symbols = []
+                net_add_options = []
+            else:
+                # SelectHingesParser/HagerParser return dict
+                effective_date = parsed_result.get('effective_date')
+                finish_symbols = parsed_result.get('finishes', [])
+                net_add_options = parsed_result.get('options', [])
+            
             parsed_data = {
                 "manufacturer": manufacturer or "auto",
                 "source_file": filepath,
                 "parsing_metadata": {
-                    "parser_version": "universal_pdf_parser",
+                    "parser_version": "universal_pdf_parser" if not manufacturer in ['select', 'select_hinges', 'hager'] else f"{manufacturer}_parser",
                     "total_pages": total_pages,
                     "overall_confidence": overall_conf,
                 },
-                "effective_date": parsed_result.effective_date,
+                "effective_date": effective_date,
                 "products": wrapped_products,
-                "finish_symbols": [],  # not currently provided by UniversalPDFParser
-                "net_add_options": [],
+                "finish_symbols": finish_symbols,
+                "net_add_options": net_add_options,
                 "summary": {
                     "total_products": len(wrapped_products),
                     "total_pages": total_pages,
@@ -243,7 +272,8 @@ def _process_pdf_async(job_id: str, filepath: str, filename: str, manufacturer: 
                 },
             }
 
-            logger.info(f"Parsing completed: {filename} ({total_pages} pages, {len(parsed_result.products)} products)")
+            product_count = len(wrapped_products)
+            logger.info(f"Parsing completed: {filename} ({total_pages} pages, {product_count} products)")
             update_progress(60, f"Parsed {total_pages} pages", pages_parsed=total_pages, total_pages=total_pages)
         finally:
             heartbeat_stop.set()
