@@ -12,8 +12,8 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
-import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useSidebar } from './SidebarContext'
 
 const navigationItems = [
   {
@@ -50,7 +50,7 @@ const navigationItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
+  const { collapsed, toggleCollapsed } = useSidebar()
 
   return (
     <aside
@@ -70,7 +70,7 @@ export function Sidebar() {
           </div>
         )}
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={() => toggleCollapsed()}
           className="rounded-md p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 focus-ring"
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
