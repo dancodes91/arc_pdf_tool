@@ -305,9 +305,18 @@ class PriceBookManager:
         except Exception:
             return date.today()
     
-    def get_price_book_summary(self, price_book_id: int) -> Dict[str, Any]:
-        """Get summary of a price book"""
-        session = self.get_session()
+    def get_price_book_summary(self, price_book_id: int, session: Session = None) -> Dict[str, Any]:
+        """Get summary of a price book
+        
+        Args:
+            price_book_id: ID of the price book
+            session: Optional existing database session to reuse (prevents SQLite locking issues)
+        """
+        should_close = False
+        if session is None:
+            session = self.get_session()
+            should_close = True
+        
         try:
             price_book = session.query(PriceBook).filter(PriceBook.id == price_book_id).first()
             if not price_book:
@@ -349,10 +358,14 @@ class PriceBookManager:
             }
             
         finally:
-            session.close()
+            if should_close:
+                session.close()
     
     def list_price_books(self, manufacturer_id: int = None) -> List[Dict[str, Any]]:
-        """List all price books"""
+        """List all price books
+        
+        Uses a single session for all operations to prevent SQLite locking issues
+        """
         session = self.get_session()
         try:
             query = session.query(PriceBook).join(Manufacturer)
@@ -362,7 +375,8 @@ class PriceBookManager:
             
             price_books = query.order_by(PriceBook.upload_date.desc()).all()
             
-            return [self.get_price_book_summary(pb.id) for pb in price_books]
+            # Pass the existing session to prevent creating multiple concurrent sessions
+            return [self.get_price_book_summary(pb.id, session) for pb in price_books]
             
         finally:
             session.close()

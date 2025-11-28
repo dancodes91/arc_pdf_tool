@@ -184,17 +184,32 @@ class DatabaseManager:
 
     def __init__(self, database_url=None):
         self.database_url = database_url or 'sqlite:///price_books.db'
-
-        # OPTIMIZATION: Add connection pooling for better performance
-        # Reduces connection overhead by 80% and improves concurrent access
+        
+        # SQLite-specific connection parameters to prevent locking issues
+        connect_args = {}
+        if 'sqlite' in self.database_url:
+            # SQLite-specific settings to handle concurrent access better
+            connect_args = {
+                'check_same_thread': False,  # Allow multi-threaded access
+                'timeout': 20.0,  # Wait up to 20 seconds for locks to be released
+            }
+        
+        # Connection pooling configuration
+        # For SQLite: use smaller pool to prevent locking issues
+        # For other databases: use larger pool for better performance
+        is_sqlite = 'sqlite' in self.database_url
+        pool_size = 1 if is_sqlite else 5
+        max_overflow = 0 if is_sqlite else 10
+        
         self.engine = create_engine(
             self.database_url,
             echo=False,
-            pool_size=5,              # Maintain 5 persistent connections
-            max_overflow=10,          # Allow up to 15 total connections (5 + 10)
-            pool_pre_ping=True,       # Verify connections are alive before using
-            pool_recycle=3600,        # Recycle connections after 1 hour
-            pool_timeout=30           # Wait up to 30s for a connection
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            pool_timeout=30,
+            connect_args=connect_args
         )
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
     
