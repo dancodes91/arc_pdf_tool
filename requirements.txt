@@ -206,7 +206,7 @@ opencv-contrib-python-headless==4.11.0.86
     # via img2table
 opencv-python==4.11.0.86
     # via arc-pdf-tool
-opencv-python-headless==4.11.0.86
+opencv-python-headless==4.12.0.88
     # via camelot-py
 openpyxl==3.1.5
     # via
