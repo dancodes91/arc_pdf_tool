@@ -135,7 +135,7 @@ httpx==0.28.1
     #   paddlepaddle
 huggingface-hub==0.35.3
     # via paddlex
-identify==2.6.14
+identify==2.6.15
     # via pre-commit
 idna==3.10
     # via
