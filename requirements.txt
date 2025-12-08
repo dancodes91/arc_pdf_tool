@@ -265,7 +265,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-polars==1.33.1
+polars==1.35.1
     # via
     #   arc-pdf-tool
     #   img2table
