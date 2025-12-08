@@ -307,7 +307,7 @@ pymupdf==1.26.4
     # via arc-pdf-tool
 pypdf==3.17.4 ; python_full_version < '3.12'
     # via camelot-py
-pypdf==5.9.0 ; python_full_version >= '3.12'
+pypdf==6.1.3 ; python_full_version >= '3.12'
     # via camelot-py
 pypdfium2==4.30.0
     # via
