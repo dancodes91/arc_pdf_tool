@@ -32,7 +32,7 @@ camelot-py==1.0.9
     # via arc-pdf-tool
 celery==5.5.3
     # via arc-pdf-tool
-certifi==2025.8.3
+certifi==2025.10.5
     # via
     #   httpcore
     #   httpx
